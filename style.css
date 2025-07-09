@@ -7,7 +7,7 @@
     --zed-button-background: #0e639c;
     --zed-button-hover-background: #1177bb;
     --zed-output-background: #2d2d2d;
-    --zed-font: 'Source Code Pro', 'Menlo', 'Consolas', 'DejaVu Sans Mono', monospace;
+    --zed-font: 'JetBrains Mono', 'Source Code Pro', 'Menlo', 'Consolas', 'DejaVu Sans Mono', monospace;
     --zed-action-bar-background: #2c2c2d; /* Slightly different from editor for visual separation */
     --zed-action-button-background: #3e3e42;
     --zed-action-button-hover-background: #505054;
