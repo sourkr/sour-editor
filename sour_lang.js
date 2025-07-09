@@ -7,13 +7,12 @@ const SourLang = (() => {
         PRINT: 'PRINT',         // 'print' keyword
         STRING: 'STRING',       // "any string"
         NEWLINE: 'NEWLINE',     // \n or \r\n
+        WHITESPACE: 'WHITESPACE', // Spaces, tabs
         EOF: 'EOF',             // End Of File
         UNKNOWN: 'UNKNOWN'      // Unrecognized token
     };
 
     // --- LEXER ---
-    // Updated lexer to be exposed via getTokens and potentially preserve more info for highlighting.
-    // For now, the change is minimal, mainly ensuring it's part of the exported SourLang object.
     function lexer(code) {
         const tokens = [];
         let position = 0;
@@ -21,18 +20,26 @@ const SourLang = (() => {
 
         while (position < code.length) {
             let char = code[position];
+            let currentChunk = '';
 
+            // 1. Whitespace (Spaces, Tabs, Newlines)
             if (/\s/.test(char)) {
                 if (char === '\n') {
                     tokens.push({ type: TOKEN_TYPES.NEWLINE, value: '\n' });
+                    position++;
                 } else {
-                    // Could add WHITESPACE tokens if needed for perfect reconstruction
-                    // For now, simple whitespace is skipped unless it's a newline
+                    // Capture sequence of spaces/tabs
+                    currentChunk = '';
+                    while (position < code.length && /[ \t]/.test(code[position])) {
+                        currentChunk += code[position];
+                        position++;
+                    }
+                    tokens.push({ type: TOKEN_TYPES.WHITESPACE, value: currentChunk });
                 }
-                position++;
                 continue;
             }
 
+            // 2. Keywords: 'print'
             if (code.substring(position, position + keywordPrint.length) === keywordPrint) {
                 if (position + keywordPrint.length === code.length || /\s/.test(code[position + keywordPrint.length])) {
                     tokens.push({ type: TOKEN_TYPES.PRINT, value: keywordPrint });
@@ -192,9 +199,11 @@ const SourLang = (() => {
     // --- PUBLIC API ---
     function execute(code) {
         const tokens = lexer(code);
-        // Filter out NEWLINE tokens before parsing for the interpreter's parser.
-        // The highlighting might use a more raw token stream from getTokens.
-        const filteredTokensForParser = tokens.filter(t => t.type !== TOKEN_TYPES.NEWLINE || t === tokens[tokens.length-1]);
+        // Filter out WHITESPACE and NEWLINE tokens before parsing for the interpreter's parser.
+        // The highlighting will use the raw token stream from getTokens.
+        const filteredTokensForParser = tokens.filter(
+            t => t.type !== TOKEN_TYPES.NEWLINE && t.type !== TOKEN_TYPES.WHITESPACE || t === tokens[tokens.length-1] // keep EOF
+        );
 
         const ast = parser(filteredTokensForParser);
         if (ast.error) {

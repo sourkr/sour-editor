@@ -495,12 +495,15 @@ function updateHighlighting() {
                 html += `<span class="sour-string">"${value}"</span>`;
                 break;
             case SourLang.TOKEN_TYPES.NEWLINE:
-                html += '\n';
+                html += '\n'; // Actual newline character for <pre>
+                break;
+            case SourLang.TOKEN_TYPES.WHITESPACE:
+                html += value; // Append whitespace as is (it's already escaped by escapeHtml)
                 break;
             case SourLang.TOKEN_TYPES.EOF:
                 // Don't append EOF character
                 break;
-            default: // UNKNOWN tokens, and any other text the lexer might pass through
+            default: // UNKNOWN tokens
                 html += value; // Append as is (already escaped)
                 break;
         }

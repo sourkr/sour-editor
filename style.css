@@ -42,22 +42,29 @@ textarea#code-editor,
 pre#highlighting-area {
     /* Common styles for textarea and highlighting overlay */
     margin: 0;
-    padding: 5px;
-    border: 1px solid var(--zed-border-color);
+    padding: 10px; /* Increased padding for better visual space */
+    border: 1px solid var(--zed-border-color); /* Ensure this is consistent */
     border-radius: 5px;
     font-family: var(--zed-font);
     font-size: 15px;
-    line-height: 1.4; /* Adjust for better visual alignment if needed */
+    font-weight: normal; /* Explicitly set */
+    letter-spacing: normal; /* Explicitly set */
+    line-height: 1.5; /* Standardized line height */
     box-sizing: border-box;
     width: 100%;
-    flex-grow: 1; /* Make them fill the container */
-    white-space: pre-wrap; /* Important for pre to wrap like textarea */
-    word-wrap: break-word; /* Important for pre to wrap like textarea */
+    min-height: 100px; /* Ensure a minimum height for both */
+    flex-grow: 1;
+    white-space: pre-wrap;
+    overflow-wrap: break-word; /* Standard property for word wrapping */
+    word-wrap: break-word; /* Older property, often works with overflow-wrap */
+    tab-size: 4; /* Standard tab width */
+    -moz-tab-size: 4; /* Firefox */
+    outline: none; /* Remove outline from textarea if focused, border is enough */
 }
 
 textarea#code-editor {
-    resize: none;
-    background-color: transparent; /* Make textarea background transparent */
+    resize: none; /* Usually desired for code editors */
+    background-color: transparent;
     color: transparent; /* Make text transparent, caret will provide cursor color */
     caret-color: var(--zed-text-color); /* Make caret visible */
     position: relative; /* Ensure textarea is interactable */
@@ -69,15 +76,21 @@ pre#highlighting-area {
     position: absolute;
     top: 0;
     left: 0;
-    z-index: 0; /* Highlight layer behind textarea's text input capability */
-    pointer-events: none; /* Clicks go through to the textarea */
-    overflow: hidden; /* Should match textarea's overflow or be managed by JS */
-    color: var(--zed-text-color); /* Default text color for non-highlighted parts */
+    right: 0; /* Ensure it spans full width if parent flex settings change */
+    bottom: 0; /* Ensure it spans full height if parent flex settings change */
+    z-index: 0;
+    pointer-events: none;
+    overflow: hidden; /* Crucial: scroll is handled by the textarea, this should not show its own scrollbars */
+    color: var(--zed-text-color);
 }
 
 pre#highlighting-area code {
-    display: block; /* Or inline, depending on how you manage lines */
-    font-family: inherit; /* Inherit from pre */
+    display: block;
+    font-family: inherit;
+    font-size: inherit;
+    line-height: inherit;
+    padding: 0; /* Padding is on the parent <pre> */
+    margin: 0; /* Reset any browser default for <code> */
 }
 
 /* Syntax highlighting styles */
