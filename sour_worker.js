@@ -1,5 +1,53 @@
 // sour_worker.js - Web Worker for Sour Lang Lexing and Parsing
 
+// --- CharStream Class ---
+class CharStream {
+    constructor(input) {
+        this.input = input;
+        this.position = 0;
+        this.line = 1;
+        this.column = 0; // 0-indexed
+    }
+
+    // Returns the next character and consumes it
+    next() {
+        if (this.eof()) {
+            return null; // Or throw error, or return special EOF char
+        }
+        const char = this.input[this.position];
+        this.position++;
+        if (char === '\n') {
+            this.line++;
+            this.column = 0;
+        } else {
+            this.column++;
+        }
+        return char;
+    }
+
+    // Returns the next character without consuming it
+    peek() {
+        if (this.eof()) {
+            return null;
+        }
+        return this.input[this.position];
+    }
+
+    // Returns true if at the end of the input stream
+    eof() {
+        return this.position >= this.input.length;
+    }
+
+    // Gets current location {line, column, index}
+    getCurrentLocation() {
+        return {
+            line: this.line,
+            column: this.column,
+            index: this.position
+        };
+    }
+}
+
 // --- TOKEN TYPES (Copied from sour_lang.js) ---
 const TOKEN_TYPES = {
     PRINT: 'PRINT',
@@ -10,78 +58,81 @@ const TOKEN_TYPES = {
     UNKNOWN: 'UNKNOWN'
 };
 
-// --- LEXER (Copied and adapted from sour_lang.js) ---
+// --- LEXER (Refactored to use CharStream) ---
 function lexer(code) {
     const tokens = [];
-    let position = 0;
-    let line = 1;
-    let column = 0;
+    const stream = new CharStream(code);
     const keywordPrint = "print";
 
-    while (position < code.length) {
-        const startLine = line;
-        const startColumn = column;
-        let char = code[position];
+    while (!stream.eof()) {
+        const startLocation = stream.getCurrentLocation();
+        let char = stream.peek();
         let tokenValue = '';
 
+        // 1. Whitespace (Spaces, Tabs, Newlines)
         if (/\s/.test(char)) {
             if (char === '\n') {
-                tokenValue = '\n';
-                tokens.push({ type: TOKEN_TYPES.NEWLINE, value: tokenValue, line: startLine, column: startColumn, originalLength: 1 });
-                position++;
-                line++;
-                column = 0;
+                tokenValue = stream.next(); // Consume newline
+                tokens.push({ type: TOKEN_TYPES.NEWLINE, value: tokenValue, line: startLocation.line, column: startLocation.column, originalLength: 1 });
             } else {
-                while (position < code.length && /[ \t]/.test(code[position])) {
-                    tokenValue += code[position];
-                    position++;
-                    column++;
+                // Capture sequence of spaces/tabs
+                while (!stream.eof() && /[ \t]/.test(stream.peek())) {
+                    tokenValue += stream.next();
                 }
-                tokens.push({ type: TOKEN_TYPES.WHITESPACE, value: tokenValue, line: startLine, column: startColumn, originalLength: tokenValue.length });
+                tokens.push({ type: TOKEN_TYPES.WHITESPACE, value: tokenValue, line: startLocation.line, column: startLocation.column, originalLength: tokenValue.length });
             }
             continue;
         }
 
-        if (code.startsWith(keywordPrint, position)) {
-            const endOfKeywordPos = position + keywordPrint.length;
-            if (endOfKeywordPos === code.length || /\s/.test(code[endOfKeywordPos])) {
-                tokens.push({ type: TOKEN_TYPES.PRINT, value: keywordPrint, line: startLine, column: startColumn, originalLength: keywordPrint.length });
-                position += keywordPrint.length;
-                column += keywordPrint.length;
+        // 2. Keywords: 'print'
+        // Check if the input from current stream position starts with "print"
+        if (stream.input.substring(stream.position).startsWith(keywordPrint)) {
+            const endOfKeywordPosInStream = stream.position + keywordPrint.length;
+            // Check if it's followed by a space, newline, or EOF
+            if (endOfKeywordPosInStream === stream.input.length || /\s/.test(stream.input[endOfKeywordPosInStream])) {
+                // Consume the keyword
+                for(let i=0; i < keywordPrint.length; i++) stream.next();
+                tokens.push({ type: TOKEN_TYPES.PRINT, value: keywordPrint, line: startLocation.line, column: startLocation.column, originalLength: keywordPrint.length });
                 continue;
             }
         }
 
+        // 3. String literals: "..."
         if (char === '"') {
-            tokenValue = '"';
-            position++; column++;
             let stringContent = '';
-            while (position < code.length && code[position] !== '"') {
-                if (code[position] === '\n') {
-                    tokens.push({ type: TOKEN_TYPES.UNKNOWN, value: tokenValue + stringContent, line: startLine, column: startColumn, originalLength: tokenValue.length + stringContent.length });
-                    tokenValue = null;
+            stream.next(); // Consume opening quote "
+            tokenValue = '"'; // Start token value for length calculation
+
+            while (!stream.eof() && stream.peek() !== '"') {
+                if (stream.peek() === '\n') { // Error: strings cannot span newlines
+                    // Tokenize the unterminated part as UNKNOWN
+                    tokens.push({ type: TOKEN_TYPES.UNKNOWN, value: tokenValue + stringContent, line: startLocation.line, column: startLocation.column, originalLength: tokenValue.length + stringContent.length });
+                    tokenValue = null; // Mark as handled, newline will be picked up next iteration
                     break;
                 }
-                stringContent += code[position];
-                tokenValue += code[position];
-                position++; column++;
+                const nextChar = stream.next();
+                stringContent += nextChar;
+                tokenValue += nextChar;
             }
-            if (tokenValue === null) continue;
-            if (position < code.length && code[position] === '"') {
-                tokenValue += '"';
-                position++; column++;
-                tokens.push({ type: TOKEN_TYPES.STRING, value: stringContent, line: startLine, column: startColumn, originalLength: tokenValue.length });
-            } else {
-                tokens.push({ type: TOKEN_TYPES.UNKNOWN, value: tokenValue, line: startLine, column: startColumn, originalLength: tokenValue.length });
+
+            if (tokenValue === null) continue; // Handled by UNKNOWN token for string with newline
+
+            if (!stream.eof() && stream.peek() === '"') { // Properly terminated
+                tokenValue += stream.next(); // Consume closing quote "
+                tokens.push({ type: TOKEN_TYPES.STRING, value: stringContent, line: startLocation.line, column: startLocation.column, originalLength: tokenValue.length });
+            } else { // Unterminated (reached EOF)
+                tokens.push({ type: TOKEN_TYPES.UNKNOWN, value: tokenValue, line: startLocation.line, column: startLocation.column, originalLength: tokenValue.length });
             }
             continue;
         }
 
-        tokens.push({ type: TOKEN_TYPES.UNKNOWN, value: char, line: startLine, column: startColumn, originalLength: 1 });
-        position++;
-        column++;
+        // 4. Unknown token (single character if not caught by other rules)
+        tokenValue = stream.next(); // Consume the unknown character
+        tokens.push({ type: TOKEN_TYPES.UNKNOWN, value: tokenValue, line: startLocation.line, column: startLocation.column, originalLength: 1 });
     }
-    tokens.push({ type: TOKEN_TYPES.EOF, value: null, line, column, originalLength: 0 });
+
+    const eofLocation = stream.getCurrentLocation();
+    tokens.push({ type: TOKEN_TYPES.EOF, value: null, line: eofLocation.line, column: eofLocation.column, originalLength: 0 });
     return tokens;
 }
 

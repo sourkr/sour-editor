@@ -64,24 +64,25 @@ pre#highlighting-area {
 
 textarea#code-editor {
     resize: none; /* Usually desired for code editors */
-    background-color: transparent;
-    color: transparent; /* Make text transparent, caret will provide cursor color */
-    caret-color: var(--zed-text-color); /* Make caret visible */
-    position: relative; /* Ensure textarea is interactable */
-    z-index: 1; /* Textarea on top of highlight for interaction */
-    overflow-y: auto; /* Allow textarea to scroll */
+    background-color: transparent; /* Must be transparent to see highlight layer if it's underneath */
+    color: var(--zed-text-color);   /* Make textarea text visible */
+    caret-color: var(--zed-text-color);
+    position: relative;
+    z-index: 0; /* Textarea text is visually underneath the highlight layer */
+    overflow-y: auto;
 }
 
 pre#highlighting-area {
     position: absolute;
     top: 0;
     left: 0;
-    right: 0; /* Ensure it spans full width if parent flex settings change */
-    bottom: 0; /* Ensure it spans full height if parent flex settings change */
-    z-index: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 1; /* Highlight layer on top */
     pointer-events: none;
-    overflow: hidden; /* Crucial: scroll is handled by the textarea, this should not show its own scrollbars */
-    color: var(--zed-text-color);
+    overflow: hidden;
+    color: var(--zed-text-color); /* Default color for text in highlight layer */
+    background-color: var(--zed-editor-background); /* Obscures textarea's plain text */
 }
 
 pre#highlighting-area code {
