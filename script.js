@@ -15,6 +15,10 @@ const fileSystemContainer = document.getElementById('file-system-container');
 // const deleteFileButton = document.getElementById('delete-file-button'); // Removed
 const fileListContainer = document.getElementById('file-list');
 
+// Sour Lang specific elements
+const runSourButton = document.getElementById('run-sour-button');
+const sourOutputContainer = document.getElementById('sour-output-container');
+
 let activeFileName = null;
 const localStorageKeyPrefix = 'jsIDE_file_';
 
@@ -430,3 +434,23 @@ actionBarSaveButton.addEventListener('click', () => {
         }, 1500);
     }
 });
+
+// Sour Lang Run Button
+if (runSourButton) {
+    runSourButton.addEventListener('click', () => {
+        const code = codeEditor.value;
+        if (typeof SourLang !== 'undefined' && SourLang.execute) {
+            const result = SourLang.execute(code);
+            if (result.error) {
+                sourOutputContainer.textContent = `Error: ${result.error}`;
+                sourOutputContainer.style.color = 'red'; // Simple error styling
+            } else {
+                sourOutputContainer.textContent = result.output;
+                sourOutputContainer.style.color = ''; // Reset color
+            }
+        } else {
+            sourOutputContainer.textContent = 'SourLang module not loaded or execute function missing.';
+            sourOutputContainer.style.color = 'red';
+        }
+    });
+}

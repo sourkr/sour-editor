@@ -4,9 +4,14 @@ Sour Editor is a lightweight, mobile-first JavaScript IDE that runs directly in 
 
 ## Features
 
-*   **Code Editor**: A simple textarea-based editor for writing code.
+*   **Code Editor**: A simple textarea-based editor for writing code, including the new Sour Lang.
+*   **Sour Lang (Experimental - Phase 1)**:
+    *   Basic custom language support.
+    *   Current capability: `print "string"` statements.
+    *   Execution via "Run Sour Code" button in the action bar.
+    *   Output displayed in a dedicated panel below the editor.
 *   **File System (localStorage-based)**:
-    *   Create, save, load, and delete files.
+    *   Create, save, load, and delete files (e.g., `.txt`, `.js`, `.sour`).
     *   Organize files into folders (e.g., `folderName/fileName.js`).
     *   File tree navigation drawer.
 *   **Context Menu (Mobile Focused)**:
@@ -16,6 +21,7 @@ Sour Editor is a lightweight, mobile-first JavaScript IDE that runs directly in 
 *   **Action Bar**:
     *   Toggle file tree visibility.
     *   **Save File**: Save the currently active file.
+    *   **Run Sour Code**: Execute code written in Sour Lang from the editor.
 *   **Responsive Design**: Aimed primarily at mobile use but functional on desktop.
 
 ## How to Use
@@ -29,11 +35,20 @@ Sour Editor is a lightweight, mobile-first JavaScript IDE that runs directly in 
         *   Enter the file name (e.g., `myScript.js` or `docs/notes.txt`). This is the primary way to create new files.
     *   Click on a file in the list within the file tree drawer to load it into the editor.
 3.  **Coding**:
-    *   Write your code in the editor area.
+    *   Write your code in the editor area. You can save any text-based file (e.g., `myCode.js`, `notes.txt`, `hello.sour`).
     *   Use the **Save icon** in the action bar (top right) to save your work for the currently active file.
-4.  **Toolbar Actions**:
+4.  **Running Sour Lang Code**:
+    *   Write your Sour Lang code in the editor. For Phase 1, this is limited to `print "your string"` statements. For example:
+        ```sour
+        print "Hello from Sour Lang!"
+        print "This is a second line."
+        ```
+    *   Click the **Play icon** (Run Sour Code) in the action bar.
+    *   Output (or errors) from your Sour Lang code will appear in the panel below the editor.
+5.  **Toolbar Actions**:
     *   **Menu Icon (Left)**: Toggles the file tree visibility.
-    *   **Save Icon (Right)**: Saves the current file.
+    *   **Save Icon (Middle-Right)**: Saves the current file.
+    *   **Play Icon (Right)**: Executes the Sour Lang code in the editor.
 
 ## Technical Details
 

@@ -55,6 +55,21 @@ textarea#code-editor { /* More specific selector for editor */
 /* #output-container REMOVED */
 /* button#run-button REMOVED */
 
+#sour-output-container {
+    background-color: var(--zed-output-background); /* Use existing variable */
+    padding: 10px;
+    border: 1px solid var(--zed-border-color);
+    border-radius: 5px;
+    height: 100px; /* Adjust as needed, smaller than old JS output */
+    overflow-y: auto;
+    box-sizing: border-box;
+    width: 100%;
+    margin-top: 10px; /* Space between editor and this output */
+    font-family: var(--zed-font);
+    white-space: pre-wrap;
+    color: var(--zed-text-color);
+}
+
 #action-bar {
     background-color: var(--zed-action-bar-background);
     padding: 8px 10px;
