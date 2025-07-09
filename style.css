@@ -1,0 +1,287 @@
+/* Zed-like theme */
+:root {
+    --zed-background: #1e1e1e;
+    --zed-editor-background: #252526;
+    --zed-text-color: #d4d4d4;
+    --zed-border-color: #3c3c3c;
+    --zed-button-background: #0e639c;
+    --zed-button-hover-background: #1177bb;
+    --zed-output-background: #2d2d2d;
+    --zed-font: 'Source Code Pro', 'Menlo', 'Consolas', 'DejaVu Sans Mono', monospace;
+    --zed-action-bar-background: #2c2c2d; /* Slightly different from editor for visual separation */
+    --zed-action-button-background: #3e3e42;
+    --zed-action-button-hover-background: #505054;
+}
+
+body {
+    font-family: var(--zed-font);
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    background-color: var(--zed-background);
+    color: var(--zed-text-color);
+}
+/* Header is removed */
+#editor-container {
+    display: flex;
+    flex-direction: column;
+    flex-grow: 1;
+    padding: 10px;
+}
+textarea#code-editor { /* More specific selector for editor */
+    flex-grow: 1;
+    padding: 10px;
+    border: 1px solid var(--zed-border-color);
+    border-radius: 5px;
+    font-size: 15px; /* Slightly smaller for editor feel */
+    resize: none;
+    box-sizing: border-box;
+    width: 100%;
+    margin-bottom: 10px;
+    background-color: var(--zed-editor-background);
+    color: var(--zed-text-color);
+    font-family: var(--zed-font);
+}
+#output-container {
+    background-color: var(--zed-output-background);
+    padding: 10px;
+    border: 1px solid var(--zed-border-color);
+    border-radius: 5px;
+    height: 150px; /* Fixed height for output */
+    overflow-y: auto;
+    box-sizing: border-box;
+    width: 100%;
+    font-family: var(--zed-font);
+    white-space: pre-wrap;
+    color: var(--zed-text-color); /* Ensure output text is also themed */
+}
+button#run-button { /* More specific selector for button */
+    background-color: var(--zed-button-background);
+    color: white;
+    padding: 10px 15px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 16px;
+    margin-top: 10px;
+    width: 100%; /* Full width button */
+    font-family: Arial, sans-serif; /* Button font can be non-mono */
+}
+button#run-button:hover {
+    background-color: var(--zed-button-hover-background);
+}
+
+#action-bar {
+    background-color: var(--zed-action-bar-background);
+    padding: 8px 10px;
+    display: flex;
+    justify-content: space-between; /* Pushes title to left, buttons to right */
+    align-items: center; /* Vertically align items */
+    gap: 8px;
+    border-bottom: 1px solid var(--zed-border-color);
+    position: sticky; /* Make action bar sticky */
+    top: 0;
+    z-index: 1001; /* Above the drawer */
+}
+
+#action-bar-left {
+    display: flex;
+    align-items: center;
+    gap: 8px; /* Space between menu icon and title */
+}
+
+#app-title {
+    font-size: 1.1em; /* Adjust as needed */
+    margin: 0; /* Remove default h1 margin */
+    font-weight: normal;
+}
+
+#action-buttons {
+    display: flex;
+    gap: 8px; /* Spacing between icon buttons */
+}
+
+/* Common style for all icon-only buttons in action bar and file actions */
+.icon-button {
+    background-color: transparent;
+    color: var(--zed-text-color);
+    border: none;
+    padding: 6px; /* Adjust padding for a tighter fit if no border */
+    border-radius: 3px;
+    cursor: pointer;
+    line-height: 1; /* Ensure icon is centered vertically */
+    display: inline-flex; /* Helps align span/icon inside */
+    align-items: center;
+    justify-content: center;
+}
+
+.icon-button .material-symbols-rounded {
+    font-size: 22px; /* Slightly larger icons if they are the only content */
+    vertical-align: middle;
+}
+
+.icon-button:hover {
+    background-color: rgba(255, 255, 255, 0.1); /* Subtle hover for transparent buttons */
+    color: white; /* Brighter icon on hover */
+}
+
+/* Ensure #action-bar button and #file-actions button inherit from .icon-button or are styled as such */
+/* If all buttons are icon buttons, these specific rules can be removed or simplified */
+#action-bar button,
+#file-actions button {
+    /* These buttons will now get the .icon-button class in HTML, */
+    /* so specific background, border, padding etc. here are redundant */
+    /* We can keep specific layout things if necessary, but most should be in .icon-button */
+}
+
+/* Individual .material-symbols-rounded styling within buttons is now handled by .icon-button .material-symbols-rounded */
+
+#file-system-container { /* Now the side drawer */
+    position: fixed;
+    top: 0;
+    left: -280px; /* Initially off-screen. Width + some buffer or just width */
+    width: 260px; /* Drawer width */
+    height: 100%;
+    background-color: var(--zed-background); /* Darker than editor, like main bg */
+    border-right: 1px solid var(--zed-border-color);
+    box-shadow: 2px 0 5px rgba(0,0,0,0.2);
+    /* padding: 10px; */ /* Removed as per user request */
+    overflow-y: auto;
+    z-index: 1000; /* Ensure it's above other content */
+    transition: left 0.3s ease-in-out;
+    top: 60px; /* Further increased to prevent overlap with action bar */
+    height: calc(100% - 60px); /* Adjust height accordingly */
+    display: flex; /* Use flex to arrange its children */
+    flex-direction: column;
+}
+
+#file-system-container.open {
+    left: 0; /* Slide in */
+}
+
+/* Ensure padding and borders are part of the width/height calculation */
+#file-system-container *, #file-system-container *::before, #file-system-container *::after {
+    box-sizing: border-box;
+}
+
+
+#file-actions {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 8px;
+    align-items: center;
+    padding: 8px 10px 0; /* Add some padding, especially top/horizontal. Bottom handled by margin. */
+                         /* Or just horizontal: padding: 0 10px; */
+}
+
+#file-name-input {
+    flex-grow: 1;
+    padding: 6px 8px;
+    background-color: var(--zed-background); /* Darker input field */
+    color: var(--zed-text-color);
+    border: 1px solid var(--zed-border-color);
+    border-radius: 3px;
+    font-family: var(--zed-font);
+    font-size: 14px;
+}
+
+#file-actions button { /* Style for file action icon buttons */
+    background-color: var(--zed-action-button-background);
+    color: var(--zed-text-color);
+    border: 1px solid var(--zed-border-color);
+    padding: 6px 8px;
+    border-radius: 3px;
+    cursor: pointer;
+}
+
+#file-actions button .material-symbols-rounded {
+    display: block;
+    font-size: 20px;
+    vertical-align: middle;
+}
+
+#file-actions button:hover {
+    background-color: var(--zed-action-button-hover-background);
+}
+
+#file-list {
+    display: flex;
+    flex-direction: column; /* List files vertically */
+    gap: 5px;
+    flex-grow: 1; /* Allow file list to take available space in the drawer */
+    overflow-y: auto;
+    padding: 5px;
+    background-color: var(--zed-editor-background); /* Match editor bg, or var(--zed-background) if preferred */
+    border-radius: 3px;
+}
+
+.file-entry {
+    padding: 5px 8px;
+    background-color: var(--zed-editor-background);
+    color: var(--zed-text-color);
+    border: 1px solid var(--zed-border-color);
+    border-radius: 3px;
+    cursor: pointer;
+    font-size: 14px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.file-entry:hover {
+    background-color: var(--zed-action-button-hover-background); /* Use existing hover color */
+}
+
+.file-entry.active-file {
+    background-color: var(--zed-button-background); /* Use button color for active file */
+    color: white;
+    border-color: var(--zed-button-background);
+}
+
+.folder-entry {
+    /* Container for a folder name and its files */
+    /* No specific style needed unless for margin/padding */
+}
+
+.folder-header {
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+    padding: 4px 8px; /* Similar to file-entry padding */
+    border-radius: 3px;
+}
+
+.folder-header:hover {
+    background-color: var(--zed-action-button-hover-background);
+}
+
+.folder-icon {
+    font-size: 20px; /* Material symbol size */
+    margin-right: 6px;
+    vertical-align: middle; /* Ensure alignment with text */
+}
+
+.folder-name {
+    font-weight: bold; /* Make folder names stand out */
+    font-size: 14px;
+}
+
+.files-in-folder {
+    padding-left: 20px; /* Indentation for files under a folder */
+    display: flex; /* To make it a flex container for its children if needed */
+    flex-direction: column;
+    gap: 5px; /* Same gap as #file-list */
+}
+
+/* Style for file entries specifically within folders, if different from root files */
+.files-in-folder .file-entry {
+    /* font-size: 13px; /* Slightly smaller if desired */
+    /* No specific indentation needed here as parent .files-in-folder handles it */
+}
+
+.root-file {
+    /* Styles for files directly under root, if different from those in folders */
+    /* e.g., no specific indentation needed beyond what .file-entry provides */
+}
