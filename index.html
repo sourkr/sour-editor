@@ -15,30 +15,25 @@
             <h1 id="app-title">Sour Editor</h1>
         </div>
         <div id="action-buttons">
-            <button id="clear-output-button" class="icon-button" title="Clear Output"><span class="material-symbols-rounded">delete_sweep</span></button>
-            <button id="copy-code-button" class="icon-button" title="Copy Code"><span class="material-symbols-rounded">content_copy</span></button>
-            <button id="toggle-wrap-button" class="icon-button" title="Enable Text Wrap"><span class="material-symbols-rounded">wrap_text</span></button>
+            <button id="action-bar-save-button" class="icon-button" title="Save File"><span class="material-symbols-rounded">save</span></button>
+            <button id="run-sour-button" class="icon-button" title="Run Sour Code"><span class="material-symbols-rounded">play_arrow</span></button>
         </div>
     </div>
 
     <div id="file-system-container">
-        <div id="file-actions">
-            <input type="text" id="file-name-input" placeholder="Enter filename...">
-            <button id="new-file-button" class="icon-button" title="New File"><span class="material-symbols-rounded">add_circle</span></button>
-            <button id="save-file-button" class="icon-button" title="Save File"><span class="material-symbols-rounded">save</span></button>
-            <button id="delete-file-button" class="icon-button" title="Delete File"><span class="material-symbols-rounded">delete</span></button>
-        </div>
         <div id="file-list">
             <!-- File entries will be populated here by JavaScript -->
         </div>
     </div>
 
     <div id="editor-container">
-        <textarea id="code-editor" placeholder="Write your JavaScript code here..." wrap="off"></textarea>
-        <button id="run-button">Run Code</button>
-        <div id="output-container" placeholder="Output will appear here..."></div>
+        <pre id="highlighting-area" aria-hidden="true"><code id="highlighting-layer"></code></pre>
+        <textarea id="code-editor" placeholder="Write your code here..." wrap="off" spellcheck="false" autocapitalize="off" autocorrect="off"></textarea>
     </div>
+    <div id="sour-output-container"></div>
 
-    <script src="script.js"></script>
+    <script type="module" src="file_manager.js"></script>
+    <script type="module" src="sour_lang.js"></script>
+    <script type="module" src="main.js"></script>
 </body>
 </html>

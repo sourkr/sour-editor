@@ -1,4 +1,11 @@
 /* Zed-like theme */
+@font-face {
+    font-family: 'Zed Mono Extended';
+    src: url('zed-mono-extended.ttf') format('truetype');
+    font-weight: normal;
+    font-style: normal;
+}
+
 :root {
     --zed-background: #1e1e1e;
     --zed-editor-background: #252526;
@@ -7,7 +14,7 @@
     --zed-button-background: #0e639c;
     --zed-button-hover-background: #1177bb;
     --zed-output-background: #2d2d2d;
-    --zed-font: 'JetBrains Mono', 'Source Code Pro', 'Menlo', 'Consolas', 'DejaVu Sans Mono', monospace;
+    --zed-font: 'Zed Mono Extended', 'JetBrains Mono', 'Source Code Pro', 'Menlo', 'Consolas', 'DejaVu Sans Mono', monospace;
     --zed-action-bar-background: #2c2c2d; /* Slightly different from editor for visual separation */
     --zed-action-button-background: #3e3e42;
     --zed-action-button-hover-background: #505054;
@@ -28,49 +35,99 @@ body {
     display: flex;
     flex-direction: column;
     flex-grow: 1;
-    padding: 10px;
+    position: relative; /* For absolute positioning of highlighting layer */
 }
-textarea#code-editor { /* More specific selector for editor */
-    flex-grow: 1;
-    padding: 10px;
-    border: 1px solid var(--zed-border-color);
+
+textarea#code-editor,
+pre#highlighting-area {
+    /* Common styles for textarea and highlighting overlay */
+    margin: 0;
+    padding: 10px; /* Increased padding for better visual space */
+    border: 1px solid var(--zed-border-color); /* Ensure this is consistent */
     border-radius: 5px;
-    font-size: 15px; /* Slightly smaller for editor feel */
-    resize: none;
+    font-family: var(--zed-font);
+    font-size: 15px;
+    font-weight: normal; /* Explicitly set */
+    letter-spacing: normal; /* Explicitly set */
+    line-height: 1.5; /* Standardized line height */
     box-sizing: border-box;
     width: 100%;
-    margin-bottom: 10px;
-    background-color: var(--zed-editor-background);
-    color: var(--zed-text-color);
-    font-family: var(--zed-font);
+    min-height: 100px; /* Ensure a minimum height for both */
+    flex-grow: 1;
+    white-space: pre-wrap;
+    overflow-wrap: break-word; /* Standard property for word wrapping */
+    word-wrap: break-word; /* Older property, often works with overflow-wrap */
+    tab-size: 4; /* Standard tab width */
+    -moz-tab-size: 4; /* Firefox */
+    outline: none; /* Remove outline from textarea if focused, border is enough */
 }
-#output-container {
-    background-color: var(--zed-output-background);
+
+textarea#code-editor {
+    resize: none; /* Usually desired for code editors */
+    background-color: transparent; /* Must be transparent to see highlight layer if it's underneath */
+    color: var(--zed-text-color);   /* Make textarea text visible */
+    caret-color: var(--zed-text-color);
+    position: relative;
+    z-index: 0; /* Textarea text is visually underneath the highlight layer */
+    overflow-y: auto;
+}
+
+pre#highlighting-area {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 1; /* Highlight layer on top */
+    pointer-events: none;
+    overflow: hidden;
+    color: var(--zed-text-color); /* Default color for text in highlight layer */
+    background-color: var(--zed-editor-background); /* Obscures textarea's plain text */
+}
+
+pre#highlighting-area code {
+    display: block;
+    font-family: inherit;
+    font-size: inherit;
+    line-height: inherit;
+    padding: 0; /* Padding is on the parent <pre> */
+    margin: 0; /* Reset any browser default for <code> */
+}
+
+/* Syntax highlighting styles */
+.sour-keyword {
+    color: #C586C0; /* Example: VS Code purple for keywords */
+}
+
+.sour-string {
+    color: #CE9178; /* Example: VS Code orange for strings */
+}
+
+.sour-error-segment {
+    /* text-decoration: underline wavy red; */ /* True wavy underline is hard cross-browser without SVG/more CSS */
+    border-bottom: 2px dotted #FF0000; /* More reliable dotted underline */
+    /* For a subtle background highlight instead/additionally: */
+    /* background-color: rgba(255, 0, 0, 0.1); */
+    /* Important: if error span wraps other spans, this might need display:inline-block or careful styling */
+}
+
+
+/* #output-container REMOVED */
+/* button#run-button REMOVED */
+
+#sour-output-container {
+    background-color: var(--zed-output-background); /* Use existing variable */
     padding: 10px;
     border: 1px solid var(--zed-border-color);
     border-radius: 5px;
-    height: 150px; /* Fixed height for output */
+    height: 100px; /* Adjust as needed, smaller than old JS output */
     overflow-y: auto;
     box-sizing: border-box;
     width: 100%;
+    margin-top: 10px; /* Space between editor and this output */
     font-family: var(--zed-font);
     white-space: pre-wrap;
-    color: var(--zed-text-color); /* Ensure output text is also themed */
-}
-button#run-button { /* More specific selector for button */
-    background-color: var(--zed-button-background);
-    color: white;
-    padding: 10px 15px;
-    border: none;
-    border-radius: 5px;
-    cursor: pointer;
-    font-size: 16px;
-    margin-top: 10px;
-    width: 100%; /* Full width button */
-    font-family: Arial, sans-serif; /* Button font can be non-mono */
-}
-button#run-button:hover {
-    background-color: var(--zed-button-hover-background);
+    color: var(--zed-text-color);
 }
 
 #action-bar {
@@ -284,4 +341,28 @@ button#run-button:hover {
 .root-file {
     /* Styles for files directly under root, if different from those in folders */
     /* e.g., no specific indentation needed beyond what .file-entry provides */
+}
+
+/* Context Menu Styling */
+#context-menu {
+    position: absolute; /* Positioned by JavaScript */
+    background-color: var(--zed-action-bar-background); /* Use a theme color */
+    border: 1px solid var(--zed-border-color);
+    border-radius: 5px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+    padding: 5px 0; /* Padding for top/bottom of menu, items will have their own */
+    z-index: 1005; /* Above other UI elements like file drawer */
+    min-width: 150px; /* Minimum width for the menu */
+    font-size: 14px; /* Consistent font size */
+}
+
+#context-menu div {
+    padding: 8px 15px; /* Padding for each menu item */
+    cursor: pointer;
+    color: var(--zed-text-color);
+}
+
+#context-menu div:hover {
+    background-color: var(--zed-button-hover-background); /* Use existing hover color */
+    color: white; /* Brighter text on hover */
 }
