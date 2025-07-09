@@ -21,6 +21,19 @@ const sourOutputContainer = document.getElementById('sour-output-container');
 
 // Import SourLang
 import { SourLang } from './sour_lang.js';
+// Import File Manager
+import { getFileStorageKey, getSavedFiles, saveFileToStorage, loadFileFromStorage, deleteFileFromStorage } from './file_manager.js';
+
+// --- Helper Functions ---
+function debounce(func, delay) {
+    let timeoutId;
+    return (...args) => {
+        clearTimeout(timeoutId);
+        timeoutId = setTimeout(() => {
+            func.apply(this, args);
+        }, delay);
+    };
+}
 
 // Syntax Highlighting Elements
 const highlightingArea = document.getElementById('highlighting-area');
@@ -29,7 +42,7 @@ const highlightingLayer = document.getElementById('highlighting-layer');
 let sourSyntaxError = null; // To store details of the current Sour Lang syntax error
 
 let activeFileName = null;
-const localStorageKeyPrefix = 'jsIDE_file_';
+// const localStorageKeyPrefix = 'jsIDE_file_'; // Moved to file_manager.js
 
 // --- Core IDE Functionality ---
 
@@ -38,22 +51,23 @@ const localStorageKeyPrefix = 'jsIDE_file_';
 // Copy Code Button - REMOVED
 // Toggle Text Wrap Button - REMOVED
 
-// --- File System Logic ---
+// --- File System Logic (UI and Orchestration part) ---
+// Actual storage interaction is in file_manager.js
 
-function getFileStorageKey(fileName) {
-    return localStorageKeyPrefix + fileName;
-}
+// function getFileStorageKey(fileName) { // Moved to file_manager.js
+//     return localStorageKeyPrefix + fileName;
+// }
 
-function getSavedFiles() {
-    const files = [];
-    for (let i = 0; i < localStorage.length; i++) {
-        const key = localStorage.key(i);
-        if (key.startsWith(localStorageKeyPrefix)) {
-            files.push(key.substring(localStorageKeyPrefix.length));
-        }
-    }
-    return files.sort();
-}
+// function getSavedFiles() { // Moved to file_manager.js
+//     const files = [];
+//     for (let i = 0; i < localStorage.length; i++) {
+//         const key = localStorage.key(i);
+//         if (key.startsWith(localStorageKeyPrefix)) {
+//             files.push(key.substring(localStorageKeyPrefix.length));
+//         }
+//     }
+//     return files.sort();
+// }
 
 function displayFiles() {
     fileListContainer.innerHTML = ''; // Clear current list
@@ -180,24 +194,26 @@ function displayFiles() {
     // The _root_ loop is no longer needed as root files are handled by the '/' folder.
 }
 
-function saveFile(fileName, content) {
+// Renamed to reflect it's the UI-facing save operation
+function saveActiveFile(fileName, content) {
     if (!fileName || fileName.trim() === '') {
-        alert('Please enter a valid file name.');
+        alert('Please enter a valid file name.'); // This alert can stay here as it's UI feedback
         return false;
     }
-    localStorage.setItem(getFileStorageKey(fileName.trim()), content);
-    activeFileName = fileName.trim();
-    // fileNameInput.value = activeFileName; // Update input field - REMOVED
-    displayFiles(); // Refresh file list
-    return true;
+    if (saveFileToStorage(fileName.trim(), content)) {
+        activeFileName = fileName.trim();
+        displayFiles(); // Refresh file list after successful save
+        return true;
+    }
+    return false; // Should not happen if fileName is valid, but as a fallback
 }
 
-function loadFile(fileName) { // fileName here is the fullPath
-    const content = localStorage.getItem(getFileStorageKey(fileName));
+// Renamed to reflect it's the UI-facing load operation
+function loadFileToEditor(fileName) {
+    const content = loadFileFromStorage(fileName);
     if (content !== null) {
         codeEditor.value = content;
-        activeFileName = fileName; // activeFileName is now fullPath
-        // fileNameInput.value = activeFileName; // Update input field - REMOVED
+        activeFileName = fileName;
 
         // Update active class in file list
         const currentActive = fileListContainer.querySelector('.active-file');
@@ -231,19 +247,22 @@ function loadFile(fileName) { // fileName here is the fullPath
     } else {
         alert(`File "${fileName}" not found.`);
     }
+    // Ensure highlighting is updated after loading a file
+    updateHighlighting();
 }
 
-function deleteFile(fileName) {
+// Renamed to reflect it's the UI-facing delete operation
+function deleteActiveFile(fileName) {
     if (!fileName || fileName.trim() === '') {
-        alert('No file selected or name provided to delete.');
+        alert('No file selected or name provided to delete.'); // UI feedback
         return;
     }
-    if (confirm(`Are you sure you want to delete "${fileName.trim()}"?`)) {
-        localStorage.removeItem(getFileStorageKey(fileName.trim()));
+    if (confirm(`Are you sure you want to delete "${fileName.trim()}"?`)) { // UI feedback
+        deleteFileFromStorage(fileName.trim());
         if (activeFileName === fileName.trim()) {
             activeFileName = null;
             codeEditor.value = ''; // Clear editor
-            // fileNameInput.value = ''; // Clear input - REMOVED
+            updateHighlighting(); // Clear highlighting too
         }
         displayFiles(); // Refresh file list
     }
@@ -322,16 +341,15 @@ function showContextMenu(x, y, targetElement) {
         if (newFileName && newFileName.trim() !== '') {
             const fullPath = folderPath === '/' ? newFileName.trim() : `${folderPath}${newFileName.trim()}`;
             // Check if file already exists
-            if (getSavedFiles().includes(fullPath)) {
+            if (getSavedFiles().includes(fullPath)) { // getSavedFiles is from file_manager.js
                 alert(`File "${fullPath}" already exists.`);
             } else {
-                // Create a new empty file
-                codeEditor.value = ''; // Clear editor for new file
+                codeEditor.value = '';
                 activeFileName = fullPath;
-                // fileNameInput.value = activeFileName; // Update input field - REMOVED
-                saveFile(activeFileName, ''); // Save the new empty file
-                // displayFiles() will be called by saveFile
+                saveActiveFile(activeFileName, ''); // Use the new UI-facing save function
+                // displayFiles() is called by saveActiveFile
                 alert(`File "${fullPath}" created.`);
+                updateHighlighting(); // Update for empty content
             }
         }
     });
@@ -431,7 +449,7 @@ actionBarSaveButton.addEventListener('click', () => {
         alert("No active file selected to save. Please open a file or create a new one via the context menu.");
         return;
     }
-    if (saveFile(fileName, codeEditor.value)) {
+    if (saveActiveFile(fileName, codeEditor.value)) { // Use the new UI-facing save function
         // Optional: Show a temporary message like "File saved!"
         const originalText = actionBarSaveButton.querySelector('.material-symbols-rounded').textContent;
         const originalTitle = actionBarSaveButton.title;
@@ -564,10 +582,24 @@ function updateHighlighting() {
 
 
 if (codeEditor) {
+    const debouncedLiveParseAndHighlight = debounce(() => {
+        const code = codeEditor.value;
+        // Perform live parsing to update error state
+        if (SourLang && SourLang.execute) {
+            const result = SourLang.execute(code);
+            if (result.error && result.error.message) {
+                sourSyntaxError = result.error;
+            } else {
+                sourSyntaxError = null;
+            }
+        }
+        updateHighlighting(); // This will use the latest sourSyntaxError
+    }, 500); // 500ms delay
+
     codeEditor.addEventListener('input', () => {
         // Update URL hash with current code - consider debouncing for performance
         // window.location.hash = btoa(encodeURIComponent(codeEditor.value));
-        updateHighlighting();
+        debouncedLiveParseAndHighlight();
     });
 
     codeEditor.addEventListener('scroll', () => {
@@ -579,10 +611,10 @@ if (codeEditor) {
     });
 
     // Also update highlighting when a file is loaded
-    const originalLoadFile = loadFile; // Keep a reference to the original
-    loadFile = (fileName) => {
-        originalLoadFile(fileName); // Call the original function
-        updateHighlighting();     // Then update highlighting
+    const originalLoadFileUI = loadFileToEditor;
+    loadFileToEditor = (fileName) => { // Ensure we are wrapping the correct (renamed) function
+        originalLoadFileUI(fileName);
+        // updateHighlighting(); // Already called at the end of the new loadFileToEditor
     };
 
     // Initial highlight for any existing content (e.g. from localStorage)

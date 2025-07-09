@@ -9,10 +9,10 @@ Sour Editor is a lightweight, mobile-first JavaScript IDE that runs directly in 
     *   Basic custom language support with syntax highlighting.
     *   Highlights `print` keyword and string literals.
     *   Current capability: `print "string"` statements.
-    *   Basic error reporting:
+    *   Live error reporting (as you type, after a short delay):
         *   The first detected syntax error is indicated with a red dotted underline.
-        *   Press `Ctrl+I` (or `Cmd+I` on Mac) to view the error message, line, and column.
-    *   Execution via "Run Sour Code" button in the action bar.
+        *   Press `Ctrl+I` (or `Cmd+I` on Mac) to view the error message, line, and column for the latest detected error.
+    *   Execution via "Run Sour Code" button in the action bar (for final output).
     *   Output displayed in a dedicated panel below the editor.
 *   **File System (localStorage-based)**:
     *   Create, save, load, and delete files (e.g., `.txt`, `.js`, `.sour`).
@@ -47,9 +47,9 @@ Sour Editor is a lightweight, mobile-first JavaScript IDE that runs directly in 
         print "Hello from Sour Lang!"
         print "This is a second line."
         ```
-    *   Click the **Play icon** (Run Sour Code) in the action bar.
-    *   Output (or errors) from your Sour Lang code will appear in the panel below the editor.
-    *   If there's a syntax error, the approximate location will be underlined with a red dotted line. Press `Ctrl+I` (or `Cmd+I` on Mac) to see details about the error.
+    *   As you type, syntax errors in Sour Lang code will be underlined with a red dotted line after a brief pause.
+    *   Press `Ctrl+I` (or `Cmd+I` on Mac) at any time to see details about the currently detected syntax error (if any).
+    *   Click the **Play icon** (Run Sour Code) in the action bar to execute the code and see its output (or final error state) in the panel below the editor.
 5.  **Toolbar Actions**:
     *   **Menu Icon (Left)**: Toggles the file tree visibility.
     *   **Save Icon (Middle-Right)**: Saves the current file.
