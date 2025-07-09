@@ -102,6 +102,14 @@ pre#highlighting-area code {
     color: #CE9178; /* Example: VS Code orange for strings */
 }
 
+.sour-error-segment {
+    /* text-decoration: underline wavy red; */ /* True wavy underline is hard cross-browser without SVG/more CSS */
+    border-bottom: 2px dotted #FF0000; /* More reliable dotted underline */
+    /* For a subtle background highlight instead/additionally: */
+    /* background-color: rgba(255, 0, 0, 0.1); */
+    /* Important: if error span wraps other spans, this might need display:inline-block or careful styling */
+}
+
 
 /* #output-container REMOVED */
 /* button#run-button REMOVED */

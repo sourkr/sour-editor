@@ -26,6 +26,8 @@ import { SourLang } from './sour_lang.js';
 const highlightingArea = document.getElementById('highlighting-area');
 const highlightingLayer = document.getElementById('highlighting-layer');
 
+let sourSyntaxError = null; // To store details of the current Sour Lang syntax error
+
 let activeFileName = null;
 const localStorageKeyPrefix = 'jsIDE_file_';
 
@@ -448,13 +450,20 @@ if (runSourButton) {
         const code = codeEditor.value;
         // No need to check for SourLang undefined if import is successful
         const result = SourLang.execute(code);
-        if (result.error) {
-            sourOutputContainer.textContent = `Error: ${result.error}`;
-            sourOutputContainer.style.color = 'red'; // Simple error styling
+        if (result.error && result.error.message) { // Check for detailed error object
+            sourOutputContainer.textContent = `Error (L${result.error.line}:${result.error.column}): ${result.error.message}`;
+            sourOutputContainer.style.color = 'red';
+            sourSyntaxError = result.error; // Store the detailed error
+        } else if (result.error) { // Generic error
+            sourOutputContainer.textContent = `Error: ${JSON.stringify(result.error)}`;
+            sourOutputContainer.style.color = 'red';
+            sourSyntaxError = null; // Clear any previous specific error
         } else {
             sourOutputContainer.textContent = result.output;
             sourOutputContainer.style.color = ''; // Reset color
+            sourSyntaxError = null; // Clear any previous error on successful execution
         }
+        updateHighlighting(); // Update highlighting to show/clear error underlines
     });
 }
 
@@ -485,26 +494,55 @@ function updateHighlighting() {
     tokens.forEach(token => {
         const value = escapeHtml(token.value); // Escape the actual token value for HTML
 
+        let classList = '';
+        let isErrorToken = false;
+
+        if (sourSyntaxError &&
+            token.line === sourSyntaxError.line &&
+            token.column === sourSyntaxError.column &&
+            token.originalLength > 0 // Don't mark zero-length tokens like some EOFs as error start
+            ) {
+            // This token is the start of the error, or the error itself.
+            // For simplicity, we'll mark this single token.
+            // A more advanced system might try to span 'sourSyntaxError.length'.
+            isErrorToken = true;
+        }
+
         switch (token.type) {
             case SourLang.TOKEN_TYPES.PRINT:
-                html += `<span class="sour-keyword">${value}</span>`;
+                classList = 'sour-keyword';
+                if (isErrorToken) classList += ' sour-error-segment';
+                html += `<span class="${classList}">${value}</span>`;
                 break;
             case SourLang.TOKEN_TYPES.STRING:
+                classList = 'sour-string';
+                if (isErrorToken) classList += ' sour-error-segment';
                 // The lexer's string token value does not include the quotes.
-                // We add them back here for display and include them in the span.
-                html += `<span class="sour-string">"${value}"</span>`;
+                // We add them back here for display.
+                html += `<span class="${classList}">"${value}"</span>`;
                 break;
             case SourLang.TOKEN_TYPES.NEWLINE:
                 html += '\n'; // Actual newline character for <pre>
                 break;
             case SourLang.TOKEN_TYPES.WHITESPACE:
-                html += value; // Append whitespace as is (it's already escaped by escapeHtml)
+                // Whitespace itself isn't usually the error segment directly,
+                // but if an error points to it, we'll just output it.
+                // Error styling on pure whitespace might be invisible or look odd.
+                if (isErrorToken) { // Unlikely to be styled effectively, but for completeness
+                    html += `<span class="sour-error-segment">${value}</span>`;
+                } else {
+                    html += value;
+                }
                 break;
             case SourLang.TOKEN_TYPES.EOF:
                 // Don't append EOF character
                 break;
             default: // UNKNOWN tokens
-                html += value; // Append as is (already escaped)
+                if (isErrorToken) {
+                     html += `<span class="sour-error-segment">${value}</span>`;
+                } else {
+                    html += value;
+                }
                 break;
         }
     });
@@ -559,3 +597,26 @@ if (codeEditor) {
 // 3. Performance optimizations for large files (e.g., only re-highlighting changed lines or viewport).
 // 4. Handling of tab characters (convert to spaces or specific tab width).
 // 5. Ensuring line numbers would align if added.
+
+// --- Ctrl+I Error Message Display ---
+if (codeEditor) {
+    codeEditor.addEventListener('keydown', (event) => {
+        // Check for Ctrl+I (or Cmd+I on Mac)
+        if ((event.ctrlKey || event.metaKey) && event.key === 'i') {
+            event.preventDefault(); // Prevent any default browser action for Ctrl+I
+            if (sourSyntaxError && sourSyntaxError.message) {
+                // Format the alert message a bit better
+                const errorMessage = `Sour Lang Syntax Error:
+-----------------------------
+Message: ${sourSyntaxError.message}
+Line: ${sourSyntaxError.line}
+Column: ${sourSyntaxError.column}
+Length of problematic token (approx): ${sourSyntaxError.length}
+-----------------------------`;
+                alert(errorMessage);
+            } else {
+                alert("No Sour Lang syntax error detected at the moment.");
+            }
+        }
+    });
+}

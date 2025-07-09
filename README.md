@@ -9,6 +9,9 @@ Sour Editor is a lightweight, mobile-first JavaScript IDE that runs directly in 
     *   Basic custom language support with syntax highlighting.
     *   Highlights `print` keyword and string literals.
     *   Current capability: `print "string"` statements.
+    *   Basic error reporting:
+        *   The first detected syntax error is indicated with a red dotted underline.
+        *   Press `Ctrl+I` (or `Cmd+I` on Mac) to view the error message, line, and column.
     *   Execution via "Run Sour Code" button in the action bar.
     *   Output displayed in a dedicated panel below the editor.
 *   **File System (localStorage-based)**:
@@ -46,6 +49,7 @@ Sour Editor is a lightweight, mobile-first JavaScript IDE that runs directly in 
         ```
     *   Click the **Play icon** (Run Sour Code) in the action bar.
     *   Output (or errors) from your Sour Lang code will appear in the panel below the editor.
+    *   If there's a syntax error, the approximate location will be underlined with a red dotted line. Press `Ctrl+I` (or `Cmd+I` on Mac) to see details about the error.
 5.  **Toolbar Actions**:
     *   **Menu Icon (Left)**: Toggles the file tree visibility.
     *   **Save Icon (Middle-Right)**: Saves the current file.
