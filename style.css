@@ -151,8 +151,8 @@ button#run-button:hover {
     overflow-y: auto;
     z-index: 1000; /* Ensure it's above other content */
     transition: left 0.3s ease-in-out;
-    top: 60px; /* Further increased to prevent overlap with action bar */
-    height: calc(100% - 60px); /* Adjust height accordingly */
+    top: 55px; /* Further increased to prevent overlap with action bar */
+    height: calc(100% - 55px); /* Adjust height accordingly */
     display: flex; /* Use flex to arrange its children */
     flex-direction: column;
 }
