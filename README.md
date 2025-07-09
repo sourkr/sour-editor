@@ -10,9 +10,10 @@ Sour Editor is a lightweight, mobile-first JavaScript IDE that runs directly in 
     *   Highlights `print` keyword and string literals.
     *   Current capability: `print "string"` statements.
     *   Live error reporting (as you type, after a short delay):
-        *   The first detected syntax error is indicated with a red dotted underline.
-        *   Press `Ctrl+I` (or `Cmd+I` on Mac) to view the error message, line, and column for the latest detected error.
-    *   Execution via "Run Sour Code" button in the action bar (for final output).
+        *   For smaller files (under ~2000 characters), the first detected syntax error is indicated with a red dotted underline as you type.
+        *   For larger files, live error underlining is paused to maintain performance; errors are shown after clicking "Run Sour Code".
+        *   Press `Ctrl+I` (or `Cmd+I` on Mac) to view the details of the latest error relevant to the current context (live for small files, post-execution for large files).
+    *   Execution via "Run Sour Code" button in the action bar (provides definitive error checking and output for all file sizes).
     *   Output displayed in a dedicated panel below the editor.
 *   **File System (localStorage-based)**:
     *   Create, save, load, and delete files (e.g., `.txt`, `.js`, `.sour`).
@@ -47,9 +48,10 @@ Sour Editor is a lightweight, mobile-first JavaScript IDE that runs directly in 
         print "Hello from Sour Lang!"
         print "This is a second line."
         ```
-    *   As you type, syntax errors in Sour Lang code will be underlined with a red dotted line after a brief pause.
-    *   Press `Ctrl+I` (or `Cmd+I` on Mac) at any time to see details about the currently detected syntax error (if any).
-    *   Click the **Play icon** (Run Sour Code) in the action bar to execute the code and see its output (or final error state) in the panel below the editor.
+    *   For smaller files, syntax errors in Sour Lang code will be underlined with a red dotted line as you type (after a brief pause).
+    *   For larger files, this live underlining is paused for performance; errors will be shown after you click the "Run Sour Code" button.
+    *   Press `Ctrl+I` (or `Cmd+I` on Mac) at any time to see details about the currently detected syntax error (if any relevant to the last check).
+    *   Click the **Play icon** (Run Sour Code) in the action bar to execute the code. This will always perform a full error check and display output (or errors) in the panel below the editor.
 5.  **Toolbar Actions**:
     *   **Menu Icon (Left)**: Toggles the file tree visibility.
     *   **Save Icon (Middle-Right)**: Saves the current file.

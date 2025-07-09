@@ -504,25 +504,17 @@ function updateHighlighting() {
 
     const code = codeEditor.value;
     const tokens = SourLang.getTokens(code);
-    let html = '';
+    const htmlParts = []; // Use an array to build HTML parts
 
-    // This approach reconstructs the code from tokens.
-    // It will not preserve original whitespace perfectly if the lexer discards it
-    // (current lexer discards spaces/tabs but keeps newlines).
     tokens.forEach(token => {
-        const value = escapeHtml(token.value); // Escape the actual token value for HTML
-
+        const value = escapeHtml(token.value);
         let classList = '';
         let isErrorToken = false;
 
         if (sourSyntaxError &&
             token.line === sourSyntaxError.line &&
             token.column === sourSyntaxError.column &&
-            token.originalLength > 0 // Don't mark zero-length tokens like some EOFs as error start
-            ) {
-            // This token is the start of the error, or the error itself.
-            // For simplicity, we'll mark this single token.
-            // A more advanced system might try to span 'sourSyntaxError.length'.
+            token.originalLength > 0) {
             isErrorToken = true;
         }
 
@@ -530,48 +522,41 @@ function updateHighlighting() {
             case SourLang.TOKEN_TYPES.PRINT:
                 classList = 'sour-keyword';
                 if (isErrorToken) classList += ' sour-error-segment';
-                html += `<span class="${classList}">${value}</span>`;
+                htmlParts.push(`<span class="${classList}">${value}</span>`);
                 break;
             case SourLang.TOKEN_TYPES.STRING:
                 classList = 'sour-string';
                 if (isErrorToken) classList += ' sour-error-segment';
-                // The lexer's string token value does not include the quotes.
-                // We add them back here for display.
-                html += `<span class="${classList}">"${value}"</span>`;
+                htmlParts.push(`<span class="${classList}">"${value}"</span>`);
                 break;
             case SourLang.TOKEN_TYPES.NEWLINE:
-                html += '\n'; // Actual newline character for <pre>
+                htmlParts.push('\n');
                 break;
             case SourLang.TOKEN_TYPES.WHITESPACE:
-                // Whitespace itself isn't usually the error segment directly,
-                // but if an error points to it, we'll just output it.
-                // Error styling on pure whitespace might be invisible or look odd.
-                if (isErrorToken) { // Unlikely to be styled effectively, but for completeness
-                    html += `<span class="sour-error-segment">${value}</span>`;
+                if (isErrorToken) {
+                    htmlParts.push(`<span class="sour-error-segment">${value}</span>`);
                 } else {
-                    html += value;
+                    htmlParts.push(value);
                 }
                 break;
             case SourLang.TOKEN_TYPES.EOF:
-                // Don't append EOF character
                 break;
             default: // UNKNOWN tokens
                 if (isErrorToken) {
-                     html += `<span class="sour-error-segment">${value}</span>`;
+                     htmlParts.push(`<span class="sour-error-segment">${value}</span>`);
                 } else {
-                    html += value;
+                    htmlParts.push(value);
                 }
                 break;
         }
     });
 
-    // Ensure the highlighting layer always ends with a newline if the textarea does.
-    // This helps keep scroll height consistent.
-    if (code.endsWith('\n') && !html.endsWith('\n')) {
-        html += '\n';
+    let finalHtml = htmlParts.join('');
+    if (code.endsWith('\n') && !finalHtml.endsWith('\n')) {
+        finalHtml += '\n';
     }
 
-    highlightingLayer.innerHTML = html;
+    highlightingLayer.innerHTML = finalHtml;
 
     // Synchronize scroll
     if (highlightingArea) {
@@ -582,19 +567,34 @@ function updateHighlighting() {
 
 
 if (codeEditor) {
+    const LIVE_ERROR_CHECK_THRESHOLD = 2000; // Max characters for live error parsing
+
     const debouncedLiveParseAndHighlight = debounce(() => {
         const code = codeEditor.value;
-        // Perform live parsing to update error state
-        if (SourLang && SourLang.execute) {
-            const result = SourLang.execute(code);
-            if (result.error && result.error.message) {
-                sourSyntaxError = result.error;
-            } else {
-                sourSyntaxError = null;
+
+        // Always update syntax highlighting (which uses SourLang.getTokens)
+        // The error display within updateHighlighting will use the existing sourSyntaxError state.
+
+        // Conditionally perform full parse for live error checking
+        if (code.length < LIVE_ERROR_CHECK_THRESHOLD) {
+            if (SourLang && SourLang.execute) {
+                const result = SourLang.execute(code); // This includes parsing
+                if (result.error && result.error.message) {
+                    sourSyntaxError = result.error;
+                } else {
+                    sourSyntaxError = null;
+                }
             }
+        } else {
+            // For larger inputs, don't update sourSyntaxError live to save performance.
+            // Errors will be caught by the "Run Sour Code" button.
+            // We could choose to clear it, or leave the last known small-file error.
+            // Clearing it might be less confusing than a stale error.
+            sourSyntaxError = null;
         }
-        updateHighlighting(); // This will use the latest sourSyntaxError
-    }, 500); // 500ms delay
+
+        updateHighlighting(); // Update highlighting (and error display based on potentially updated sourSyntaxError)
+    }, 750);
 
     codeEditor.addEventListener('input', () => {
         // Update URL hash with current code - consider debouncing for performance
