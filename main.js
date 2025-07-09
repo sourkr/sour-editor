@@ -1,30 +1,18 @@
+import { SourLang } from './sour_lang.js';
+import { getFileStorageKey, getSavedFiles, saveFileToStorage, loadFileFromStorage, deleteFileFromStorage } from './file_manager.js';
+import Parser from "./libs/sourlang/parser.ja"
+
 const codeEditor = document.getElementById('code-editor');
-// const runButton = document.getElementById('run-button'); // Removed
-// const outputContainer = document.getElementById('output-container'); // Removed
-// Action Bar Buttons
-const toggleFileTreeButton = document.getElementById('toggle-file-tree-button');
-const actionBarSaveButton = document.getElementById('action-bar-save-button'); // Added
-// const clearOutputButton = document.getElementById('clear-output-button'); // Removed
-// const copyCodeButton = document.getElementById('copy-code-button'); // Removed
-// const toggleWrapButton = document.getElementById('toggle-wrap-button'); // Removed
-// File System Elements
+
+const toggleFileTreeButton = document.getElementById('nav-icon');
+const actionBarSaveButton = document.getElementById('save'); // Added
+
 const fileSystemContainer = document.getElementById('file-system-container');
-// const fileNameInput = document.getElementById('file-name-input'); // Removed
-// const newFileButton = document.getElementById('new-file-button'); // Removed
-// const saveFileButton = document.getElementById('save-file-button'); // Removed
-// const deleteFileButton = document.getElementById('delete-file-button'); // Removed
 const fileListContainer = document.getElementById('file-list');
 
-// Sour Lang specific elements
-const runSourButton = document.getElementById('run-sour-button');
+const runSourButton = document.getElementById('run');
 const sourOutputContainer = document.getElementById('sour-output-container');
 
-// Import SourLang
-import { SourLang } from './sour_lang.js';
-// Import File Manager
-import { getFileStorageKey, getSavedFiles, saveFileToStorage, loadFileFromStorage, deleteFileFromStorage } from './file_manager.js';
-
-// --- Helper Functions ---
 function debounce(func, delay) {
     let timeoutId;
     return (...args) => {
@@ -35,7 +23,6 @@ function debounce(func, delay) {
     };
 }
 
-// Syntax Highlighting Elements
 const highlightingArea = document.getElementById('highlighting-area');
 const highlightingLayer = document.getElementById('highlighting-layer');
 
@@ -44,32 +31,6 @@ let lastValidAST = null; // To store the last valid AST received from the worker
 const sourWorker = new Worker('./sour_worker.js');
 
 let activeFileName = null;
-// const localStorageKeyPrefix = 'jsIDE_file_'; // Moved to file_manager.js
-
-// --- Core IDE Functionality ---
-
-// Run Code Button - REMOVED
-// Clear Output Button - REMOVED
-// Copy Code Button - REMOVED
-// Toggle Text Wrap Button - REMOVED
-
-// --- File System Logic (UI and Orchestration part) ---
-// Actual storage interaction is in file_manager.js
-
-// function getFileStorageKey(fileName) { // Moved to file_manager.js
-//     return localStorageKeyPrefix + fileName;
-// }
-
-// function getSavedFiles() { // Moved to file_manager.js
-//     const files = [];
-//     for (let i = 0; i < localStorage.length; i++) {
-//         const key = localStorage.key(i);
-//         if (key.startsWith(localStorageKeyPrefix)) {
-//             files.push(key.substring(localStorageKeyPrefix.length));
-//         }
-//     }
-//     return files.sort();
-// }
 
 function displayFiles() {
     fileListContainer.innerHTML = ''; // Clear current list
@@ -269,38 +230,6 @@ function deleteActiveFile(fileName) {
         displayFiles(); // Refresh file list
     }
 }
-
-// function handleNewFile() { // REMOVED as its button is gone. Context menu handles new file creation.
-//     const newName = fileNameInput.value.trim();
-//     if (!newName) {
-//         alert("Please enter a name for the new file.");
-//         return;
-//     }
-//     if (getSavedFiles().includes(newName)) {
-//         if (!confirm(`File "${newName}" already exists. Overwrite it or load it? Press OK to load, Cancel to keep editing name.`)) {
-//             fileNameInput.focus();
-//             return;
-//         }
-//         loadFile(newName); // Load existing if user confirms
-//     } else {
-//         // Create a new empty file conceptually
-//         codeEditor.value = '';
-//         activeFileName = newName;
-//         // No need to save an empty file to localStorage immediately,
-//         // let the user type and then save.
-//         // But we should reflect it in the input and potentially list (if we want to show "new unsaved" files)
-//         // For now, just set activeFileName and clear editor. Save will persist.
-//         // fileNameInput.value = activeFileName; // REMOVED
-//         // Remove active class from others
-//         const currentActive = fileListContainer.querySelector('.active-file');
-//         if (currentActive) {
-//             currentActive.classList.remove('active-file');
-//         }
-//         // It won't be in the list until saved, so displayFiles() won't mark it yet.
-//         // We could add a temporary "new file" visual cue if desired.
-//         alert(`New file "${newName}" ready. Type your code and click Save.`);
-//     }
-// }
 
 // Initial load
 document.addEventListener('DOMContentLoaded', () => {
@@ -566,19 +495,8 @@ function escapeHtml(unsafe) {
 }
 
 // updateHighlighting now accepts the code string and tokens as arguments
-function updateHighlighting(currentCode, tokensToHighlight) {
-    if (!codeEditor || !highlightingLayer || !SourLang || !SourLang.TOKEN_TYPES) {
-        return;
-    }
-
+function updateHighlighting(currentCode, prog) {
     const htmlParts = [];
-
-    if (!tokensToHighlight || !Array.isArray(tokensToHighlight)) {
-        // If no tokens passed, or invalid, render the current code as plain text (escaped).
-        // This might happen if the worker fails or before the first response.
-        highlightingLayer.innerHTML = escapeHtml(currentCode);
-        return;
-    }
 
     tokensToHighlight.forEach(token => {
         const value = escapeHtml(token.value);
@@ -642,80 +560,11 @@ function updateHighlighting(currentCode, tokensToHighlight) {
 
 
 if (codeEditor) {
-    const LIVE_ERROR_CHECK_THRESHOLD = 2000; // Max characters for live error parsing
-
-    // const LIVE_ERROR_CHECK_THRESHOLD = 2000; // Threshold logic might be moved to worker or re-evaluated.
-                                             // For now, worker processes all input.
-
-    const debouncedProcessCode = debounce(() => {
-        const code = codeEditor.value;
-        if (sourWorker) { // Ensure worker is initialized
-            sourWorker.postMessage({ code: code, action: 'lint' }); // Specify action
-        }
-    }, 750);
-
-    if (sourWorker) {
-        sourWorker.onmessage = function(e) {
-            const { type, tokens, ast, error, interpreterOutput, runtimeError } = e.data;
-            const currentCodeValue = codeEditor.value; // Get current code for highlighting context
-
-            if (tokens) {
-                updateHighlighting(currentCodeValue, tokens);
-            }
-
-            // Update global error state based on parse error
-            sourSyntaxError = error || null;
-            lastValidAST = ast || null; // Store valid AST or null if parse error
-
-            // If the message was a response to an 'execute' action, handle interpreter output
-            if (type === 'execute') {
-                if (runtimeError) {
-                    sourOutputContainer.textContent = `Runtime Error: ${runtimeError.message || JSON.stringify(runtimeError)}`;
-                    sourOutputContainer.style.color = 'red';
-                } else if (error) { // If there was a parse error during the execute request
-                    sourOutputContainer.textContent = `Syntax Error (L${error.line}:${error.column}): ${error.message}`;
-                    sourOutputContainer.style.color = 'red';
-                } else if (interpreterOutput !== null && interpreterOutput !== undefined) {
-                    sourOutputContainer.textContent = interpreterOutput;
-                    sourOutputContainer.style.color = '';
-                } else {
-                     sourOutputContainer.textContent = "Execution completed (no output)."; // Or some other placeholder
-                     sourOutputContainer.style.color = '';
-                }
-            }
-
-            // After updating sourSyntaxError, always call updateHighlighting
-            // to ensure error underlines are refreshed based on the latest error state.
-            // This is important if tokens were not part of this specific message
-            // (e.g. if worker could send error updates without full token list)
-            // However, our worker currently always sends tokens.
-            // If tokens were already processed by updateHighlighting(tokens) above,
-            // calling it again *without* tokens would rely on it using global state or last tokens.
-            // The current updateHighlighting(tokens) needs tokens.
-            // So, if tokens were received, highlighting is already updated with current error state.
-            // If tokens were NOT received but error state might have changed (e.g. by a 'run' action that only returns error/output)
-            // we still need to re-render the highlighting to apply/clear error underlines.
-            // The current worker implementation always sends tokens, so this might be redundant for now,
-            // but good for robustness if worker's message structure changes.
-            if (!tokens && (sourSyntaxError !== (error || null))) { // If error state changed and no tokens were sent with this message
-                 // We need a way to get the last known tokens or re-request them.
-                 // For now, let's assume tokens are always sent if highlighting needs an update.
-                 // This call to updateHighlighting will use the new sourSyntaxError state.
-                 // It needs the code string.
-                 updateHighlighting(currentCodeValue, tokens || []); // Pass current code and existing/empty tokens
-            } else if (tokens) {
-                // If tokens were received, updateHighlighting(currentCodeValue, tokens) was already called.
-                // However, if sourSyntaxError changed *after* that call due to 'error' in message,
-                // we might need to ensure the error display is up to date.
-                // The current structure calls updateHighlighting(code, tokens) once.
-                // And updateHighlighting itself uses the global sourSyntaxError.
-                // This should be okay.
-            }
-        };
-    }
-
     codeEditor.addEventListener('input', () => {
-        debouncedProcessCode();
+        const parser = new Parser(codeEditor.value)
+        const prog = parser.parse()
+        
+        updateHighlighting(codeEditor.value, prog)
     });
 
     codeEditor.addEventListener('scroll', () => {
@@ -726,22 +575,6 @@ if (codeEditor) {
         }
     });
 
-    // Also update highlighting when a file is loaded
-    const originalLoadFileUI = loadFileToEditor;
-    loadFileToEditor = (fileName) => { // Ensure we are wrapping the correct (renamed) function
-        originalLoadFileUI(fileName);
-        // updateHighlighting(); // Already called at the end of the new loadFileToEditor
-    };
-
-    // Initial highlight for any existing content (e.g. from localStorage)
-    // This needs to trigger a worker message now.
-    if (codeEditor.value) {
-        sourWorker.postMessage({ code: codeEditor.value, action: 'lint' }); // Specify action for clarity
-    } else {
-        // If editor is empty, call updateHighlighting directly with empty code and tokens
-        // to ensure highlighting layer is cleared and consistent.
-        updateHighlighting("", []);
-    }
 }
 
 // Further considerations for a more robust highlighter:

@@ -1,12 +1,9 @@
-/* Zed-like theme */
-@font-face {
-    font-family: 'Zed Mono Extended';
-    src: url('zed-mono-extended.ttf') format('truetype');
-    font-weight: normal;
-    font-style: normal;
-}
-
 :root {
+    --color-background: #1e1e1e;
+    --color-container: #3e3e42;
+    --color-border: #3c3c3c;
+    --color-on-background: #d4d4d4;
+    
     --zed-background: #1e1e1e;
     --zed-editor-background: #252526;
     --zed-text-color: #d4d4d4;
@@ -22,143 +19,153 @@
 
 body {
     font-family: var(--zed-font);
+    color: var(--zed-text-color);
+    background: var(--color-background);
+    
     margin: 0;
     padding: 0;
+}
+
+#container {
     display: flex;
     flex-direction: column;
-    height: 100vh;
-    background-color: var(--zed-background);
-    color: var(--zed-text-color);
+    height: 100dvh;
 }
-/* Header is removed */
-#editor-container {
+
+#action-bar {
+    display: flex;
+    background: var(--color-container);
+        
+    padding: 15px 10px;
+    align-items: center;
+    border-bottom: 1px solid var(--color-border);
+    
+    #nav-icon {}
+    
+    #title {
+        font-size: 1.1em;
+        margin: 0;
+        font-weight: normal;
+        flex: 1;
+        margin-left: 10px;
+    }
+
+    #action-buttons {
+        display: flex;
+        gap: 8px;
+    }
+}
+
+#main {
     display: flex;
     flex-direction: column;
-    flex-grow: 1;
-    position: relative; /* For absolute positioning of highlighting layer */
+    flex: 1;
+    
+    #editor-container {
+        display: flex;
+        flex-direction: column;
+        position: relative;
+        flex: 1;
+        
+        #code-editor, #highlighting-area {
+            margin: 0;
+            padding: 10px;
+            font-family: var(--zed-font);
+            font-size: 15px;
+            font-weight: normal;
+            letter-spacing: normal;
+            line-height: 1.5;
+            box-sizing: border-box;
+            width: 100%;
+            min-height: 100px;
+            flex-grow: 1;
+            white-space: pre-wrap;
+            overflow-wrap: break-word;
+            word-wrap: break-word;
+            tab-size: 4;
+            -moz-tab-size: 4;
+            outline: none;
+        }
+        
+        #code-editor {
+            resize: none;
+            background-color: transparent;
+            color: var(--zed-text-color);
+            caret-color: var(--zed-text-color);
+            position: relative;
+            z-index: 0;
+            overflow-y: auto;
+        }
+        
+        #highlighting-area {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            z-index: 1;
+            pointer-events: none;
+            overflow: hidden;
+            color: var(--color-on-background);
+            background-color: var(--color-background);
+            
+            code {
+                display: block;
+                font-family: inherit;
+                font-size: inherit;
+                line-height: inherit;
+                padding: 0;
+                margin: 0;
+            }
+        }
+    }
+    
+    #sour-output-container {
+        background-color: var(--color-background);
+        padding: 10px;
+        border-top: 1px solid var(--color-border);
+        height: 100px;
+        overflow-y: auto;
+        box-sizing: border-box;
+        width: 100%;
+        font-family: var(--zed-font);
+        white-space: pre-wrap;
+        color: var(--color-on-background);
+    }
 }
 
-textarea#code-editor,
-pre#highlighting-area {
-    /* Common styles for textarea and highlighting overlay */
-    margin: 0;
-    padding: 10px; /* Increased padding for better visual space */
-    border: 1px solid var(--zed-border-color); /* Ensure this is consistent */
-    border-radius: 5px;
-    font-family: var(--zed-font);
-    font-size: 15px;
-    font-weight: normal; /* Explicitly set */
-    letter-spacing: normal; /* Explicitly set */
-    line-height: 1.5; /* Standardized line height */
-    box-sizing: border-box;
-    width: 100%;
-    min-height: 100px; /* Ensure a minimum height for both */
-    flex-grow: 1;
-    white-space: pre-wrap;
-    overflow-wrap: break-word; /* Standard property for word wrapping */
-    word-wrap: break-word; /* Older property, often works with overflow-wrap */
-    tab-size: 4; /* Standard tab width */
-    -moz-tab-size: 4; /* Firefox */
-    outline: none; /* Remove outline from textarea if focused, border is enough */
+{
+/* Zed-like theme */
+@font-face {
+    font-family: 'Zed Mono Extended';
+    src: url('zed-mono-extended.ttf') format('truetype');
+    font-weight: normal;
+    font-style: normal;
 }
 
-textarea#code-editor {
-    resize: none; /* Usually desired for code editors */
-    background-color: transparent; /* Must be transparent to see highlight layer if it's underneath */
-    color: var(--zed-text-color);   /* Make textarea text visible */
-    caret-color: var(--zed-text-color);
-    position: relative;
-    z-index: 0; /* Textarea text is visually underneath the highlight layer */
-    overflow-y: auto;
-}
 
-pre#highlighting-area {
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    z-index: 1; /* Highlight layer on top */
-    pointer-events: none;
-    overflow: hidden;
-    color: var(--zed-text-color); /* Default color for text in highlight layer */
-    background-color: var(--zed-editor-background); /* Obscures textarea's plain text */
-}
 
-pre#highlighting-area code {
-    display: block;
-    font-family: inherit;
-    font-size: inherit;
-    line-height: inherit;
-    padding: 0; /* Padding is on the parent <pre> */
-    margin: 0; /* Reset any browser default for <code> */
-}
-
-/* Syntax highlighting styles */
 .sour-keyword {
-    color: #C586C0; /* Example: VS Code purple for keywords */
+    color: #C586C0;
 }
 
 .sour-string {
-    color: #CE9178; /* Example: VS Code orange for strings */
+    color: #CE9178;
 }
 
 .sour-error-segment {
-    /* text-decoration: underline wavy red; */ /* True wavy underline is hard cross-browser without SVG/more CSS */
-    border-bottom: 2px dotted #FF0000; /* More reliable dotted underline */
-    /* For a subtle background highlight instead/additionally: */
-    /* background-color: rgba(255, 0, 0, 0.1); */
-    /* Important: if error span wraps other spans, this might need display:inline-block or careful styling */
+    border-bottom: 2px dotted #FF0000;
 }
 
 
 /* #output-container REMOVED */
 /* button#run-button REMOVED */
 
-#sour-output-container {
-    background-color: var(--zed-output-background); /* Use existing variable */
-    padding: 10px;
-    border: 1px solid var(--zed-border-color);
-    border-radius: 5px;
-    height: 100px; /* Adjust as needed, smaller than old JS output */
-    overflow-y: auto;
-    box-sizing: border-box;
-    width: 100%;
-    margin-top: 10px; /* Space between editor and this output */
-    font-family: var(--zed-font);
-    white-space: pre-wrap;
-    color: var(--zed-text-color);
-}
 
-#action-bar {
-    background-color: var(--zed-action-bar-background);
-    padding: 8px 10px;
-    display: flex;
-    justify-content: space-between; /* Pushes title to left, buttons to right */
-    align-items: center; /* Vertically align items */
-    gap: 8px;
-    border-bottom: 1px solid var(--zed-border-color);
-    position: sticky; /* Make action bar sticky */
-    top: 0;
-    z-index: 1001; /* Above the drawer */
-}
 
-#action-bar-left {
-    display: flex;
-    align-items: center;
-    gap: 8px; /* Space between menu icon and title */
-}
 
-#app-title {
-    font-size: 1.1em; /* Adjust as needed */
-    margin: 0; /* Remove default h1 margin */
-    font-weight: normal;
-}
 
-#action-buttons {
-    display: flex;
-    gap: 8px; /* Spacing between icon buttons */
-}
+
 
 /* Common style for all icon-only buttons in action bar and file actions */
 .icon-button {
