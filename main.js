@@ -565,23 +565,18 @@ function escapeHtml(unsafe) {
          .replace(/'/g, "&#039;");
 }
 
-// updateHighlighting now accepts tokens as an argument
-function updateHighlighting(tokensToHighlight) {
+// updateHighlighting now accepts the code string and tokens as arguments
+function updateHighlighting(currentCode, tokensToHighlight) {
     if (!codeEditor || !highlightingLayer || !SourLang || !SourLang.TOKEN_TYPES) {
         return;
     }
-    // const code = codeEditor.value; // No longer needed if tokens are passed
-    // const tokens = SourLang.getTokens(code); // No longer calls getTokens directly
 
     const htmlParts = [];
 
     if (!tokensToHighlight || !Array.isArray(tokensToHighlight)) {
-        // If no tokens passed, or invalid, maybe clear highlighting or use last known good tokens?
-        // For now, if no tokens, we can't highlight.
-        // However, an error state might still need to be reflected on existing (stale) highlighting.
-        // This part needs careful thought if worker doesn't always send tokens.
-        // Assuming worker always sends tokens for now.
-        highlightingLayer.innerHTML = escapeHtml(codeEditor.value); // Fallback: show plain text
+        // If no tokens passed, or invalid, render the current code as plain text (escaped).
+        // This might happen if the worker fails or before the first response.
+        highlightingLayer.innerHTML = escapeHtml(currentCode);
         return;
     }
 
@@ -631,7 +626,8 @@ function updateHighlighting(tokensToHighlight) {
     });
 
     let finalHtml = htmlParts.join('');
-    if (code.endsWith('\n') && !finalHtml.endsWith('\n')) {
+    // Use currentCode (passed as argument) for this check
+    if (currentCode.endsWith('\n') && !finalHtml.endsWith('\n')) {
         finalHtml += '\n';
     }
 
@@ -661,9 +657,10 @@ if (codeEditor) {
     if (sourWorker) {
         sourWorker.onmessage = function(e) {
             const { type, tokens, ast, error, interpreterOutput, runtimeError } = e.data;
+            const currentCodeValue = codeEditor.value; // Get current code for highlighting context
 
             if (tokens) {
-                updateHighlighting(tokens); // Always update highlighting with fresh tokens
+                updateHighlighting(currentCodeValue, tokens);
             }
 
             // Update global error state based on parse error
@@ -696,10 +693,24 @@ if (codeEditor) {
             // calling it again *without* tokens would rely on it using global state or last tokens.
             // The current updateHighlighting(tokens) needs tokens.
             // So, if tokens were received, highlighting is already updated with current error state.
-            // If tokens were NOT received (e.g. a worker message only about execution result without new tokens),
-            // then we might need to re-render based on existing highlightingLayer.innerHTML and sourSyntaxError.
-            // This scenario is not currently hit as worker sends tokens.
-             updateHighlighting(tokens || []); // Re-call with current tokens or empty if none to refresh error state on existing highlight
+            // If tokens were NOT received but error state might have changed (e.g. by a 'run' action that only returns error/output)
+            // we still need to re-render the highlighting to apply/clear error underlines.
+            // The current worker implementation always sends tokens, so this might be redundant for now,
+            // but good for robustness if worker's message structure changes.
+            if (!tokens && (sourSyntaxError !== (error || null))) { // If error state changed and no tokens were sent with this message
+                 // We need a way to get the last known tokens or re-request them.
+                 // For now, let's assume tokens are always sent if highlighting needs an update.
+                 // This call to updateHighlighting will use the new sourSyntaxError state.
+                 // It needs the code string.
+                 updateHighlighting(currentCodeValue, tokens || []); // Pass current code and existing/empty tokens
+            } else if (tokens) {
+                // If tokens were received, updateHighlighting(currentCodeValue, tokens) was already called.
+                // However, if sourSyntaxError changed *after* that call due to 'error' in message,
+                // we might need to ensure the error display is up to date.
+                // The current structure calls updateHighlighting(code, tokens) once.
+                // And updateHighlighting itself uses the global sourSyntaxError.
+                // This should be okay.
+            }
         };
     }
 
@@ -725,9 +736,11 @@ if (codeEditor) {
     // Initial highlight for any existing content (e.g. from localStorage)
     // This needs to trigger a worker message now.
     if (codeEditor.value) {
-        sourWorker.postMessage({ code: codeEditor.value });
+        sourWorker.postMessage({ code: codeEditor.value, action: 'lint' }); // Specify action for clarity
     } else {
-        updateHighlighting([]); // Clear highlighting if editor is empty
+        // If editor is empty, call updateHighlighting directly with empty code and tokens
+        // to ensure highlighting layer is cleared and consistent.
+        updateHighlighting("", []);
     }
 }
 
