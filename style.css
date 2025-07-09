@@ -1,4 +1,11 @@
 /* Zed-like theme */
+@font-face {
+    font-family: 'Zed Mono Extended';
+    src: url('zed-mono-extended.ttf') format('truetype');
+    font-weight: normal;
+    font-style: normal;
+}
+
 :root {
     --zed-background: #1e1e1e;
     --zed-editor-background: #252526;
@@ -7,7 +14,7 @@
     --zed-button-background: #0e639c;
     --zed-button-hover-background: #1177bb;
     --zed-output-background: #2d2d2d;
-    --zed-font: 'JetBrains Mono', 'Source Code Pro', 'Menlo', 'Consolas', 'DejaVu Sans Mono', monospace;
+    --zed-font: 'Zed Mono Extended', 'JetBrains Mono', 'Source Code Pro', 'Menlo', 'Consolas', 'DejaVu Sans Mono', monospace;
     --zed-action-bar-background: #2c2c2d; /* Slightly different from editor for visual separation */
     --zed-action-button-background: #3e3e42;
     --zed-action-button-hover-background: #505054;
@@ -284,4 +291,28 @@ button#run-button:hover {
 .root-file {
     /* Styles for files directly under root, if different from those in folders */
     /* e.g., no specific indentation needed beyond what .file-entry provides */
+}
+
+/* Context Menu Styling */
+#context-menu {
+    position: absolute; /* Positioned by JavaScript */
+    background-color: var(--zed-action-bar-background); /* Use a theme color */
+    border: 1px solid var(--zed-border-color);
+    border-radius: 5px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+    padding: 5px 0; /* Padding for top/bottom of menu, items will have their own */
+    z-index: 1005; /* Above other UI elements like file drawer */
+    min-width: 150px; /* Minimum width for the menu */
+    font-size: 14px; /* Consistent font size */
+}
+
+#context-menu div {
+    padding: 8px 15px; /* Padding for each menu item */
+    cursor: pointer;
+    color: var(--zed-text-color);
+}
+
+#context-menu div:hover {
+    background-color: var(--zed-button-hover-background); /* Use existing hover color */
+    color: white; /* Brighter text on hover */
 }

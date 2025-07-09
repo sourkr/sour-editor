@@ -180,6 +180,10 @@ function displayFiles() {
 
         const folderHeader = document.createElement('div');
         folderHeader.classList.add('folder-header');
+        // Add data attributes for context menu
+        folderHeader.dataset.folderPath = folderName === '/' ? '/' : `${folderName}/`;
+        folderHeader.dataset.isRoot = (folderName === '/').toString();
+
 
         const folderIcon = document.createElement('span');
         folderIcon.classList.add('material-symbols-rounded', 'folder-icon');
@@ -362,7 +366,100 @@ document.addEventListener('DOMContentLoaded', () => {
     //     loadFile(files[0]);
     // }
     // fileSystemContainer.style.display = 'none'; // No longer needed, drawer is positioned off-screen by default
+    initializeContextMenu();
 });
+
+// --- Context Menu Logic ---
+let contextMenuTimeout;
+const CONTEXT_MENU_HOLD_DURATION = 700; // ms
+
+function showContextMenu(x, y, targetElement) {
+    // Remove existing context menu if any
+    const existingMenu = document.getElementById('context-menu');
+    if (existingMenu) {
+        existingMenu.remove();
+    }
+
+    const menu = document.createElement('div');
+    menu.id = 'context-menu';
+    menu.style.left = `${x}px`;
+    menu.style.top = `${y}px`;
+
+    // Check if the target is the root folder or a specific folder
+    const isRootFolder = targetElement.dataset.isRoot === 'true';
+    const folderPath = targetElement.dataset.folderPath; // Will be '/' for root or 'folderName/'
+
+    const createFileOption = document.createElement('div');
+    createFileOption.textContent = 'Create File';
+    createFileOption.addEventListener('click', (e) => {
+        e.stopPropagation();
+        menu.remove();
+        const newFileName = prompt(`Enter name for new file in ${folderPath === '/' ? 'root' : folderPath}:`);
+        if (newFileName && newFileName.trim() !== '') {
+            const fullPath = folderPath === '/' ? newFileName.trim() : `${folderPath}${newFileName.trim()}`;
+            // Check if file already exists
+            if (getSavedFiles().includes(fullPath)) {
+                alert(`File "${fullPath}" already exists.`);
+            } else {
+                // Create a new empty file
+                codeEditor.value = ''; // Clear editor for new file
+                activeFileName = fullPath;
+                fileNameInput.value = activeFileName; // Update input field
+                saveFile(activeFileName, ''); // Save the new empty file
+                // displayFiles() will be called by saveFile
+                alert(`File "${fullPath}" created.`);
+            }
+        }
+    });
+    menu.appendChild(createFileOption);
+
+    // Add more options as needed, e.g., "Create Folder", "Rename", "Delete" for specific items
+
+    document.body.appendChild(menu);
+
+    // Close menu when clicking outside
+    setTimeout(() => { // Add to event queue to prevent immediate closing
+        document.addEventListener('click', function closeMenuOnClickOutside(event) {
+            if (!menu.contains(event.target)) {
+                menu.remove();
+                document.removeEventListener('click', closeMenuOnClickOutside);
+            }
+        }, { once: true }); // Use once: true for self-removing listener
+    }, 0);
+}
+
+function initializeContextMenu() {
+    // Listener for file list container to handle long press on folder items
+    fileListContainer.addEventListener('touchstart', handleTouchStart, { passive: true });
+    fileListContainer.addEventListener('touchend', handleTouchEnd);
+    fileListContainer.addEventListener('contextmenu', handleContextMenu); // For desktop testing
+}
+
+function handleTouchStart(event) {
+    const targetFolderHeader = event.target.closest('.folder-header');
+    if (targetFolderHeader) {
+        clearTimeout(contextMenuTimeout); // Clear any existing timeout
+        contextMenuTimeout = setTimeout(() => {
+            event.preventDefault(); // Prevent default touch behavior like scrolling
+            // For touch, clientX/Y might not be what we want, pageX/Y is better
+            showContextMenu(event.touches[0].pageX, event.touches[0].pageY, targetFolderHeader);
+        }, CONTEXT_MENU_HOLD_DURATION);
+    }
+}
+
+function handleTouchEnd(event) {
+    clearTimeout(contextMenuTimeout);
+    // If it was a short tap, the folder click handler will manage expand/collapse
+}
+
+function handleContextMenu(event) { // For desktop right-click
+    const targetFolderHeader = event.target.closest('.folder-header');
+    if (targetFolderHeader) {
+        event.preventDefault(); // Prevent native context menu
+        showContextMenu(event.pageX, event.pageY, targetFolderHeader);
+    }
+}
+
 
 // --- File Tree Toggle ---
 toggleFileTreeButton.addEventListener('click', () => {
