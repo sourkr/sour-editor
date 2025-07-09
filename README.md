@@ -4,9 +4,10 @@ Sour Editor is a lightweight, mobile-first JavaScript IDE that runs directly in 
 
 ## Features
 
-*   **Code Editor**: A simple textarea-based editor for writing code, including the new Sour Lang.
+*   **Code Editor**: A simple textarea-based editor for writing code.
 *   **Sour Lang (Experimental - Phase 1)**:
-    *   Basic custom language support.
+    *   Basic custom language support with syntax highlighting.
+    *   Highlights `print` keyword and string literals.
     *   Current capability: `print "string"` statements.
     *   Execution via "Run Sour Code" button in the action bar.
     *   Output displayed in a dedicated panel below the editor.
@@ -52,9 +53,13 @@ Sour Editor is a lightweight, mobile-first JavaScript IDE that runs directly in 
 
 ## Technical Details
 
-*   **Frontend**: HTML, CSS, JavaScript.
+*   **Frontend**: HTML, CSS, JavaScript (using ES Modules).
 *   **Storage**: Browser localStorage is used to save and manage files. This means files are stored per browser and per domain.
 *   **Font**: `zed-mono-extended.ttf` is included for code presentation.
+*   **Sour Lang**:
+    *   Interpreter (Lexer, Parser, Interpreter for `print "string"`) in `sour_lang.js`.
+    *   Basic syntax highlighting for keywords and strings in the editor.
+*   **Scripts**: `script.js` and `sour_lang.js` are loaded as ES Modules.
 
 ## Development
 

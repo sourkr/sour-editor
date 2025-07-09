@@ -19,6 +19,13 @@ const fileListContainer = document.getElementById('file-list');
 const runSourButton = document.getElementById('run-sour-button');
 const sourOutputContainer = document.getElementById('sour-output-container');
 
+// Import SourLang
+import { SourLang } from './sour_lang.js';
+
+// Syntax Highlighting Elements
+const highlightingArea = document.getElementById('highlighting-area');
+const highlightingLayer = document.getElementById('highlighting-layer');
+
 let activeFileName = null;
 const localStorageKeyPrefix = 'jsIDE_file_';
 
@@ -439,18 +446,113 @@ actionBarSaveButton.addEventListener('click', () => {
 if (runSourButton) {
     runSourButton.addEventListener('click', () => {
         const code = codeEditor.value;
-        if (typeof SourLang !== 'undefined' && SourLang.execute) {
-            const result = SourLang.execute(code);
-            if (result.error) {
-                sourOutputContainer.textContent = `Error: ${result.error}`;
-                sourOutputContainer.style.color = 'red'; // Simple error styling
-            } else {
-                sourOutputContainer.textContent = result.output;
-                sourOutputContainer.style.color = ''; // Reset color
-            }
+        // No need to check for SourLang undefined if import is successful
+        const result = SourLang.execute(code);
+        if (result.error) {
+            sourOutputContainer.textContent = `Error: ${result.error}`;
+            sourOutputContainer.style.color = 'red'; // Simple error styling
         } else {
-            sourOutputContainer.textContent = 'SourLang module not loaded or execute function missing.';
-            sourOutputContainer.style.color = 'red';
+            sourOutputContainer.textContent = result.output;
+            sourOutputContainer.style.color = ''; // Reset color
         }
     });
 }
+
+// --- Syntax Highlighting Logic ---
+function escapeHtml(unsafe) {
+    if (unsafe === null || unsafe === undefined) return '';
+    return unsafe
+         .replace(/&/g, "&amp;")
+         .replace(/</g, "&lt;")
+         .replace(/>/g, "&gt;")
+         .replace(/"/g, "&quot;")
+         .replace(/'/g, "&#039;");
+}
+
+function updateHighlighting() {
+    if (!codeEditor || !highlightingLayer || !SourLang || !SourLang.getTokens || !SourLang.TOKEN_TYPES) {
+        // Silently return if elements aren't ready, or SourLang isn't fully loaded (though modules should help)
+        return;
+    }
+
+    const code = codeEditor.value;
+    const tokens = SourLang.getTokens(code);
+    let html = '';
+
+    // This approach reconstructs the code from tokens.
+    // It will not preserve original whitespace perfectly if the lexer discards it
+    // (current lexer discards spaces/tabs but keeps newlines).
+    tokens.forEach(token => {
+        const value = escapeHtml(token.value); // Escape the actual token value for HTML
+
+        switch (token.type) {
+            case SourLang.TOKEN_TYPES.PRINT:
+                html += `<span class="sour-keyword">${value}</span>`;
+                break;
+            case SourLang.TOKEN_TYPES.STRING:
+                // The lexer's string token value does not include the quotes.
+                // We add them back here for display and include them in the span.
+                html += `<span class="sour-string">"${value}"</span>`;
+                break;
+            case SourLang.TOKEN_TYPES.NEWLINE:
+                html += '\n';
+                break;
+            case SourLang.TOKEN_TYPES.EOF:
+                // Don't append EOF character
+                break;
+            default: // UNKNOWN tokens, and any other text the lexer might pass through
+                html += value; // Append as is (already escaped)
+                break;
+        }
+    });
+
+    // Ensure the highlighting layer always ends with a newline if the textarea does.
+    // This helps keep scroll height consistent.
+    if (code.endsWith('\n') && !html.endsWith('\n')) {
+        html += '\n';
+    }
+
+    highlightingLayer.innerHTML = html;
+
+    // Synchronize scroll
+    if (highlightingArea) {
+        highlightingArea.scrollTop = codeEditor.scrollTop;
+        highlightingArea.scrollLeft = codeEditor.scrollLeft;
+    }
+}
+
+
+if (codeEditor) {
+    codeEditor.addEventListener('input', () => {
+        // Update URL hash with current code - consider debouncing for performance
+        // window.location.hash = btoa(encodeURIComponent(codeEditor.value));
+        updateHighlighting();
+    });
+
+    codeEditor.addEventListener('scroll', () => {
+        if (highlightingArea) {
+            highlightingArea.scrollTop = codeEditor.scrollTop;
+            highlightingArea.scrollLeft = codeEditor.scrollLeft;
+            highlightingArea.scrollLeft = codeEditor.scrollLeft; // ensure horizontal sync
+        }
+    });
+
+    // Also update highlighting when a file is loaded
+    const originalLoadFile = loadFile; // Keep a reference to the original
+    loadFile = (fileName) => {
+        originalLoadFile(fileName); // Call the original function
+        updateHighlighting();     // Then update highlighting
+    };
+
+    // Initial highlight for any existing content (e.g. from localStorage)
+    // Or if loading from URL hash (future feature)
+    // setTimeout(updateHighlighting, 0); // Use timeout to ensure SourLang might be ready if there were issues
+    updateHighlighting(); // Call directly with modules
+}
+
+// Further considerations for a more robust highlighter:
+// 1. Lexer that tokenizes *all* text, including all types of whitespace.
+// 2. More intelligent reconstruction of text from tokens to perfectly match original spacing.
+// 3. Performance optimizations for large files (e.g., only re-highlighting changed lines or viewport).
+// 4. Handling of tab characters (convert to spaces or specific tab width).
+// 5. Ensuring line numbers would align if added.

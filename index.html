@@ -27,11 +27,12 @@
     </div>
 
     <div id="editor-container">
-        <textarea id="code-editor" placeholder="Write your code here..." wrap="off"></textarea>
+        <pre id="highlighting-area" aria-hidden="true"><code id="highlighting-layer"></code></pre>
+        <textarea id="code-editor" placeholder="Write your code here..." wrap="off" spellcheck="false" autocapitalize="off" autocorrect="off"></textarea>
     </div>
     <div id="sour-output-container"></div>
 
-    <script src="sour_lang.js"></script>
-    <script src="script.js"></script>
+    <script type="module" src="sour_lang.js"></script>
+    <script type="module" src="script.js"></script>
 </body>
 </html>

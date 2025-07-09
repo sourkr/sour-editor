@@ -12,27 +12,28 @@ const SourLang = (() => {
     };
 
     // --- LEXER ---
+    // Updated lexer to be exposed via getTokens and potentially preserve more info for highlighting.
+    // For now, the change is minimal, mainly ensuring it's part of the exported SourLang object.
     function lexer(code) {
         const tokens = [];
         let position = 0;
-
         const keywordPrint = "print";
 
         while (position < code.length) {
             let char = code[position];
 
-            // 1. Whitespace (ignore, but helps separate tokens)
             if (/\s/.test(char)) {
                 if (char === '\n') {
                     tokens.push({ type: TOKEN_TYPES.NEWLINE, value: '\n' });
+                } else {
+                    // Could add WHITESPACE tokens if needed for perfect reconstruction
+                    // For now, simple whitespace is skipped unless it's a newline
                 }
                 position++;
                 continue;
             }
 
-            // 2. Keywords: 'print'
             if (code.substring(position, position + keywordPrint.length) === keywordPrint) {
-                // Check if it's followed by a space or end of line/file, to distinguish from "printsomething"
                 if (position + keywordPrint.length === code.length || /\s/.test(code[position + keywordPrint.length])) {
                     tokens.push({ type: TOKEN_TYPES.PRINT, value: keywordPrint });
                     position += keywordPrint.length;
@@ -40,34 +41,32 @@ const SourLang = (() => {
                 }
             }
 
-            // 3. String literals: "..."
             if (char === '"') {
                 let value = '';
-                position++; // consume the opening quote
+                position++;
                 while (position < code.length && code[position] !== '"') {
                     value += code[position];
                     position++;
                 }
                 if (position < code.length && code[position] === '"') {
-                    position++; // consume the closing quote
+                    position++;
                     tokens.push({ type: TOKEN_TYPES.STRING, value });
                 } else {
-                    // Unterminated string
                     tokens.push({ type: TOKEN_TYPES.UNKNOWN, value: `"${value}` });
-                    // Potentially report error or try to recover
                 }
                 continue;
             }
 
-            // 4. Unknown token
             tokens.push({ type: TOKEN_TYPES.UNKNOWN, value: char });
             position++;
         }
 
         tokens.push({ type: TOKEN_TYPES.EOF, value: null });
-        return tokens.filter(token => token.type !== TOKEN_TYPES.NEWLINE || tokens.length === 1); // Keep newline if it's the only token for empty lines, otherwise filter out for now.
-                                                                                                   // Parser will handle meaningful newlines.
+        // The filtering of NEWLINE tokens is now done in the execute function before parsing,
+        // so the raw lexer (getTokens) can return them if needed for highlighting.
+        return tokens;
     }
+
 
     // --- AST NODE TYPES ---
     const AST_NODE_TYPES = {
@@ -193,9 +192,11 @@ const SourLang = (() => {
     // --- PUBLIC API ---
     function execute(code) {
         const tokens = lexer(code);
-        const filteredTokens = tokens.filter(token => token.type !== TOKEN_TYPES.NEWLINE || token === tokens[tokens.length-1]);
+        // Filter out NEWLINE tokens before parsing for the interpreter's parser.
+        // The highlighting might use a more raw token stream from getTokens.
+        const filteredTokensForParser = tokens.filter(t => t.type !== TOKEN_TYPES.NEWLINE || t === tokens[tokens.length-1]);
 
-        const ast = parser(filteredTokens);
+        const ast = parser(filteredTokensForParser);
         if (ast.error) {
             return { output: null, error: ast.error };
         }
@@ -204,8 +205,24 @@ const SourLang = (() => {
         return result;
     }
 
-    return {
-        execute
+    function getTokens(code) { // Renamed for clarity, this is the one for highlighting
+        return lexer(code);
+    }
+
+    // This is what gets exported
+    const SourLangObject = {
+        execute,
+        getTokens,
+        TOKEN_TYPES // Expose token types for external use (e.g., highlighting)
     };
 
+    return SourLangObject;
+
 })();
+
+// If SourLang is an IIFE that returns the object:
+// const ActualSourLangObject = SourLang; // or SourLang() if it's a function that returns the object
+// export { ActualSourLangObject as SourLang };
+
+// If SourLang is already the object from the IIFE:
+export { SourLang };

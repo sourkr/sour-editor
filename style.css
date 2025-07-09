@@ -35,23 +35,61 @@ body {
     display: flex;
     flex-direction: column;
     flex-grow: 1;
-    /* padding: 10px; */ /* Removed */
+    position: relative; /* For absolute positioning of highlighting layer */
 }
-textarea#code-editor { /* More specific selector for editor */
-    flex-grow: 1;
-    padding: 5px; /* Add some minimal padding inside the textarea itself */
+
+textarea#code-editor,
+pre#highlighting-area {
+    /* Common styles for textarea and highlighting overlay */
+    margin: 0;
+    padding: 5px;
     border: 1px solid var(--zed-border-color);
-    outline: none; /* Remove default outline */
     border-radius: 5px;
-    font-size: 15px; /* Slightly smaller for editor feel */
-    resize: none;
+    font-family: var(--zed-font);
+    font-size: 15px;
+    line-height: 1.4; /* Adjust for better visual alignment if needed */
     box-sizing: border-box;
     width: 100%;
-    /* margin-bottom: 10px; */ /* Removed as editor-container no longer has padding to separate from potential next elements */
-    background-color: var(--zed-editor-background);
-    color: var(--zed-text-color);
-    font-family: var(--zed-font);
+    flex-grow: 1; /* Make them fill the container */
+    white-space: pre-wrap; /* Important for pre to wrap like textarea */
+    word-wrap: break-word; /* Important for pre to wrap like textarea */
 }
+
+textarea#code-editor {
+    resize: none;
+    background-color: transparent; /* Make textarea background transparent */
+    color: transparent; /* Make text transparent, caret will provide cursor color */
+    caret-color: var(--zed-text-color); /* Make caret visible */
+    position: relative; /* Ensure textarea is interactable */
+    z-index: 1; /* Textarea on top of highlight for interaction */
+    overflow-y: auto; /* Allow textarea to scroll */
+}
+
+pre#highlighting-area {
+    position: absolute;
+    top: 0;
+    left: 0;
+    z-index: 0; /* Highlight layer behind textarea's text input capability */
+    pointer-events: none; /* Clicks go through to the textarea */
+    overflow: hidden; /* Should match textarea's overflow or be managed by JS */
+    color: var(--zed-text-color); /* Default text color for non-highlighted parts */
+}
+
+pre#highlighting-area code {
+    display: block; /* Or inline, depending on how you manage lines */
+    font-family: inherit; /* Inherit from pre */
+}
+
+/* Syntax highlighting styles */
+.sour-keyword {
+    color: #C586C0; /* Example: VS Code purple for keywords */
+}
+
+.sour-string {
+    color: #CE9178; /* Example: VS Code orange for strings */
+}
+
+
 /* #output-container REMOVED */
 /* button#run-button REMOVED */
 
