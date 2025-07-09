@@ -4,10 +4,7 @@ Sour Editor is a lightweight, mobile-first JavaScript IDE that runs directly in 
 
 ## Features
 
-*   **Code Editor**: A simple textarea-based editor for writing JavaScript.
-*   **JavaScript Execution**: Run your JavaScript code and see the output or errors directly within the app.
-    *   Captures `console.log()` calls.
-    *   Displays return values of executed code.
+*   **Code Editor**: A simple textarea-based editor for writing code.
 *   **File System (localStorage-based)**:
     *   Create, save, load, and delete files.
     *   Organize files into folders (e.g., `folderName/fileName.js`).
@@ -18,28 +15,26 @@ Sour Editor is a lightweight, mobile-first JavaScript IDE that runs directly in 
 *   **Custom Font**: Uses `zed-mono-extended.ttf` for a consistent coding aesthetic.
 *   **Action Bar**:
     *   Toggle file tree visibility.
-    *   Clear output.
-    *   Copy code to clipboard.
-    *   Toggle text wrapping in the editor.
+    *   **Save File**: Save the currently active file.
 *   **Responsive Design**: Aimed primarily at mobile use but functional on desktop.
 
 ## How to Use
 
 1.  **Open `index.html`**: Simply open the `index.html` file in a modern web browser.
 2.  **File Management**:
-    *   Use the file tree (toggle with the menu icon) to manage your files.
+    *   Use the file tree (toggle with the menu icon on the left of the action bar) to manage your files.
     *   To create a new file in the root directory or a specific folder:
         *   Press and hold the desired folder name (e.g., `/` for root, or any other folder) in the file tree.
         *   Select "Create File" from the context menu that appears.
-        *   Enter the file name (e.g., `myScript.js` or `utils/helper.js`).
-    *   Alternatively, use the input field and buttons at the top of the file tree for creating, saving, and deleting files based on the name in the input.
+        *   Enter the file name (e.g., `myScript.js` or `docs/notes.txt`).
+    *   The file input and associated action buttons (New, Save, Delete) are located at the top of the file tree drawer.
     *   Click on a file in the list to load it into the editor.
 3.  **Coding**:
-    *   Write your JavaScript code in the editor area.
-    *   Click "Run Code" to execute it.
-    *   View results or errors in the output panel below the editor.
+    *   Write your code in the editor area.
+    *   Use the **Save icon** in the action bar (top right) or the "Save File" button in the file tree drawer to save your work.
 4.  **Toolbar Actions**:
-    *   Use the buttons in the top action bar for quick actions like toggling the file tree, clearing output, copying code, and toggling text wrap.
+    *   **Menu Icon (Left)**: Toggles the file tree visibility.
+    *   **Save Icon (Right)**: Saves the current file.
 
 ## Technical Details
 

@@ -51,34 +51,8 @@ textarea#code-editor { /* More specific selector for editor */
     color: var(--zed-text-color);
     font-family: var(--zed-font);
 }
-#output-container {
-    background-color: var(--zed-output-background);
-    padding: 10px;
-    border: 1px solid var(--zed-border-color);
-    border-radius: 5px;
-    height: 150px; /* Fixed height for output */
-    overflow-y: auto;
-    box-sizing: border-box;
-    width: 100%;
-    font-family: var(--zed-font);
-    white-space: pre-wrap;
-    color: var(--zed-text-color); /* Ensure output text is also themed */
-}
-button#run-button { /* More specific selector for button */
-    background-color: var(--zed-button-background);
-    color: white;
-    padding: 10px 15px;
-    border: none;
-    border-radius: 5px;
-    cursor: pointer;
-    font-size: 16px;
-    margin-top: 10px;
-    width: 100%; /* Full width button */
-    font-family: Arial, sans-serif; /* Button font can be non-mono */
-}
-button#run-button:hover {
-    background-color: var(--zed-button-hover-background);
-}
+/* #output-container REMOVED */
+/* button#run-button REMOVED */
 
 #action-bar {
     background-color: var(--zed-action-bar-background);

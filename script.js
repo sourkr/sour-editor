@@ -1,11 +1,12 @@
 const codeEditor = document.getElementById('code-editor');
-const runButton = document.getElementById('run-button');
-const outputContainer = document.getElementById('output-container');
+// const runButton = document.getElementById('run-button'); // Removed
+// const outputContainer = document.getElementById('output-container'); // Removed
 // Action Bar Buttons
 const toggleFileTreeButton = document.getElementById('toggle-file-tree-button');
-const clearOutputButton = document.getElementById('clear-output-button');
-const copyCodeButton = document.getElementById('copy-code-button');
-const toggleWrapButton = document.getElementById('toggle-wrap-button');
+const actionBarSaveButton = document.getElementById('action-bar-save-button'); // Added
+// const clearOutputButton = document.getElementById('clear-output-button'); // Removed
+// const copyCodeButton = document.getElementById('copy-code-button'); // Removed
+// const toggleWrapButton = document.getElementById('toggle-wrap-button'); // Removed
 // File System Elements
 const fileSystemContainer = document.getElementById('file-system-container');
 const fileNameInput = document.getElementById('file-name-input');
@@ -19,100 +20,10 @@ const localStorageKeyPrefix = 'jsIDE_file_';
 
 // --- Core IDE Functionality ---
 
-// Run Code Button
-runButton.addEventListener('click', () => {
-    const code = codeEditor.value;
-    outputContainer.textContent = ''; // Clear previous output
-
-    // Capture console.log output
-    const oldLog = console.log;
-    const logs = [];
-    console.log = (...args) => {
-        logs.push(args.map(arg => typeof arg === 'string' ? arg : JSON.stringify(arg)).join(' '));
-        // oldLog.apply(console, args); // Uncomment to also log to browser console
-    };
-
-    try {
-        // Execute the code
-        const result = new Function(code)();
-
-        // Display captured logs
-        if (logs.length > 0) {
-            outputContainer.textContent += logs.join('\n') + '\n';
-        }
-
-        // Display return value if any
-        if (result !== undefined) {
-            outputContainer.textContent += 'Return value: ' + (typeof result === 'string' ? result : JSON.stringify(result));
-        } else if (logs.length === 0) {
-            outputContainer.textContent = 'Code executed successfully. No output or return value.';
-        }
-    } catch (error) {
-        outputContainer.textContent = 'Error: ' + error.message;
-    } finally {
-        // Restore original console.log
-        console.log = oldLog;
-    }
-});
-
-// Clear Output Button
-clearOutputButton.addEventListener('click', () => {
-    outputContainer.textContent = '';
-});
-
-// Copy Code Button
-copyCodeButton.addEventListener('click', () => {
-    if (navigator.clipboard && navigator.clipboard.writeText) {
-        navigator.clipboard.writeText(codeEditor.value)
-            .then(() => {
-                // Optional: Show a temporary message like "Code copied!"
-                const originalText = copyCodeButton.textContent;
-                copyCodeButton.textContent = 'Copied!';
-                setTimeout(() => {
-                    copyCodeButton.textContent = originalText;
-                }, 1500);
-            })
-            .catch(err => {
-                console.error('Failed to copy code: ', err);
-                // Fallback for older browsers or if permission denied
-                try {
-                    codeEditor.select();
-                    document.execCommand('copy');
-                    const originalText = copyCodeButton.textContent;
-                    copyCodeButton.textContent = 'Copied (fallback)!';
-                    setTimeout(() => {
-                        copyCodeButton.textContent = originalText;
-                    }, 1500);
-                } catch (e) {
-                    alert('Failed to copy code. Please copy manually.');
-                }
-            });
-    } else {
-        // Fallback for very old browsers without navigator.clipboard
-        try {
-            codeEditor.select();
-            document.execCommand('copy');
-            const originalText = copyCodeButton.textContent;
-            copyCodeButton.textContent = 'Copied (fallback)!';
-            setTimeout(() => {
-                copyCodeButton.textContent = originalText;
-            }, 1500);
-        } catch (e) {
-            alert('Failed to copy code. Please copy manually.');
-        }
-    }
-});
-
-// Toggle Text Wrap Button
-toggleWrapButton.addEventListener('click', () => {
-    if (codeEditor.wrap === 'off') {
-        codeEditor.wrap = 'soft';
-        toggleWrapButton.title = 'Disable Text Wrap';
-    } else {
-        codeEditor.wrap = 'off';
-        toggleWrapButton.title = 'Enable Text Wrap';
-    }
-});
+// Run Code Button - REMOVED
+// Clear Output Button - REMOVED
+// Copy Code Button - REMOVED
+// Toggle Text Wrap Button - REMOVED
 
 // --- File System Logic ---
 
@@ -501,3 +412,25 @@ deleteFileButton.addEventListener('click', () => {
 // but only if it's not already an existing file (to avoid accidental overwrite intent)
 // This might be too complex for now; primary interaction is via buttons and list.
 // For now, fileNameInput primarily serves to name new files or specify for deletion if not selected.
+
+// Action Bar Save Button
+actionBarSaveButton.addEventListener('click', () => {
+    const fileName = activeFileName || fileNameInput.value.trim();
+    if (!fileName) {
+        alert("Please select a file or enter a file name to save.");
+        // Optionally focus fileNameInput if it's empty and part of the workflow
+        // fileNameInput.focus();
+        return;
+    }
+    if (saveFile(fileName, codeEditor.value)) {
+        // Optional: Show a temporary message like "File saved!"
+        const originalText = actionBarSaveButton.querySelector('.material-symbols-rounded').textContent;
+        const originalTitle = actionBarSaveButton.title;
+        actionBarSaveButton.querySelector('.material-symbols-rounded').textContent = 'check';
+        actionBarSaveButton.title = 'Saved!';
+        setTimeout(() => {
+            actionBarSaveButton.querySelector('.material-symbols-rounded').textContent = originalText;
+            actionBarSaveButton.title = originalTitle;
+        }, 1500);
+    }
+});
