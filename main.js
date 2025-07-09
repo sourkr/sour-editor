@@ -39,7 +39,9 @@ function debounce(func, delay) {
 const highlightingArea = document.getElementById('highlighting-area');
 const highlightingLayer = document.getElementById('highlighting-layer');
 
-let sourSyntaxError = null; // To store details of the current Sour Lang syntax error
+let sourSyntaxError = null;
+let lastValidAST = null; // To store the last valid AST received from the worker
+const sourWorker = new Worker('./sour_worker.js');
 
 let activeFileName = null;
 // const localStorageKeyPrefix = 'jsIDE_file_'; // Moved to file_manager.js
@@ -466,22 +468,89 @@ actionBarSaveButton.addEventListener('click', () => {
 if (runSourButton) {
     runSourButton.addEventListener('click', () => {
         const code = codeEditor.value;
-        // No need to check for SourLang undefined if import is successful
-        const result = SourLang.execute(code);
-        if (result.error && result.error.message) { // Check for detailed error object
-            sourOutputContainer.textContent = `Error (L${result.error.line}:${result.error.column}): ${result.error.message}`;
+        // Option A: Use lastValidAST if available and code hasn't changed
+        // This requires comparing codeEditor.value with code that produced lastValidAST.
+        // For simplicity now, always re-process via worker for "Run" button.
+        // This ensures the very latest code is executed and errors checked.
+
+        // Send to worker for fresh parse and AST, then execute.
+        // We need a way to know this specific worker message is for a "Run" action.
+        sourWorker.postMessage({ code: code, action: 'execute' });
+
+        // The actual execution (SourLang.execute(ast)) will happen in the worker's onmessage,
+        // or main thread needs to get AST from worker then call SourLang.execute(ast).
+        // For now, let's assume worker's onmessage will handle 'execute' action differently,
+        // perhaps by also running the interpreter if AST is valid.
+        // This part needs to be coordinated with sour_worker.js message handling.
+
+        // TEMPORARY: For now, "Run" button will just re-trigger the parse/highlight flow.
+        // The interpreter part needs more thought on where it runs.
+        // If interpreter stays on main thread:
+        // 1. Worker sends back AST.
+        // 2. `main.js` onmessage receives AST.
+        // 3. If "Run" was clicked, `main.js` calls `SourLang.execute(receivedAST)`.
+
+        // For this iteration, let's simplify: "Run" button ensures errors are up-to-date
+        // and output is based on the latest `lastValidAST` if available.
+        // The worker will always send back tokens, ast, error.
+        // `main.js` will update `sourSyntaxError` and `lastValidAST`.
+        // Then, here, we use `lastValidAST`.
+
+        if (sourSyntaxError) { // If live parsing already found an error
+            sourOutputContainer.textContent = `Error (L${sourSyntaxError.line}:${sourSyntaxError.column}): ${sourSyntaxError.message}`;
             sourOutputContainer.style.color = 'red';
-            sourSyntaxError = result.error; // Store the detailed error
-        } else if (result.error) { // Generic error
-            sourOutputContainer.textContent = `Error: ${JSON.stringify(result.error)}`;
-            sourOutputContainer.style.color = 'red';
-            sourSyntaxError = null; // Clear any previous specific error
+        } else if (lastValidAST) {
+            const result = SourLang.execute(lastValidAST); // SourLang.execute now takes an AST
+            if (result.error) { // This would be an interpreter error
+                sourOutputContainer.textContent = `Runtime Error: ${result.error.message || JSON.stringify(result.error)}`;
+                sourOutputContainer.style.color = 'red';
+                 // sourSyntaxError might not be relevant for runtime errors, but clear it from parse phase
+                sourSyntaxError = null;
+            } else {
+                sourOutputContainer.textContent = result.output;
+                sourOutputContainer.style.color = '';
+                sourSyntaxError = null;
+            }
         } else {
-            sourOutputContainer.textContent = result.output;
-            sourOutputContainer.style.color = ''; // Reset color
-            sourSyntaxError = null; // Clear any previous error on successful execution
+            // No valid AST and no syntax error from live check - means code is likely empty or too large for live check
+            // Or worker hasn't responded yet. For "Run", we should ideally wait for worker.
+            // This simplified version might show "No AST" if worker is slow and run is clicked fast.
+            sourOutputContainer.textContent = "No valid program to run. Type some code or ensure it has no syntax errors.";
+            sourOutputContainer.style.color = 'orange';
         }
-        updateHighlighting(); // Update highlighting to show/clear error underlines
+        // Send current code to worker to ensure `lastValidAST` and `sourSyntaxError` are up-to-date.
+        // The worker's onmessage handler will update these.
+        sourWorker.postMessage({ code: code, action: 'process_for_execute' }); // action can be used by worker if needed
+
+        // After the worker responds (asynchronously), lastValidAST and sourSyntaxError will be set.
+        // We can then attempt to execute. This might mean the output is slightly delayed.
+        // A more advanced version could use a Promise or callback from the worker for this specific "run" action.
+
+        // For now, we'll assume the onmessage handler updates lastValidAST and sourSyntaxError quickly enough
+        // or the user understands there might be a slight delay.
+        // The actual interpretation logic based on lastValidAST:
+
+        // We need to make sure this part runs *after* the worker has responded to the 'process_for_execute' message.
+        // This is tricky without a callback/promise system from the worker for specific actions.
+        // Let's defer the execution part to the onmessage handler for 'process_for_execute' actions.
+
+        // Simplification for now: The click primarily ensures the latest code is sent to the worker.
+        // The user will see the output based on the *next* processing cycle of the worker
+        // which updates lastValidAST. The Sour Output container will show the result of interpreting
+        // the `lastValidAST` available at the time of the worker's LATEST response.
+
+        // So, the button click just triggers a new processing round.
+        // The actual execution logic will be slightly refactored into the worker's onmessage for an 'execute' action.
+
+        // The worker will process this, run the interpreter, and send back all results
+        // including interpreterOutput or runtimeError.
+        // The sourWorker.onmessage handler will update the sourOutputContainer.
+        if (sourWorker) {
+            sourWorker.postMessage({ code: code, action: 'execute' });
+        } else {
+            sourOutputContainer.textContent = "Error: Sour Worker not available.";
+            sourOutputContainer.style.color = 'red';
+        }
     });
 }
 
@@ -496,17 +565,27 @@ function escapeHtml(unsafe) {
          .replace(/'/g, "&#039;");
 }
 
-function updateHighlighting() {
-    if (!codeEditor || !highlightingLayer || !SourLang || !SourLang.getTokens || !SourLang.TOKEN_TYPES) {
-        // Silently return if elements aren't ready, or SourLang isn't fully loaded (though modules should help)
+// updateHighlighting now accepts tokens as an argument
+function updateHighlighting(tokensToHighlight) {
+    if (!codeEditor || !highlightingLayer || !SourLang || !SourLang.TOKEN_TYPES) {
+        return;
+    }
+    // const code = codeEditor.value; // No longer needed if tokens are passed
+    // const tokens = SourLang.getTokens(code); // No longer calls getTokens directly
+
+    const htmlParts = [];
+
+    if (!tokensToHighlight || !Array.isArray(tokensToHighlight)) {
+        // If no tokens passed, or invalid, maybe clear highlighting or use last known good tokens?
+        // For now, if no tokens, we can't highlight.
+        // However, an error state might still need to be reflected on existing (stale) highlighting.
+        // This part needs careful thought if worker doesn't always send tokens.
+        // Assuming worker always sends tokens for now.
+        highlightingLayer.innerHTML = escapeHtml(codeEditor.value); // Fallback: show plain text
         return;
     }
 
-    const code = codeEditor.value;
-    const tokens = SourLang.getTokens(code);
-    const htmlParts = []; // Use an array to build HTML parts
-
-    tokens.forEach(token => {
+    tokensToHighlight.forEach(token => {
         const value = escapeHtml(token.value);
         let classList = '';
         let isErrorToken = false;
@@ -569,37 +648,63 @@ function updateHighlighting() {
 if (codeEditor) {
     const LIVE_ERROR_CHECK_THRESHOLD = 2000; // Max characters for live error parsing
 
-    const debouncedLiveParseAndHighlight = debounce(() => {
+    // const LIVE_ERROR_CHECK_THRESHOLD = 2000; // Threshold logic might be moved to worker or re-evaluated.
+                                             // For now, worker processes all input.
+
+    const debouncedProcessCode = debounce(() => {
         const code = codeEditor.value;
-
-        // Always update syntax highlighting (which uses SourLang.getTokens)
-        // The error display within updateHighlighting will use the existing sourSyntaxError state.
-
-        // Conditionally perform full parse for live error checking
-        if (code.length < LIVE_ERROR_CHECK_THRESHOLD) {
-            if (SourLang && SourLang.execute) {
-                const result = SourLang.execute(code); // This includes parsing
-                if (result.error && result.error.message) {
-                    sourSyntaxError = result.error;
-                } else {
-                    sourSyntaxError = null;
-                }
-            }
-        } else {
-            // For larger inputs, don't update sourSyntaxError live to save performance.
-            // Errors will be caught by the "Run Sour Code" button.
-            // We could choose to clear it, or leave the last known small-file error.
-            // Clearing it might be less confusing than a stale error.
-            sourSyntaxError = null;
+        if (sourWorker) { // Ensure worker is initialized
+            sourWorker.postMessage({ code: code, action: 'lint' }); // Specify action
         }
-
-        updateHighlighting(); // Update highlighting (and error display based on potentially updated sourSyntaxError)
     }, 750);
 
+    if (sourWorker) {
+        sourWorker.onmessage = function(e) {
+            const { type, tokens, ast, error, interpreterOutput, runtimeError } = e.data;
+
+            if (tokens) {
+                updateHighlighting(tokens); // Always update highlighting with fresh tokens
+            }
+
+            // Update global error state based on parse error
+            sourSyntaxError = error || null;
+            lastValidAST = ast || null; // Store valid AST or null if parse error
+
+            // If the message was a response to an 'execute' action, handle interpreter output
+            if (type === 'execute') {
+                if (runtimeError) {
+                    sourOutputContainer.textContent = `Runtime Error: ${runtimeError.message || JSON.stringify(runtimeError)}`;
+                    sourOutputContainer.style.color = 'red';
+                } else if (error) { // If there was a parse error during the execute request
+                    sourOutputContainer.textContent = `Syntax Error (L${error.line}:${error.column}): ${error.message}`;
+                    sourOutputContainer.style.color = 'red';
+                } else if (interpreterOutput !== null && interpreterOutput !== undefined) {
+                    sourOutputContainer.textContent = interpreterOutput;
+                    sourOutputContainer.style.color = '';
+                } else {
+                     sourOutputContainer.textContent = "Execution completed (no output)."; // Or some other placeholder
+                     sourOutputContainer.style.color = '';
+                }
+            }
+
+            // After updating sourSyntaxError, always call updateHighlighting
+            // to ensure error underlines are refreshed based on the latest error state.
+            // This is important if tokens were not part of this specific message
+            // (e.g. if worker could send error updates without full token list)
+            // However, our worker currently always sends tokens.
+            // If tokens were already processed by updateHighlighting(tokens) above,
+            // calling it again *without* tokens would rely on it using global state or last tokens.
+            // The current updateHighlighting(tokens) needs tokens.
+            // So, if tokens were received, highlighting is already updated with current error state.
+            // If tokens were NOT received (e.g. a worker message only about execution result without new tokens),
+            // then we might need to re-render based on existing highlightingLayer.innerHTML and sourSyntaxError.
+            // This scenario is not currently hit as worker sends tokens.
+             updateHighlighting(tokens || []); // Re-call with current tokens or empty if none to refresh error state on existing highlight
+        };
+    }
+
     codeEditor.addEventListener('input', () => {
-        // Update URL hash with current code - consider debouncing for performance
-        // window.location.hash = btoa(encodeURIComponent(codeEditor.value));
-        debouncedLiveParseAndHighlight();
+        debouncedProcessCode();
     });
 
     codeEditor.addEventListener('scroll', () => {
@@ -618,9 +723,12 @@ if (codeEditor) {
     };
 
     // Initial highlight for any existing content (e.g. from localStorage)
-    // Or if loading from URL hash (future feature)
-    // setTimeout(updateHighlighting, 0); // Use timeout to ensure SourLang might be ready if there were issues
-    updateHighlighting(); // Call directly with modules
+    // This needs to trigger a worker message now.
+    if (codeEditor.value) {
+        sourWorker.postMessage({ code: codeEditor.value });
+    } else {
+        updateHighlighting([]); // Clear highlighting if editor is empty
+    }
 }
 
 // Further considerations for a more robust highlighter:

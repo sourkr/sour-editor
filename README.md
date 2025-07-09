@@ -63,9 +63,10 @@ Sour Editor is a lightweight, mobile-first JavaScript IDE that runs directly in 
 *   **Storage**: Browser localStorage is used to save and manage files. This means files are stored per browser and per domain.
 *   **Font**: `zed-mono-extended.ttf` is included for code presentation.
 *   **Sour Lang**:
-    *   Interpreter (Lexer, Parser, Interpreter for `print "string"`) in `sour_lang.js`.
-    *   Basic syntax highlighting for keywords and strings in the editor.
-*   **Scripts**: `script.js` and `sour_lang.js` are loaded as ES Modules.
+    *   Lexing, parsing, and interpretation (for `print "string"`) are handled by a Web Worker (`sour_worker.js`) to improve UI responsiveness.
+    *   The main thread (`sour_lang.js`) now primarily holds language constants (like token types).
+    *   Basic syntax highlighting for keywords and strings is provided in the editor, updated based on worker processing.
+*   **Scripts**: `main.js`, `file_manager.js`, and `sour_lang.js` are loaded as ES Modules. `sour_worker.js` handles language processing.
 
 ## Development
 
