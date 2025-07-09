@@ -26,12 +26,11 @@ Sour Editor is a lightweight, mobile-first JavaScript IDE that runs directly in 
     *   To create a new file in the root directory or a specific folder:
         *   Press and hold the desired folder name (e.g., `/` for root, or any other folder) in the file tree.
         *   Select "Create File" from the context menu that appears.
-        *   Enter the file name (e.g., `myScript.js` or `docs/notes.txt`).
-    *   The file input and associated action buttons (New, Save, Delete) are located at the top of the file tree drawer.
-    *   Click on a file in the list to load it into the editor.
+        *   Enter the file name (e.g., `myScript.js` or `docs/notes.txt`). This is the primary way to create new files.
+    *   Click on a file in the list within the file tree drawer to load it into the editor.
 3.  **Coding**:
     *   Write your code in the editor area.
-    *   Use the **Save icon** in the action bar (top right) or the "Save File" button in the file tree drawer to save your work.
+    *   Use the **Save icon** in the action bar (top right) to save your work for the currently active file.
 4.  **Toolbar Actions**:
     *   **Menu Icon (Left)**: Toggles the file tree visibility.
     *   **Save Icon (Right)**: Saves the current file.

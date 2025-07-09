@@ -9,10 +9,10 @@ const actionBarSaveButton = document.getElementById('action-bar-save-button'); /
 // const toggleWrapButton = document.getElementById('toggle-wrap-button'); // Removed
 // File System Elements
 const fileSystemContainer = document.getElementById('file-system-container');
-const fileNameInput = document.getElementById('file-name-input');
-const newFileButton = document.getElementById('new-file-button');
-const saveFileButton = document.getElementById('save-file-button');
-const deleteFileButton = document.getElementById('delete-file-button');
+// const fileNameInput = document.getElementById('file-name-input'); // Removed
+// const newFileButton = document.getElementById('new-file-button'); // Removed
+// const saveFileButton = document.getElementById('save-file-button'); // Removed
+// const deleteFileButton = document.getElementById('delete-file-button'); // Removed
 const fileListContainer = document.getElementById('file-list');
 
 let activeFileName = null;
@@ -174,7 +174,7 @@ function saveFile(fileName, content) {
     }
     localStorage.setItem(getFileStorageKey(fileName.trim()), content);
     activeFileName = fileName.trim();
-    fileNameInput.value = activeFileName; // Update input field
+    // fileNameInput.value = activeFileName; // Update input field - REMOVED
     displayFiles(); // Refresh file list
     return true;
 }
@@ -184,7 +184,7 @@ function loadFile(fileName) { // fileName here is the fullPath
     if (content !== null) {
         codeEditor.value = content;
         activeFileName = fileName; // activeFileName is now fullPath
-        fileNameInput.value = activeFileName; // Update input field
+        // fileNameInput.value = activeFileName; // Update input field - REMOVED
 
         // Update active class in file list
         const currentActive = fileListContainer.querySelector('.active-file');
@@ -230,43 +230,43 @@ function deleteFile(fileName) {
         if (activeFileName === fileName.trim()) {
             activeFileName = null;
             codeEditor.value = ''; // Clear editor
-            fileNameInput.value = ''; // Clear input
+            // fileNameInput.value = ''; // Clear input - REMOVED
         }
         displayFiles(); // Refresh file list
     }
 }
 
-function handleNewFile() {
-    const newName = fileNameInput.value.trim();
-    if (!newName) {
-        alert("Please enter a name for the new file.");
-        return;
-    }
-    if (getSavedFiles().includes(newName)) {
-        if (!confirm(`File "${newName}" already exists. Overwrite it or load it? Press OK to load, Cancel to keep editing name.`)) {
-            fileNameInput.focus();
-            return;
-        }
-        loadFile(newName); // Load existing if user confirms
-    } else {
-        // Create a new empty file conceptually
-        codeEditor.value = '';
-        activeFileName = newName;
-        // No need to save an empty file to localStorage immediately,
-        // let the user type and then save.
-        // But we should reflect it in the input and potentially list (if we want to show "new unsaved" files)
-        // For now, just set activeFileName and clear editor. Save will persist.
-        fileNameInput.value = activeFileName;
-        // Remove active class from others
-        const currentActive = fileListContainer.querySelector('.active-file');
-        if (currentActive) {
-            currentActive.classList.remove('active-file');
-        }
-        // It won't be in the list until saved, so displayFiles() won't mark it yet.
-        // We could add a temporary "new file" visual cue if desired.
-        alert(`New file "${newName}" ready. Type your code and click Save.`);
-    }
-}
+// function handleNewFile() { // REMOVED as its button is gone. Context menu handles new file creation.
+//     const newName = fileNameInput.value.trim();
+//     if (!newName) {
+//         alert("Please enter a name for the new file.");
+//         return;
+//     }
+//     if (getSavedFiles().includes(newName)) {
+//         if (!confirm(`File "${newName}" already exists. Overwrite it or load it? Press OK to load, Cancel to keep editing name.`)) {
+//             fileNameInput.focus();
+//             return;
+//         }
+//         loadFile(newName); // Load existing if user confirms
+//     } else {
+//         // Create a new empty file conceptually
+//         codeEditor.value = '';
+//         activeFileName = newName;
+//         // No need to save an empty file to localStorage immediately,
+//         // let the user type and then save.
+//         // But we should reflect it in the input and potentially list (if we want to show "new unsaved" files)
+//         // For now, just set activeFileName and clear editor. Save will persist.
+//         // fileNameInput.value = activeFileName; // REMOVED
+//         // Remove active class from others
+//         const currentActive = fileListContainer.querySelector('.active-file');
+//         if (currentActive) {
+//             currentActive.classList.remove('active-file');
+//         }
+//         // It won't be in the list until saved, so displayFiles() won't mark it yet.
+//         // We could add a temporary "new file" visual cue if desired.
+//         alert(`New file "${newName}" ready. Type your code and click Save.`);
+//     }
+// }
 
 // Initial load
 document.addEventListener('DOMContentLoaded', () => {
@@ -315,7 +315,7 @@ function showContextMenu(x, y, targetElement) {
                 // Create a new empty file
                 codeEditor.value = ''; // Clear editor for new file
                 activeFileName = fullPath;
-                fileNameInput.value = activeFileName; // Update input field
+                // fileNameInput.value = activeFileName; // Update input field - REMOVED
                 saveFile(activeFileName, ''); // Save the new empty file
                 // displayFiles() will be called by saveFile
                 alert(`File "${fullPath}" created.`);
@@ -387,39 +387,35 @@ toggleFileTreeButton.addEventListener('click', () => {
 });
 
 // --- Connect File System UI to Logic ---
-newFileButton.addEventListener('click', handleNewFile);
+// newFileButton.addEventListener('click', handleNewFile); // REMOVED
+// saveFileButton.addEventListener('click', () => { // REMOVED
+//     const fileName = fileNameInput.value.trim() || activeFileName;
+//     if (!fileName) {
+//         alert("Please enter a file name or select an existing file to save.");
+//         fileNameInput.focus();
+//         return;
+//     }
+//     saveFile(fileName, codeEditor.value);
+// });
+// deleteFileButton.addEventListener('click', () => { // REMOVED
+//     const fileNameToDelete = fileNameInput.value.trim() || activeFileName;
+//     if (!fileNameToDelete) {
+//         alert("Please enter a file name or select a file from the list to delete.");
+//         return;
+//     }
+//     deleteFile(fileNameToDelete);
+// });
 
-saveFileButton.addEventListener('click', () => {
-    const fileName = fileNameInput.value.trim() || activeFileName;
-    if (!fileName) {
-        alert("Please enter a file name or select an existing file to save.");
-        fileNameInput.focus();
-        return;
-    }
-    saveFile(fileName, codeEditor.value);
-});
-
-deleteFileButton.addEventListener('click', () => {
-    const fileNameToDelete = fileNameInput.value.trim() || activeFileName;
-    if (!fileNameToDelete) {
-        alert("Please enter a file name or select a file from the list to delete.");
-        return;
-    }
-    deleteFile(fileNameToDelete);
-});
-
-// Ensure fileNameInput updates activeFileName if user types and blurs,
+// Ensure fileNameInput updates activeFileName if user types and blurs, // REMOVED
 // but only if it's not already an existing file (to avoid accidental overwrite intent)
 // This might be too complex for now; primary interaction is via buttons and list.
 // For now, fileNameInput primarily serves to name new files or specify for deletion if not selected.
 
 // Action Bar Save Button
 actionBarSaveButton.addEventListener('click', () => {
-    const fileName = activeFileName || fileNameInput.value.trim();
+    const fileName = activeFileName; // fileNameInput.value.trim() fallback removed
     if (!fileName) {
-        alert("Please select a file or enter a file name to save.");
-        // Optionally focus fileNameInput if it's empty and part of the workflow
-        // fileNameInput.focus();
+        alert("No active file selected to save. Please open a file or create a new one via the context menu.");
         return;
     }
     if (saveFile(fileName, codeEditor.value)) {

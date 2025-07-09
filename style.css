@@ -35,18 +35,19 @@ body {
     display: flex;
     flex-direction: column;
     flex-grow: 1;
-    padding: 10px;
+    /* padding: 10px; */ /* Removed */
 }
 textarea#code-editor { /* More specific selector for editor */
     flex-grow: 1;
-    padding: 10px;
+    padding: 5px; /* Add some minimal padding inside the textarea itself */
     border: 1px solid var(--zed-border-color);
+    outline: none; /* Remove default outline */
     border-radius: 5px;
     font-size: 15px; /* Slightly smaller for editor feel */
     resize: none;
     box-sizing: border-box;
     width: 100%;
-    margin-bottom: 10px;
+    /* margin-bottom: 10px; */ /* Removed as editor-container no longer has padding to separate from potential next elements */
     background-color: var(--zed-editor-background);
     color: var(--zed-text-color);
     font-family: var(--zed-font);
