@@ -392,6 +392,7 @@ if (codeEditor) {
         // updateHighlighting now parses the code itself
         updateHighlighting(codeEditor.value);
         removeErrorTooltip();
+        showAutocomplete();
     });
 
     codeEditor.addEventListener('scroll', () => {
@@ -403,6 +404,25 @@ if (codeEditor) {
     });
     
     codeEditor.addEventListener('keydown', (e) => {
+        if (autocompletePopup) {
+            if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+                e.preventDefault();
+                navigateAutocomplete(e.key);
+            } else if (e.key === 'Enter') {
+                e.preventDefault();
+                const selected = autocompletePopup.querySelector('.selected');
+                if (selected) {
+                    insertSuggestion(selected.textContent);
+                }
+            } else if (e.key === 'Escape') {
+                e.preventDefault();
+                if (autocompletePopup) {
+                    autocompletePopup.remove();
+                    autocompletePopup = null;
+                }
+            }
+        }
+
         if (e.ctrlKey && e.key === 'i') {
             e.preventDefault();
             if (lastParseResult && lastParseResult.errors.length > 0) {
@@ -485,6 +505,92 @@ function removeErrorTooltip() {
     if (existingTooltip) {
         existingTooltip.remove();
     }
+}
+
+let autocompletePopup = null;
+
+function showAutocomplete() {
+    if (autocompletePopup) {
+        autocompletePopup.remove();
+        autocompletePopup = null;
+    }
+
+    const cursorPosition = codeEditor.selectionStart;
+    const textBeforeCursor = codeEditor.value.substring(0, cursorPosition);
+    const currentWord = textBeforeCursor.split(/\s+/).pop();
+
+    if (currentWord.length === 0) return;
+
+    const keywords = ['print']; // Add more keywords as needed
+    const suggestions = keywords.filter(kw => kw.startsWith(currentWord));
+
+    if (suggestions.length > 0) {
+        autocompletePopup = document.createElement('div');
+        autocompletePopup.className = 'autocomplete-popup';
+
+        suggestions.forEach((suggestion, index) => {
+            const item = document.createElement('div');
+            item.className = 'autocomplete-item';
+            item.textContent = suggestion;
+            if (index === 0) {
+                item.classList.add('selected');
+            }
+            item.addEventListener('click', () => {
+                insertSuggestion(suggestion);
+            });
+            autocompletePopup.appendChild(item);
+        });
+
+        const cursorCoords = getCursorCoords();
+        autocompletePopup.style.left = `${cursorCoords.x}px`;
+        autocompletePopup.style.top = `${cursorCoords.y + 20}px`; // Position below cursor
+
+        document.body.appendChild(autocompletePopup);
+    }
+}
+
+function insertSuggestion(suggestion) {
+    const cursorPosition = codeEditor.selectionStart;
+    const textBeforeCursor = codeEditor.value.substring(0, cursorPosition);
+    const currentWord = textBeforeCursor.split(/\s+/).pop();
+    const textAfterCursor = codeEditor.value.substring(cursorPosition);
+
+    const newText = textBeforeCursor.substring(0, textBeforeCursor.length - currentWord.length) + suggestion + textAfterCursor;
+    codeEditor.value = newText;
+    updateHighlighting(newText);
+
+    if (autocompletePopup) {
+        autocompletePopup.remove();
+        autocompletePopup = null;
+    }
+
+    codeEditor.focus();
+    codeEditor.selectionEnd = cursorPosition - currentWord.length + suggestion.length;
+}
+
+function navigateAutocomplete(key) {
+    if (!autocompletePopup) return;
+
+    const items = autocompletePopup.querySelectorAll('.autocomplete-item');
+    if (items.length === 0) return;
+
+    let selectedIndex = -1;
+    items.forEach((item, index) => {
+        if (item.classList.contains('selected')) {
+            selectedIndex = index;
+        }
+    });
+
+    items[selectedIndex].classList.remove('selected');
+
+    if (key === 'ArrowDown') {
+        selectedIndex = (selectedIndex + 1) % items.length;
+    } else if (key === 'ArrowUp') {
+        selectedIndex = (selectedIndex - 1 + items.length) % items.length;
+    }
+
+    items[selectedIndex].classList.add('selected');
+    items[selectedIndex].scrollIntoView({ block: 'nearest' });
 }
 
 let lastParseResult = null;
