@@ -440,37 +440,3 @@ function updateHighlighting(code) {
         highlightingArea.scrollLeft = codeEditor.scrollLeft;
     }
 }
-
-
-if (codeEditor) {
-    // `input` and `scroll` listeners are already defined above, they will be merged.
-
-    codeEditor.addEventListener('keydown', (event) => {
-        if ((event.ctrlKey || event.metaKey) && event.key === 'i') {
-            event.preventDefault();
-            if (lastParseResult && lastParseResult.errors && lastParseResult.errors.length > 0) {
-                // Assuming the error object from parser.js is a string or has a .message property
-                // And potentially .line, .col if BaseParser adds them.
-                // For now, let's join all error messages if there are multiple.
-                const errorMessages = lastParseResult.errors.map(err => {
-                    if (typeof err === 'string') return err;
-                    if (err.message) {
-                        let details = `Message: ${err.message}`;
-                        if (err.token && err.token.start) { // Assuming error might have token info
-                            details += `\nLine: ${err.token.start.lineno}, Column: ${err.token.start.col}`;
-                        }
-                        return details;
-                    }
-                    return "Unknown error format.";
-                }).join('\n-----------------------------\n');
-
-                alert(`Sour Lang Syntax Error(s):
------------------------------
-${errorMessages}
------------------------------`);
-            } else {
-                alert("No Sour Lang syntax error detected from the last parse.");
-            }
-        }
-    });
-}
