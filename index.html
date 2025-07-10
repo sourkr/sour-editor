@@ -14,12 +14,17 @@
         <action-bar></action-bar>
         
         <div id="main">
-            <div id="editor-container">
-                <pre id="highlighting-area" aria-hidden="true"><code id="highlighting-layer"></code></pre>
-                <textarea id="code-editor" placeholder="Write your code here..." wrap="off" spellcheck="false" autocapitalize="off" autocorrect="off"></textarea>
+            <div id="tab-bar">
+                <!-- Tabs will be inserted here by JavaScript -->
             </div>
-    
-            <div id="sour-output-container"></div>
+            <div id="tab-content">
+                <div id="editor-container">
+                    <pre id="highlighting-area" aria-hidden="true"><code id="highlighting-layer"></code></pre>
+                    <textarea id="code-editor" placeholder="Write your code here..." wrap="off" spellcheck="false" autocapitalize="off" autocorrect="off"></textarea>
+                </div>
+        
+                <div id="sour-output-container"></div>
+            </div>
         </div>
     </coordinator-layout>
     

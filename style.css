@@ -102,6 +102,56 @@ body {
     color: var(--color-on-background);
 }
 
+/* Tab System */
+#tab-bar {
+    display: flex;
+    background-color: var(--zed-action-bar-background);
+    border-bottom: 1px solid var(--zed-border-color);
+    overflow-x: auto;
+    white-space: nowrap;
+    padding: 0 5px;
+}
+
+.tab-item {
+    display: flex;
+    align-items: center;
+    padding: 8px 12px;
+    cursor: pointer;
+    border-right: 1px solid var(--zed-border-color);
+    color: var(--zed-text-color);
+    background-color: var(--zed-action-bar-background);
+    font-size: 14px;
+    user-select: none;
+}
+
+.tab-item:hover {
+    background-color: var(--zed-action-button-hover-background);
+}
+
+.tab-item.active {
+    background-color: var(--zed-editor-background);
+    color: white;
+    border-bottom: 2px solid var(--zed-button-background);
+}
+
+.tab-close-button {
+    margin-left: 8px;
+    font-size: 16px;
+    line-height: 1;
+    color: var(--zed-text-color);
+    cursor: pointer;
+}
+
+.tab-close-button:hover {
+    color: red;
+}
+
+#tab-content {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+}
+
 /* Zed-like theme */
 @font-face {
     font-family: 'Zed Mono Extended';

@@ -16,8 +16,11 @@ const sourOutputContainer = document.getElementById('sour-output-container');
 const highlightingArea = document.getElementById('highlighting-area');
 const highlightingLayer = document.getElementById('highlighting-layer');
 
-let activeFileName = null;
+const tabBar = document.getElementById('tab-bar');
+const tabContent = document.getElementById('tab-content');
 
+let activeFileName = null;
+let activeTabs = []; // Array to store currently open files/tabs
 
 // Action Bar
 const menu = new Menu()
@@ -64,6 +67,92 @@ actionBar.onmenuitemclicked = ev => {
             })()
             
             break
+        }
+    }
+}
+
+// Tab System Functions
+function addTab(fileName, content) {
+    // Check if tab already exists
+    const existingTab = activeTabs.find(tab => tab.fileName === fileName);
+    if (existingTab) {
+        activateTab(fileName);
+        return;
+    }
+
+    const tabItem = document.createElement('div');
+    tabItem.classList.add('tab-item');
+    tabItem.dataset.fileName = fileName;
+
+    const tabNameSpan = document.createElement('span');
+    tabNameSpan.textContent = fileName.split('/').pop(); // Display only the file name
+    tabItem.appendChild(tabNameSpan);
+
+    const closeButton = document.createElement('span');
+    closeButton.classList.add('tab-close-button');
+    closeButton.innerHTML = '&times;'; // 'x' icon
+    closeButton.addEventListener('click', (e) => {
+        e.stopPropagation(); // Prevent tab activation when closing
+        closeTab(fileName);
+    });
+    tabItem.appendChild(closeButton);
+
+    tabItem.addEventListener('click', () => activateTab(fileName));
+    tabBar.appendChild(tabItem);
+
+    activeTabs.push({ fileName, content });
+    activateTab(fileName);
+}
+
+function activateTab(fileName) {
+    // Deactivate current active tab
+    const currentActiveTab = tabBar.querySelector('.tab-item.active');
+    if (currentActiveTab) {
+        currentActiveTab.classList.remove('active');
+    }
+
+    // Activate new tab
+    const newActiveTab = tabBar.querySelector(`.tab-item[data-file-name="${fileName}"]`);
+    if (newActiveTab) {
+        newActiveTab.classList.add('active');
+    }
+
+    // Save current file's content before loading new one
+    if (activeFileName && activeFileName !== fileName) {
+        const currentFileIndex = activeTabs.findIndex(tab => tab.fileName === activeFileName);
+        if (currentFileIndex !== -1) {
+            activeTabs[currentFileIndex].content = codeEditor.value;
+        }
+    }
+
+    // Load content of the activated tab
+    const tabToLoad = activeTabs.find(tab => tab.fileName === fileName);
+    if (tabToLoad) {
+        codeEditor.value = tabToLoad.content;
+        activeFileName = fileName;
+        updateHighlighting(codeEditor.value);
+    }
+}
+
+function closeTab(fileName) {
+    const tabToRemove = tabBar.querySelector(`.tab-item[data-file-name="${fileName}"]`);
+    if (tabToRemove) {
+        tabBar.removeChild(tabToRemove);
+    }
+
+    const indexToRemove = activeTabs.findIndex(tab => tab.fileName === fileName);
+    if (indexToRemove !== -1) {
+        activeTabs.splice(indexToRemove, 1);
+    }
+
+    // If the closed tab was the active one, activate another tab or clear editor
+    if (activeFileName === fileName) {
+        if (activeTabs.length > 0) {
+            activateTab(activeTabs[activeTabs.length - 1].fileName); // Activate the last tab
+        } else {
+            activeFileName = null;
+            codeEditor.value = '';
+            updateHighlighting('');
         }
     }
 }
@@ -202,6 +291,11 @@ function saveActiveFile(fileName, content) {
     }
     if (saveFileToStorage(fileName.trim(), content)) {
         activeFileName = fileName.trim();
+        // Update content in activeTabs array
+        const tabIndex = activeTabs.findIndex(tab => tab.fileName === fileName);
+        if (tabIndex !== -1) {
+            activeTabs[tabIndex].content = content;
+        }
         displayFiles(); // Refresh file list after successful save
         return true;
     }
@@ -209,46 +303,17 @@ function saveActiveFile(fileName, content) {
 }
 
 // UI-facing load operation
-function loadFileToEditor(fileName) {
+function loadFile(fileName) { // Renamed from loadFileToEditor to avoid confusion
     const content = loadFileFromStorage(fileName);
     if (content !== null) {
-        codeEditor.value = content;
-        activeFileName = fileName;
-
-        // Update active class in file list
-        const currentActive = fileListContainer.querySelector('.active-file');
-        if (currentActive) {
-            currentActive.classList.remove('active-file');
-        }
-
-        const newActiveEntry = Array.from(fileListContainer.querySelectorAll('.file-entry'))
-                               .find(child => child.dataset.fullPath === fileName);
-        if (newActiveEntry) {
-            newActiveEntry.classList.add('active-file');
-            // Also ensure its parent folder is open if it's in a folder
-            const parentFolderFilesDiv = newActiveEntry.closest('.files-in-folder');
-            if (parentFolderFilesDiv) { // It's inside a folder structure
-                const folderEntryDiv = parentFolderFilesDiv.closest('.folder-entry');
-                if (parentFolderFilesDiv.style.display === 'none') {
-                    parentFolderFilesDiv.style.display = 'block';
-                    if (folderEntryDiv) {
-                        folderEntryDiv.classList.add('open');
-                        const icon = folderEntryDiv.querySelector('.folder-icon');
-                        if (icon) icon.textContent = 'folder_open';
-                    }
-                } else { // If folder was already open, still ensure icon is correct
-                     if (folderEntryDiv) {
-                        const icon = folderEntryDiv.querySelector('.folder-icon');
-                        if (icon && folderEntryDiv.classList.contains('open')) icon.textContent = 'folder_open';
-                     }
-                }
-            }
-        }
+        addTab(fileName, content); // Add/activate tab
+        // The editor content and activeFileName are set by activateTab
+        // updateHighlighting is also called by activateTab
     } else {
         alert(`File "${fileName}" not found.`);
     }
     // Ensure highlighting is updated after loading a file
-    updateHighlighting(codeEditor.value); // Pass the loaded code to updateHighlighting
+    // updateHighlighting(codeEditor.value); // This is now handled by activateTab
 }
 
 // UI-facing delete operation
@@ -259,11 +324,7 @@ function deleteActiveFile(fileName) {
     }
     if (confirm(`Are you sure you want to delete "${fileName.trim()}"?`)) { // UI feedback
         deleteFileFromStorage(fileName.trim());
-        if (activeFileName === fileName.trim()) {
-            activeFileName = null;
-            codeEditor.value = ''; // Clear editor
-            updateHighlighting(''); // Clear highlighting too
-        }
+        closeTab(fileName.trim()); // Close the tab if it's open
         displayFiles(); // Refresh file list
     }
 }
@@ -312,12 +373,13 @@ function showContextMenu(x, y, targetElement) {
             if (getSavedFiles().includes(fullPath)) { // getSavedFiles is from filetree.js
                 alert(`File "${fullPath}" already exists.`);
             } else {
-                codeEditor.value = '';
-                activeFileName = fullPath;
-                saveActiveFile(activeFileName, ''); // Use the new UI-facing save function
-                // displayFiles() is called by saveActiveFile
+                // codeEditor.value = ''; // Handled by addTab
+                // activeFileName = fullPath; // Handled by addTab
+                saveFileToStorage(fullPath, ''); // Save empty file to storage
+                addTab(fullPath, ''); // Add and activate new tab
+                displayFiles(); // Refresh file list
                 alert(`File "${fullPath}" created.`);
-                updateHighlighting(''); // Update for empty content
+                // updateHighlighting(''); // Handled by addTab
             }
         }
     });
