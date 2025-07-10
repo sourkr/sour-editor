@@ -8,7 +8,7 @@ export default class SpannableText {
     }
     
     color(start, end, color) {
-        if (start == end) return
+        // if (start == end) return
         
         for(let i = 0; i < this.#spans.length; i++) {
             const span = this.#spans[i]

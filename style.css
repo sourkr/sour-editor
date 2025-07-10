@@ -26,111 +26,80 @@ body {
     padding: 0;
 }
 
-#container {
-    display: flex;
-    flex-direction: column;
-    height: 100dvh;
-}
-
-#action-bar {
-    display: flex;
-    background: var(--color-container);
-        
-    padding: 15px 10px;
-    align-items: center;
-    border-bottom: 1px solid var(--color-border);
-    
-    #nav-icon {}
-    
-    #title {
-        font-size: 1.1em;
-        margin: 0;
-        font-weight: normal;
-        flex: 1;
-        margin-left: 10px;
-    }
-
-    #action-buttons {
-        display: flex;
-        gap: 8px;
-    }
-}
-
 #main {
     display: flex;
     flex-direction: column;
+}
+
+#editor-container {
+    display: flex;
+    flex-direction: column;
+    position: relative;
     flex: 1;
-    
-    #editor-container {
-        display: flex;
-        flex-direction: column;
-        position: relative;
-        flex: 1;
         
-        #code-editor, #highlighting-area {
-            margin: 0;
-            padding: 10px;
-            font-family: var(--zed-font);
-            font-size: 15px;
-            font-weight: normal;
-            letter-spacing: normal;
-            line-height: 1.5;
-            box-sizing: border-box;
-            width: 100%;
-            min-height: 100px;
-            flex-grow: 1;
-            white-space: pre-wrap;
-            overflow-wrap: break-word;
-            word-wrap: break-word;
-            tab-size: 4;
-            -moz-tab-size: 4;
-            outline: none;
-        }
-        
-        #code-editor {
-            resize: none;
-            background-color: transparent;
-            color: transparent;
-            caret-color: var(--zed-text-color);
-            position: relative;
-            z-index: 0;
-            overflow-y: auto;
-        }
-        
-        #highlighting-area {
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            z-index: 1;
-            pointer-events: none;
-            overflow: hidden;
-            color: var(--color-on-background);
-            
-            code {
-                display: block;
-                font-family: inherit;
-                font-size: inherit;
-                line-height: inherit;
-                padding: 0;
-                margin: 0;
-            }
-        }
-    }
-    
-    #sour-output-container {
-        background-color: var(--color-background);
+    #code-editor, #highlighting-area {
+        margin: 0;
         padding: 10px;
-        border-top: 1px solid var(--color-border);
-        height: 100px;
-        overflow-y: auto;
+        font-family: var(--zed-font);
+        font-size: 15px;
+        font-weight: normal;
+        letter-spacing: normal;
+        line-height: 1.5;
         box-sizing: border-box;
         width: 100%;
-        font-family: var(--zed-font);
+        min-height: 100px;
+        flex-grow: 1;
         white-space: pre-wrap;
-        color: var(--color-on-background);
+        overflow-wrap: break-word;
+        word-wrap: break-word;
+        tab-size: 4;
+        -moz-tab-size: 4;
+        outline: none;
     }
+        
+    #code-editor {
+        resize: none;
+        background-color: transparent;
+        color: transparent;
+        caret-color: var(--zed-text-color);
+        position: relative;
+        z-index: 0;
+        overflow-y: auto;
+    }
+        
+    #highlighting-area {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        z-index: 1;
+        pointer-events: none;
+        overflow: hidden;
+        color: var(--color-on-background);
+            
+        code {
+            display: block;
+            font-family: inherit;
+            font-size: inherit;
+            line-height: inherit;
+            padding: 0;
+            margin: 0;
+        }
+    }
+}
+    
+#sour-output-container {
+    background-color: var(--color-background);
+    padding: 10px;
+    border-top: 1px solid var(--color-border);
+    height: 100px;
+    overflow-y: auto;
+    box-sizing: border-box;
+    width: 100%;
+    font-family: var(--zed-font);
+    white-space: pre-wrap;
+    color: var(--color-on-background);
 }
 
 /* Zed-like theme */
@@ -150,8 +119,10 @@ body {
     color: #CE9178;
 }
 
-.sour-error-segment {
-    border-bottom: 2px dotted #FF0000;
+.tok-err {
+    text-decoration: underline;
+    text-decoration-style: wavy;
+    text-decoration-color: red;
 }
 
 
@@ -301,4 +272,15 @@ body {
 #context-menu div:hover {
     background-color: var(--zed-button-hover-background); /* Use existing hover color */
     color: white; /* Brighter text on hover */
+}
+
+.error-tooltip {
+    position: absolute;
+    background-color: var(--color-container);
+    color: var(--color-on-background);
+    padding: 5px;
+    border: 1px solid var(--color-border);
+    border-radius: 3px;
+    z-index: 100;
+    pointer-events: none; /* So it doesn't interfere with editor events */
 }

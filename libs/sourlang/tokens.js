@@ -57,12 +57,16 @@ export class TokenStream {
             }
             if (this.#chars.peek() === '"') {
                 this.#chars.next(); // Consume the closing quote
+                return this.#tok("str", strValue)
             } else {
-                // Unterminated string, an error should probably be reported by the parser
-                // or here if we add error reporting to the tokenizer.
-                // For now, the parser will likely complain about unexpected EOF or next token.
+                const token = this.#tok("str", strValue)
+                token.err =  {
+                    msg: "Unterminated string",
+                    start: this.#chars.position.sub(1),
+                    end: this.#chars.position
+                }
+                return token
             }
-            return this.#tok("str", strValue);
         }
         
         if (char === EOF) {

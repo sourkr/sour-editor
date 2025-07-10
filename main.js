@@ -373,12 +373,8 @@ function handleContextMenu(event) { // For desktop right-click
 
 // --- File Tree Toggle ---
 
-function highlightToken(text, token, cssClass) { // Renamed color to cssClass for clarity
-    if (token && typeof token.start !== 'undefined' && typeof token.end !== 'undefined') {
-        text.color(token.start.index, token.end.index, cssClass);
-    } else {
-        // console.warn("Invalid token for highlighting:", token);
-    }
+function highlightToken(text, token, cssClass) {
+    text.color(token.start.index, token.end.index, cssClass)
 }
 
 function highlightExpr(text, expr) {
@@ -395,6 +391,7 @@ if (codeEditor) {
     codeEditor.addEventListener('input', () => {
         // updateHighlighting now parses the code itself
         updateHighlighting(codeEditor.value);
+        removeErrorTooltip();
     });
 
     codeEditor.addEventListener('scroll', () => {
@@ -404,6 +401,90 @@ if (codeEditor) {
             // highlightingArea.scrollLeft = codeEditor.scrollLeft; // Redundant line
         }
     });
+    
+    codeEditor.addEventListener('keydown', (e) => {
+        if (e.ctrlKey && e.key === 'i') {
+            e.preventDefault();
+            if (lastParseResult && lastParseResult.errors.length > 0) {
+                const cursorPosition = codeEditor.selectionStart;
+                const error = lastParseResult.errors.find(err => {
+                    return cursorPosition >= err.start.index && cursorPosition <= err.end.index;
+                });
+
+                if (error) {
+                    showErrorTooltip(error);
+                } else {
+                    removeErrorTooltip();
+                }
+            }
+        }
+    });
+
+}
+
+function getCursorCoords() {
+    // Create a mirror div
+    const mirrorDiv = document.createElement('div');
+    const style = mirrorDiv.style;
+    const computed = window.getComputedStyle(codeEditor);
+
+    // Copy styles
+    const properties = [
+        'border', 'boxSizing', 'fontFamily', 'fontSize', 'fontWeight', 'height', 'letterSpacing',
+        'lineHeight', 'padding', 'textAlign', 'textDecoration', 'textIndent',
+        'textTransform', 'whiteSpace', 'wordSpacing', 'wordWrap', 'width', 'tabSize', '-moz-tab-size'
+    ];
+    properties.forEach(prop => {
+        style[prop] = computed[prop];
+    });
+
+    // Position off-screen
+    style.position = 'absolute';
+    style.visibility = 'hidden';
+
+    document.body.appendChild(mirrorDiv);
+
+    // Set content and add a span to measure position
+    mirrorDiv.textContent = codeEditor.value.substring(0, codeEditor.selectionStart);
+    const span = document.createElement('span');
+    span.textContent = '.'; // A character to get position from
+    mirrorDiv.appendChild(span);
+
+    // Get position of the span
+    const coords = {
+        x: span.offsetLeft + parseInt(computed['borderLeftWidth']),
+        y: span.offsetTop + parseInt(computed['borderTopWidth'])
+    };
+
+    document.body.removeChild(mirrorDiv);
+
+    const editorRect = codeEditor.getBoundingClientRect();
+
+    // Adjust for scroll position and editor's position on the page
+    return {
+        x: editorRect.left + coords.x - codeEditor.scrollLeft,
+        y: editorRect.top + coords.y - codeEditor.scrollTop
+    };
+}
+
+function showErrorTooltip(error) {
+    removeErrorTooltip(); // Remove existing tooltip
+
+    const tooltip = document.createElement('div');
+    tooltip.className = 'error-tooltip';
+    tooltip.textContent = error.message;
+    document.body.appendChild(tooltip);
+
+    const cursorCoords = getCursorCoords();
+    tooltip.style.left = `${cursorCoords.x}px`;
+    tooltip.style.top = `${cursorCoords.y - tooltip.offsetHeight}px`; // Position above cursor
+}
+
+function removeErrorTooltip() {
+    const existingTooltip = document.querySelector('.error-tooltip');
+    if (existingTooltip) {
+        existingTooltip.remove();
+    }
 }
 
 let lastParseResult = null;
@@ -417,15 +498,17 @@ function updateHighlighting(code) {
     const prog = lastParseResult;
     const text = new SpannableText(code);
 
-    if (prog.ast) {
-        prog.ast.forEach(stmt => {
-            if (!stmt) return;
-            if (stmt.type === 'print') {
-                if (stmt.kw) highlightToken(text, stmt.kw, 'tok-kw');
-                if (stmt.expr) highlightExpr(text, stmt.expr);
-            }
-        });
-    }
+    prog.ast.forEach(stmt => {
+        if (!stmt) return;
+        if (stmt.type === 'print') {
+            if (stmt.kw) highlightToken(text, stmt.kw, 'tok-kw');
+            if (stmt.expr) highlightExpr(text, stmt.expr);
+        }
+    });
+    
+    prog.errors.forEach(err => {
+        text.error(err.start.index, err.end.index)
+    })
     
     highlightingLayer.innerHTML = text.toString();
 

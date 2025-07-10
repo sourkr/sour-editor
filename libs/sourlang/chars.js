@@ -44,6 +44,12 @@ class Position {
         return new Position(this.index, this.lineno, this.col)
     }
     
+    sub(n) {
+        this.index -= n
+        this.col -= n
+        return this
+    }
+    
     toString() {
         return `${this.lineno}:${this.col}`
     }

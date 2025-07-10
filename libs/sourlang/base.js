@@ -45,6 +45,10 @@ export class BaseParser {
         
         if (token.type === 'space') return this.next(type)
         
+        if (token.err) {
+            this.error(`ParseError: ${token.err.msg}`, token.err)
+        }
+        
         if (!type) return token
         if (token.type === type) return token
         
