@@ -1,11 +1,15 @@
 import { TokenStream } from "./tokens.js"
 
-export default class BaseParser {
+export class BaseParser {
     #errors = []
     #tokens
+    #filepath
+    #input
     
-    constructor(input) {
+    constructor(input, filepath = 'internal.sour') {
         this.#tokens = new TokenStream(input)
+        this.#input = input
+        this.#filepath = filepath
     }
     
     parse() {
@@ -14,30 +18,14 @@ export default class BaseParser {
         return { ast, errors: this.#errors }
     }
     
-    error(msg) {
-        // Store more detailed error objects
-        let errorObject = { message: msg };
-        if (typeof msg === 'object' && msg.token && msg.message) { // If a rich error object is passed
-            errorObject = msg;
-        } else if (msg.token) { // If an object with a token and implicit message is passed
-             errorObject.message = `Unexpected token '${msg.token.value}'`;
-             errorObject.token = msg.token;
-        } else { // Simple message string
-            errorObject.message = msg;
-        }
-
-        // Add token details if not already part of a rich error object
-        if (errorObject.token && errorObject.token.start) {
-            errorObject.line = errorObject.token.start.lineno;
-            errorObject.column = errorObject.token.start.col;
-            // errorObject.length = errorObject.token.end.index - errorObject.token.start.index;
-        }
-        this.#errors.push(errorObject);
+    error(msg, token) {
+        this.#errors.push(new ErrorData(msg, token, this.#input, this.#filepath));
     }
     
     file() {
-        const token = this.next(); // Consume the token
-        this.error({ message: `Unexpected token '${token.value}'`, token: token });
+        const token = this.next()
+        this.error(`ParseError: Unexpected token '${token.value}'`, token)
+        return token
     }
     
     peek() {
@@ -60,9 +48,8 @@ export default class BaseParser {
         if (!type) return token
         if (token.type === type) return token
         
-        // Pass the unexpected token to the error method for more detailed error reporting
-        this.error({ message: `Expecting '${this.#token(type)}' but got '${token.value}'`, token: token });
-        return token; // Return the problematic token as per original logic, parser might try to recover or stop.
+        this.error(`ParseError: Expecting '${this.#token(type)}' but got '${token.value}'`, token)
+        return token;
     }
     
     is(type, value) {
@@ -73,4 +60,30 @@ export default class BaseParser {
     skip() {
         this.#tokens.next()
     }
+}
+
+class ErrorData {
+    #code
+    
+    constructor(message, token, code, filepath) {
+        this.message = message
+        this.start = token.start
+        this.end = token.end
+        this.filepath = filepath
+        
+        this.#code = code
+    }
+    
+    toString() {
+        const lineno = this.start.lineno.toString()
+        const line1 = ` ${lineno} | ${this.#code.split('\n')[this.start.lineno - 1]}`
+        const line2 = ` ${repeat(' ', lineno.length)}   ${repeat(' ', this.start.col-1)}${repeat('^', Math.max(1, this.end.col - this.start.col))}`
+        const end = `in ${this.filepath} at ${this.start}`
+        
+        return `${this.message}\n${line1}\n${line2}\n${end}`
+    }
+}
+
+function repeat(str, count) {
+    return new Array(count).fill(str).join('')
 }

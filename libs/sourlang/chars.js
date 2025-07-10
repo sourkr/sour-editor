@@ -43,4 +43,8 @@ class Position {
     clone() {
         return new Position(this.index, this.lineno, this.col)
     }
+    
+    toString() {
+        return `${this.lineno}:${this.col}`
+    }
 }

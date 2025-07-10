@@ -1,5 +1,6 @@
 import { getFileStorageKey, getSavedFiles, saveFileToStorage, loadFileFromStorage, deleteFileFromStorage } from './filetree.js'
 import Parser from "./libs/sourlang/parser.js"
+import Interpreter from "./libs/sourlang/interpreter.js"
 import SpannableText from "./libs/spannable-text.js"
 
 const codeEditor = document.getElementById('code-editor');
@@ -357,132 +358,24 @@ actionBarSaveButton.addEventListener('click', () => {
 // Sour Lang Run Button
 if (runSourButton) {
     runSourButton.addEventListener('click', () => {
-        const code = codeEditor.value;
-        // Dispatch 'execute' action to the worker.
-        // The worker is responsible for parsing, execution, and sending results/errors back.
-        // sourWorker.postMessage({ code: code, action: 'execute' }); // Assuming sourWorker is defined elsewhere or will be
-
-        // TODO: The sourWorker is not defined in this file. This needs to be addressed.
-        // For now, we'll leave the postMessage commented out if sourWorker is not available here.
-        // If a direct parser/executor is to be used (like in updateHighlighting), that logic would go here.
-        // However, the README and plan suggest a worker-based approach for execution.
-
-        // Placeholder for worker communication or direct execution:
-        console.log("Run Sour Code button clicked. Code to execute:", code);
-        sourOutputContainer.textContent = "Execution via worker is intended but not fully wired here yet. See console.";
-        sourOutputContainer.style.color = 'orange';
-
-        // Since sourWorker is not available, we'll use direct parsing and a simple interpreter.
-        const parser = new Parser(code);
-        const parseResult = parser.parse();
-
-        if (parseResult.errors && parseResult.errors.length > 0) {
-            // Display first parse error
-            const error = parseResult.errors[0];
-            let errorMessage = "Error: ";
-            if (typeof error === 'string') {
-                errorMessage += error;
-            } else if (error.message) {
-                errorMessage += error.message;
-                if (error.token && error.token.start) {
-                     errorMessage += ` at line ${error.token.start.lineno}, column ${error.token.start.col}`;
-                }
-            } else {
-                errorMessage += "Unknown parsing error.";
+        const interpreter = new Interpreter(codeEditor.value, "internal.sour")
+        
+        interpreter.interprete()
+        
+        ;(async () => {
+            while(true) {
+                const chunk = await interpreter.inputStream.read()
+                sourOutputContainer.innerText += chunk
             }
-            sourOutputContainer.textContent = errorMessage;
-            sourOutputContainer.style.color = 'red';
-        } else if (parseResult.ast) {
-            // Simple interpreter for 'print "string"'
-            let output = [];
-            let runtimeError = null;
-            try {
-                parseResult.ast.forEach(stmt => {
-                    if (!stmt) return;
-                    if (stmt.type === 'print') {
-                        if (stmt.expr && stmt.expr.type === 'str') {
-                            output.push(stmt.expr.value);
-                        } else {
-                            // This case implies a parser bug or language extension not yet handled
-                            // For "print" followed by non-string, it's a semantic error if not a syntax error.
-                            runtimeError = { message: "Invalid expression for print statement. Expected a string." };
-                            throw runtimeError; // Stop execution
-                        }
-                    } else if (stmt.type) {
-                        // Handle unknown statement types if parser allows them but interpreter doesn't
-                        runtimeError = { message: `Unknown statement type: ${stmt.type}`};
-                        throw runtimeError;
-                    }
-                });
-
-                if (runtimeError) {
-                    sourOutputContainer.textContent = `Runtime Error: ${runtimeError.message}`;
-                    sourOutputContainer.style.color = 'red';
-                } else {
-                    sourOutputContainer.textContent = output.join('\n');
-                    sourOutputContainer.style.color = ''; // Default color
-                }
-
-            } catch (e) {
-                // Catch errors thrown by the interpreter logic (like the explicit throw above)
-                sourOutputContainer.textContent = `Runtime Error: ${e.message || "Unknown execution error."}`;
-                sourOutputContainer.style.color = 'red';
+        })()
+        
+        ;(async () => {
+            while(true) {
+                const chunk = await interpreter.errorStream.read()
+                sourOutputContainer.innerText += chunk
             }
-            // console.log("Generated AST:", parseResult.ast); // For debugging
-        } else {
-            sourOutputContainer.textContent = "Could not parse the code for execution. No AST generated.";
-            sourOutputContainer.style.color = 'orange';
-        }
+        })()
     });
-}
-
-// `updateHighlighting` is the primary way to show syntax feedback live.
-// The `code` parameter for `updateHighlighting` was sometimes missing in calls.
-// It should be called with `codeEditor.value`.
-// The `prog` parameter (parsed program) is generated within `updateHighlighting` if only code is passed,
-// or can be passed directly if already parsed.
-
-// Let's make `updateHighlighting` always take code, and parse internally.
-function updateHighlighting(code) {
-    if (typeof code !== 'string') {
-        // Fallback if called without code, though this should be avoided.
-        // console.warn("updateHighlighting called without code. Using codeEditor.value.");
-        code = codeEditor.value;
-    }
-    const parser = new Parser(code);
-    const prog = parser.parse();
-    const text = new SpannableText(code);
-
-    // console.log("Highlighting:", code, prog); // Debugging
-
-    if (prog.ast) {
-        prog.ast.forEach(stmt => {
-            if (!stmt) return; // Skip null/undefined statements if parser produces them
-
-            if (stmt.type === 'print') {
-                if (stmt.kw) highlightToken(text, stmt.kw, 'tok-kw');
-                if (stmt.expr) highlightExpr(text, stmt.expr);
-            }
-            // Add more statement types here if language expands
-        });
-    }
-    
-    // Displaying first parse error directly in highlighting (optional, could be too noisy)
-    // For now, errors are primarily shown via Ctrl+I or in sourOutputContainer on Run.
-    // If prog.errors exists and has errors, we could underline the first one.
-    // Example: if (prog.errors && prog.errors.length > 0 && prog.errors[0].token) {
-    //    const errorToken = prog.errors[0].token; // Assuming error is associated with a token
-    //    text.error(errorToken.start.index, errorToken.end.index); // `error` method needs to be working in SpannableText
-    // }
-
-
-    highlightingLayer.innerHTML = text.toString();
-
-    // Synchronize scroll
-    if (highlightingArea) {
-        highlightingArea.scrollTop = codeEditor.scrollTop;
-        highlightingArea.scrollLeft = codeEditor.scrollLeft;
-    }
 }
 
 function highlightToken(text, token, cssClass) { // Renamed color to cssClass for clarity
@@ -518,25 +411,15 @@ if (codeEditor) {
     });
 }
 
-// Further considerations for a more robust highlighter:
-// 1. Lexer that tokenizes *all* text, including all types of whitespace. (Partially done by Parser)
-// 2. More intelligent reconstruction of text from tokens to perfectly match original spacing. (SpannableText helps)
-// 3. Performance optimizations for large files (e.g., only re-highlighting changed lines or viewport). (Currently re-parses all)
-// 4. Handling of tab characters (convert to spaces or specific tab width). (CSS tab-size handles this)
-// 5. Ensuring line numbers would align if added. (Not implemented)
-
-// --- Ctrl+I Error Message Display ---
-// This relies on `sourSyntaxError` which was planned for removal.
-// We should get error information from the `Parser` instance.
-// Let's store the latest parse result from `updateHighlighting` to access errors.
 let lastParseResult = null;
 
-// Modify updateHighlighting to store its parse result
-function updateHighlighting(code) { // Definition will be merged by tool, this is for context
-    if (typeof code !== 'string') code = codeEditor.value;
+function updateHighlighting(code) {
+    if (typeof code !== 'string') {
+        code = codeEditor.value;
+    }
     const parser = new Parser(code);
-    lastParseResult = parser.parse(); // Store the result
-    const prog = lastParseResult; // Use it
+    lastParseResult = parser.parse(); // Store parse result
+    const prog = lastParseResult;
     const text = new SpannableText(code);
 
     if (prog.ast) {
@@ -548,7 +431,10 @@ function updateHighlighting(code) { // Definition will be merged by tool, this i
             }
         });
     }
+    
     highlightingLayer.innerHTML = text.toString();
+
+    // Synchronize scroll
     if (highlightingArea) {
         highlightingArea.scrollTop = codeEditor.scrollTop;
         highlightingArea.scrollLeft = codeEditor.scrollLeft;

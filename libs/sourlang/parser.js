@@ -1,4 +1,4 @@
-import BaseParser from './base.js'
+import { BaseParser } from './base.js'
 
 export default class Parser extends BaseParser {
     file() {
