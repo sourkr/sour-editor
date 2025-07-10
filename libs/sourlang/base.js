@@ -56,13 +56,22 @@ export class BaseParser {
         return token;
     }
     
-    is(type, value) {
+    peek() {
         const token = this.#tokens.peek()
+        if (token.type === 'space') {
+            this.#tokens.next()
+            return this.peek()
+        }
+        return token
+    }
+    
+    is(type, value) {
+        const token = this.peek()
         return token.type === type && token.value === (value ?? token.value)
     }
     
     skip() {
-        this.#tokens.next()
+        this.next()
     }
 }
 
