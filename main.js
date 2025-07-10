@@ -1,5 +1,4 @@
-import { SourLang } from './sour_lang.js'
-import { getFileStorageKey, getSavedFiles, saveFileToStorage, loadFileFromStorage, deleteFileFromStorage } from './file_manager.js'
+import { getFileStorageKey, getSavedFiles, saveFileToStorage, loadFileFromStorage, deleteFileFromStorage } from './filetree.js'
 import Parser from "./libs/sourlang/parser.js"
 import SpannableText from "./libs/spannable-text.js"
 
@@ -13,16 +12,6 @@ const fileListContainer = document.getElementById('file-list');
 
 const runSourButton = document.getElementById('run');
 const sourOutputContainer = document.getElementById('sour-output-container');
-
-function debounce(func, delay) {
-    let timeoutId;
-    return (...args) => {
-        clearTimeout(timeoutId);
-        timeoutId = setTimeout(() => {
-            func.apply(this, args);
-        }, delay);
-    };
-}
 
 const highlightingArea = document.getElementById('highlighting-area');
 const highlightingLayer = document.getElementById('highlighting-layer');
@@ -154,7 +143,7 @@ function displayFiles() {
     // The _root_ loop is no longer needed as root files are handled by the '/' folder.
 }
 
-// Renamed to reflect it's the UI-facing save operation
+// UI-facing save operation
 function saveActiveFile(fileName, content) {
     if (!fileName || fileName.trim() === '') {
         alert('Please enter a valid file name.'); // This alert can stay here as it's UI feedback
@@ -168,7 +157,7 @@ function saveActiveFile(fileName, content) {
     return false; // Should not happen if fileName is valid, but as a fallback
 }
 
-// Renamed to reflect it's the UI-facing load operation
+// UI-facing load operation
 function loadFileToEditor(fileName) {
     const content = loadFileFromStorage(fileName);
     if (content !== null) {
@@ -208,10 +197,10 @@ function loadFileToEditor(fileName) {
         alert(`File "${fileName}" not found.`);
     }
     // Ensure highlighting is updated after loading a file
-    updateHighlighting();
+    updateHighlighting(codeEditor.value); // Pass the loaded code to updateHighlighting
 }
 
-// Renamed to reflect it's the UI-facing delete operation
+// UI-facing delete operation
 function deleteActiveFile(fileName) {
     if (!fileName || fileName.trim() === '') {
         alert('No file selected or name provided to delete.'); // UI feedback
@@ -222,7 +211,7 @@ function deleteActiveFile(fileName) {
         if (activeFileName === fileName.trim()) {
             activeFileName = null;
             codeEditor.value = ''; // Clear editor
-            updateHighlighting(); // Clear highlighting too
+            updateHighlighting(''); // Clear highlighting too
         }
         displayFiles(); // Refresh file list
     }
@@ -269,7 +258,7 @@ function showContextMenu(x, y, targetElement) {
         if (newFileName && newFileName.trim() !== '') {
             const fullPath = folderPath === '/' ? newFileName.trim() : `${folderPath}${newFileName.trim()}`;
             // Check if file already exists
-            if (getSavedFiles().includes(fullPath)) { // getSavedFiles is from file_manager.js
+            if (getSavedFiles().includes(fullPath)) { // getSavedFiles is from filetree.js
                 alert(`File "${fullPath}" already exists.`);
             } else {
                 codeEditor.value = '';
@@ -277,7 +266,7 @@ function showContextMenu(x, y, targetElement) {
                 saveActiveFile(activeFileName, ''); // Use the new UI-facing save function
                 // displayFiles() is called by saveActiveFile
                 alert(`File "${fullPath}" created.`);
-                updateHighlighting(); // Update for empty content
+                updateHighlighting(''); // Update for empty content
             }
         }
     });
@@ -345,31 +334,6 @@ toggleFileTreeButton.addEventListener('click', () => {
     }
 });
 
-// --- Connect File System UI to Logic ---
-// newFileButton.addEventListener('click', handleNewFile); // REMOVED
-// saveFileButton.addEventListener('click', () => { // REMOVED
-//     const fileName = fileNameInput.value.trim() || activeFileName;
-//     if (!fileName) {
-//         alert("Please enter a file name or select an existing file to save.");
-//         fileNameInput.focus();
-//         return;
-//     }
-//     saveFile(fileName, codeEditor.value);
-// });
-// deleteFileButton.addEventListener('click', () => { // REMOVED
-//     const fileNameToDelete = fileNameInput.value.trim() || activeFileName;
-//     if (!fileNameToDelete) {
-//         alert("Please enter a file name or select a file from the list to delete.");
-//         return;
-//     }
-//     deleteFile(fileNameToDelete);
-// });
-
-// Ensure fileNameInput updates activeFileName if user types and blurs, // REMOVED
-// but only if it's not already an existing file (to avoid accidental overwrite intent)
-// This might be too complex for now; primary interaction is via buttons and list.
-// For now, fileNameInput primarily serves to name new files or specify for deletion if not selected.
-
 // Action Bar Save Button
 actionBarSaveButton.addEventListener('click', () => {
     const fileName = activeFileName; // fileNameInput.value.trim() fallback removed
@@ -394,106 +358,123 @@ actionBarSaveButton.addEventListener('click', () => {
 if (runSourButton) {
     runSourButton.addEventListener('click', () => {
         const code = codeEditor.value;
-        // Option A: Use lastValidAST if available and code hasn't changed
-        // This requires comparing codeEditor.value with code that produced lastValidAST.
-        // For simplicity now, always re-process via worker for "Run" button.
-        // This ensures the very latest code is executed and errors checked.
+        // Dispatch 'execute' action to the worker.
+        // The worker is responsible for parsing, execution, and sending results/errors back.
+        // sourWorker.postMessage({ code: code, action: 'execute' }); // Assuming sourWorker is defined elsewhere or will be
 
-        // Send to worker for fresh parse and AST, then execute.
-        // We need a way to know this specific worker message is for a "Run" action.
-        sourWorker.postMessage({ code: code, action: 'execute' });
+        // TODO: The sourWorker is not defined in this file. This needs to be addressed.
+        // For now, we'll leave the postMessage commented out if sourWorker is not available here.
+        // If a direct parser/executor is to be used (like in updateHighlighting), that logic would go here.
+        // However, the README and plan suggest a worker-based approach for execution.
 
-        // The actual execution (SourLang.execute(ast)) will happen in the worker's onmessage,
-        // or main thread needs to get AST from worker then call SourLang.execute(ast).
-        // For now, let's assume worker's onmessage will handle 'execute' action differently,
-        // perhaps by also running the interpreter if AST is valid.
-        // This part needs to be coordinated with sour_worker.js message handling.
+        // Placeholder for worker communication or direct execution:
+        console.log("Run Sour Code button clicked. Code to execute:", code);
+        sourOutputContainer.textContent = "Execution via worker is intended but not fully wired here yet. See console.";
+        sourOutputContainer.style.color = 'orange';
 
-        // TEMPORARY: For now, "Run" button will just re-trigger the parse/highlight flow.
-        // The interpreter part needs more thought on where it runs.
-        // If interpreter stays on main thread:
-        // 1. Worker sends back AST.
-        // 2. `main.js` onmessage receives AST.
-        // 3. If "Run" was clicked, `main.js` calls `SourLang.execute(receivedAST)`.
+        // Since sourWorker is not available, we'll use direct parsing and a simple interpreter.
+        const parser = new Parser(code);
+        const parseResult = parser.parse();
 
-        // For this iteration, let's simplify: "Run" button ensures errors are up-to-date
-        // and output is based on the latest `lastValidAST` if available.
-        // The worker will always send back tokens, ast, error.
-        // `main.js` will update `sourSyntaxError` and `lastValidAST`.
-        // Then, here, we use `lastValidAST`.
-
-        if (sourSyntaxError) { // If live parsing already found an error
-            sourOutputContainer.textContent = `Error (L${sourSyntaxError.line}:${sourSyntaxError.column}): ${sourSyntaxError.message}`;
-            sourOutputContainer.style.color = 'red';
-        } else if (lastValidAST) {
-            const result = SourLang.execute(lastValidAST); // SourLang.execute now takes an AST
-            if (result.error) { // This would be an interpreter error
-                sourOutputContainer.textContent = `Runtime Error: ${result.error.message || JSON.stringify(result.error)}`;
-                sourOutputContainer.style.color = 'red';
-                 // sourSyntaxError might not be relevant for runtime errors, but clear it from parse phase
-                sourSyntaxError = null;
+        if (parseResult.errors && parseResult.errors.length > 0) {
+            // Display first parse error
+            const error = parseResult.errors[0];
+            let errorMessage = "Error: ";
+            if (typeof error === 'string') {
+                errorMessage += error;
+            } else if (error.message) {
+                errorMessage += error.message;
+                if (error.token && error.token.start) {
+                     errorMessage += ` at line ${error.token.start.lineno}, column ${error.token.start.col}`;
+                }
             } else {
-                sourOutputContainer.textContent = result.output;
-                sourOutputContainer.style.color = '';
-                sourSyntaxError = null;
+                errorMessage += "Unknown parsing error.";
             }
-        } else {
-            // No valid AST and no syntax error from live check - means code is likely empty or too large for live check
-            // Or worker hasn't responded yet. For "Run", we should ideally wait for worker.
-            // This simplified version might show "No AST" if worker is slow and run is clicked fast.
-            sourOutputContainer.textContent = "No valid program to run. Type some code or ensure it has no syntax errors.";
-            sourOutputContainer.style.color = 'orange';
-        }
-        // Send current code to worker to ensure `lastValidAST` and `sourSyntaxError` are up-to-date.
-        // The worker's onmessage handler will update these.
-        sourWorker.postMessage({ code: code, action: 'process_for_execute' }); // action can be used by worker if needed
-
-        // After the worker responds (asynchronously), lastValidAST and sourSyntaxError will be set.
-        // We can then attempt to execute. This might mean the output is slightly delayed.
-        // A more advanced version could use a Promise or callback from the worker for this specific "run" action.
-
-        // For now, we'll assume the onmessage handler updates lastValidAST and sourSyntaxError quickly enough
-        // or the user understands there might be a slight delay.
-        // The actual interpretation logic based on lastValidAST:
-
-        // We need to make sure this part runs *after* the worker has responded to the 'process_for_execute' message.
-        // This is tricky without a callback/promise system from the worker for specific actions.
-        // Let's defer the execution part to the onmessage handler for 'process_for_execute' actions.
-
-        // Simplification for now: The click primarily ensures the latest code is sent to the worker.
-        // The user will see the output based on the *next* processing cycle of the worker
-        // which updates lastValidAST. The Sour Output container will show the result of interpreting
-        // the `lastValidAST` available at the time of the worker's LATEST response.
-
-        // So, the button click just triggers a new processing round.
-        // The actual execution logic will be slightly refactored into the worker's onmessage for an 'execute' action.
-
-        // The worker will process this, run the interpreter, and send back all results
-        // including interpreterOutput or runtimeError.
-        // The sourWorker.onmessage handler will update the sourOutputContainer.
-        if (sourWorker) {
-            sourWorker.postMessage({ code: code, action: 'execute' });
-        } else {
-            sourOutputContainer.textContent = "Error: Sour Worker not available.";
+            sourOutputContainer.textContent = errorMessage;
             sourOutputContainer.style.color = 'red';
+        } else if (parseResult.ast) {
+            // Simple interpreter for 'print "string"'
+            let output = [];
+            let runtimeError = null;
+            try {
+                parseResult.ast.forEach(stmt => {
+                    if (!stmt) return;
+                    if (stmt.type === 'print') {
+                        if (stmt.expr && stmt.expr.type === 'str') {
+                            output.push(stmt.expr.value);
+                        } else {
+                            // This case implies a parser bug or language extension not yet handled
+                            // For "print" followed by non-string, it's a semantic error if not a syntax error.
+                            runtimeError = { message: "Invalid expression for print statement. Expected a string." };
+                            throw runtimeError; // Stop execution
+                        }
+                    } else if (stmt.type) {
+                        // Handle unknown statement types if parser allows them but interpreter doesn't
+                        runtimeError = { message: `Unknown statement type: ${stmt.type}`};
+                        throw runtimeError;
+                    }
+                });
+
+                if (runtimeError) {
+                    sourOutputContainer.textContent = `Runtime Error: ${runtimeError.message}`;
+                    sourOutputContainer.style.color = 'red';
+                } else {
+                    sourOutputContainer.textContent = output.join('\n');
+                    sourOutputContainer.style.color = ''; // Default color
+                }
+
+            } catch (e) {
+                // Catch errors thrown by the interpreter logic (like the explicit throw above)
+                sourOutputContainer.textContent = `Runtime Error: ${e.message || "Unknown execution error."}`;
+                sourOutputContainer.style.color = 'red';
+            }
+            // console.log("Generated AST:", parseResult.ast); // For debugging
+        } else {
+            sourOutputContainer.textContent = "Could not parse the code for execution. No AST generated.";
+            sourOutputContainer.style.color = 'orange';
         }
     });
 }
 
+// `updateHighlighting` is the primary way to show syntax feedback live.
+// The `code` parameter for `updateHighlighting` was sometimes missing in calls.
+// It should be called with `codeEditor.value`.
+// The `prog` parameter (parsed program) is generated within `updateHighlighting` if only code is passed,
+// or can be passed directly if already parsed.
 
-function updateHighlighting(code, prog) {
-    const text = new SpannableText(code)
+// Let's make `updateHighlighting` always take code, and parse internally.
+function updateHighlighting(code) {
+    if (typeof code !== 'string') {
+        // Fallback if called without code, though this should be avoided.
+        // console.warn("updateHighlighting called without code. Using codeEditor.value.");
+        code = codeEditor.value;
+    }
+    const parser = new Parser(code);
+    const prog = parser.parse();
+    const text = new SpannableText(code);
+
+    // console.log("Highlighting:", code, prog); // Debugging
+
+    if (prog.ast) {
+        prog.ast.forEach(stmt => {
+            if (!stmt) return; // Skip null/undefined statements if parser produces them
+
+            if (stmt.type === 'print') {
+                if (stmt.kw) highlightToken(text, stmt.kw, 'tok-kw');
+                if (stmt.expr) highlightExpr(text, stmt.expr);
+            }
+            // Add more statement types here if language expands
+        });
+    }
     
-    console.log(code, prog)
-    
-    prog.ast.forEach(stmt => {
-        if (!stmt) return
-        
-        if (stmt.type === 'print') {
-            highlightToken(text, stmt.kw, 'tok-kw')
-            highlightExpr(text, stmt.expr)
-        }
-    })
+    // Displaying first parse error directly in highlighting (optional, could be too noisy)
+    // For now, errors are primarily shown via Ctrl+I or in sourOutputContainer on Run.
+    // If prog.errors exists and has errors, we could underline the first one.
+    // Example: if (prog.errors && prog.errors.length > 0 && prog.errors[0].token) {
+    //    const errorToken = prog.errors[0].token; // Assuming error is associated with a token
+    //    text.error(errorToken.start.index, errorToken.end.index); // `error` method needs to be working in SpannableText
+    // }
+
 
     highlightingLayer.innerHTML = text.toString();
 
@@ -504,60 +485,105 @@ function updateHighlighting(code, prog) {
     }
 }
 
-function highlightToken(text, token, color) {
-    text.color(token.start.index, token.end.index, color)
+function highlightToken(text, token, cssClass) { // Renamed color to cssClass for clarity
+    if (token && typeof token.start !== 'undefined' && typeof token.end !== 'undefined') {
+        text.color(token.start.index, token.end.index, cssClass);
+    } else {
+        // console.warn("Invalid token for highlighting:", token);
+    }
 }
 
 function highlightExpr(text, expr) {
+    if (!expr) return;
     if (expr.type === 'str') {
-        highlightToken(text, expr, "tok-str")
+        // Assuming string literal tokens have start/end directly
+        highlightToken(text, expr, "tok-str");
     }
+    // Add more expression types here
 }
 
 
 if (codeEditor) {
     codeEditor.addEventListener('input', () => {
-        const parser = new Parser(codeEditor.value)
-        const prog = parser.parse()
-        
-        updateHighlighting(codeEditor.value, prog)
+        // updateHighlighting now parses the code itself
+        updateHighlighting(codeEditor.value);
     });
 
     codeEditor.addEventListener('scroll', () => {
         if (highlightingArea) {
             highlightingArea.scrollTop = codeEditor.scrollTop;
             highlightingArea.scrollLeft = codeEditor.scrollLeft;
-            highlightingArea.scrollLeft = codeEditor.scrollLeft; // ensure horizontal sync
+            // highlightingArea.scrollLeft = codeEditor.scrollLeft; // Redundant line
         }
     });
-
 }
 
 // Further considerations for a more robust highlighter:
-// 1. Lexer that tokenizes *all* text, including all types of whitespace.
-// 2. More intelligent reconstruction of text from tokens to perfectly match original spacing.
-// 3. Performance optimizations for large files (e.g., only re-highlighting changed lines or viewport).
-// 4. Handling of tab characters (convert to spaces or specific tab width).
-// 5. Ensuring line numbers would align if added.
+// 1. Lexer that tokenizes *all* text, including all types of whitespace. (Partially done by Parser)
+// 2. More intelligent reconstruction of text from tokens to perfectly match original spacing. (SpannableText helps)
+// 3. Performance optimizations for large files (e.g., only re-highlighting changed lines or viewport). (Currently re-parses all)
+// 4. Handling of tab characters (convert to spaces or specific tab width). (CSS tab-size handles this)
+// 5. Ensuring line numbers would align if added. (Not implemented)
 
 // --- Ctrl+I Error Message Display ---
+// This relies on `sourSyntaxError` which was planned for removal.
+// We should get error information from the `Parser` instance.
+// Let's store the latest parse result from `updateHighlighting` to access errors.
+let lastParseResult = null;
+
+// Modify updateHighlighting to store its parse result
+function updateHighlighting(code) { // Definition will be merged by tool, this is for context
+    if (typeof code !== 'string') code = codeEditor.value;
+    const parser = new Parser(code);
+    lastParseResult = parser.parse(); // Store the result
+    const prog = lastParseResult; // Use it
+    const text = new SpannableText(code);
+
+    if (prog.ast) {
+        prog.ast.forEach(stmt => {
+            if (!stmt) return;
+            if (stmt.type === 'print') {
+                if (stmt.kw) highlightToken(text, stmt.kw, 'tok-kw');
+                if (stmt.expr) highlightExpr(text, stmt.expr);
+            }
+        });
+    }
+    highlightingLayer.innerHTML = text.toString();
+    if (highlightingArea) {
+        highlightingArea.scrollTop = codeEditor.scrollTop;
+        highlightingArea.scrollLeft = codeEditor.scrollLeft;
+    }
+}
+
+
 if (codeEditor) {
+    // `input` and `scroll` listeners are already defined above, they will be merged.
+
     codeEditor.addEventListener('keydown', (event) => {
-        // Check for Ctrl+I (or Cmd+I on Mac)
         if ((event.ctrlKey || event.metaKey) && event.key === 'i') {
-            event.preventDefault(); // Prevent any default browser action for Ctrl+I
-            if (sourSyntaxError && sourSyntaxError.message) {
-                // Format the alert message a bit better
-                const errorMessage = `Sour Lang Syntax Error:
+            event.preventDefault();
+            if (lastParseResult && lastParseResult.errors && lastParseResult.errors.length > 0) {
+                // Assuming the error object from parser.js is a string or has a .message property
+                // And potentially .line, .col if BaseParser adds them.
+                // For now, let's join all error messages if there are multiple.
+                const errorMessages = lastParseResult.errors.map(err => {
+                    if (typeof err === 'string') return err;
+                    if (err.message) {
+                        let details = `Message: ${err.message}`;
+                        if (err.token && err.token.start) { // Assuming error might have token info
+                            details += `\nLine: ${err.token.start.lineno}, Column: ${err.token.start.col}`;
+                        }
+                        return details;
+                    }
+                    return "Unknown error format.";
+                }).join('\n-----------------------------\n');
+
+                alert(`Sour Lang Syntax Error(s):
 -----------------------------
-Message: ${sourSyntaxError.message}
-Line: ${sourSyntaxError.line}
-Column: ${sourSyntaxError.column}
-Length of problematic token (approx): ${sourSyntaxError.length}
------------------------------`;
-                alert(errorMessage);
+${errorMessages}
+-----------------------------`);
             } else {
-                alert("No Sour Lang syntax error detected at the moment.");
+                alert("No Sour Lang syntax error detected from the last parse.");
             }
         }
     });

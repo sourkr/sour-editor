@@ -1,4 +1,4 @@
-// file_manager.js - Handles localStorage interactions for files
+// filetree.js - Handles localStorage interactions for files
 
 const localStorageKeyPrefix = 'jsIDE_file_';
 

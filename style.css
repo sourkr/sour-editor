@@ -158,46 +158,18 @@ body {
 /* #output-container REMOVED */
 /* button#run-button REMOVED */
 
-
-
-
-
-
-
-/* Common style for all icon-only buttons in action bar and file actions */
-.icon-button {
-    background-color: transparent;
-    color: var(--zed-text-color);
-    border: none;
-    padding: 6px; /* Adjust padding for a tighter fit if no border */
-    border-radius: 3px;
+/* Styles for action bar icons (spans) */
+#action-bar .material-symbols-rounded {
     cursor: pointer;
-    line-height: 1; /* Ensure icon is centered vertically */
-    display: inline-flex; /* Helps align span/icon inside */
-    align-items: center;
-    justify-content: center;
+    padding: 6px;
+    border-radius: 3px;
 }
 
-.icon-button .material-symbols-rounded {
-    font-size: 22px; /* Slightly larger icons if they are the only content */
-    vertical-align: middle;
+#action-bar .material-symbols-rounded:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+    color: white;
 }
 
-.icon-button:hover {
-    background-color: rgba(255, 255, 255, 0.1); /* Subtle hover for transparent buttons */
-    color: white; /* Brighter icon on hover */
-}
-
-/* Ensure #action-bar button and #file-actions button inherit from .icon-button or are styled as such */
-/* If all buttons are icon buttons, these specific rules can be removed or simplified */
-#action-bar button,
-#file-actions button {
-    /* These buttons will now get the .icon-button class in HTML, */
-    /* so specific background, border, padding etc. here are redundant */
-    /* We can keep specific layout things if necessary, but most should be in .icon-button */
-}
-
-/* Individual .material-symbols-rounded styling within buttons is now handled by .icon-button .material-symbols-rounded */
 
 #file-system-container { /* Now the side drawer */
     position: fixed;
@@ -225,46 +197,6 @@ body {
 /* Ensure padding and borders are part of the width/height calculation */
 #file-system-container *, #file-system-container *::before, #file-system-container *::after {
     box-sizing: border-box;
-}
-
-
-#file-actions {
-    display: flex;
-    gap: 8px;
-    margin-bottom: 8px;
-    align-items: center;
-    padding: 8px 10px 0; /* Add some padding, especially top/horizontal. Bottom handled by margin. */
-                         /* Or just horizontal: padding: 0 10px; */
-}
-
-#file-name-input {
-    flex-grow: 1;
-    padding: 6px 8px;
-    background-color: var(--zed-background); /* Darker input field */
-    color: var(--zed-text-color);
-    border: 1px solid var(--zed-border-color);
-    border-radius: 3px;
-    font-family: var(--zed-font);
-    font-size: 14px;
-}
-
-#file-actions button { /* Style for file action icon buttons */
-    background-color: var(--zed-action-button-background);
-    color: var(--zed-text-color);
-    border: 1px solid var(--zed-border-color);
-    padding: 6px 8px;
-    border-radius: 3px;
-    cursor: pointer;
-}
-
-#file-actions button .material-symbols-rounded {
-    display: block;
-    font-size: 20px;
-    vertical-align: middle;
-}
-
-#file-actions button:hover {
-    background-color: var(--zed-action-button-hover-background);
 }
 
 #file-list {
