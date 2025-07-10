@@ -1,6 +1,7 @@
-import { SourLang } from './sour_lang.js';
-import { getFileStorageKey, getSavedFiles, saveFileToStorage, loadFileFromStorage, deleteFileFromStorage } from './file_manager.js';
-import Parser from "./libs/sourlang/parser.ja"
+import { SourLang } from './sour_lang.js'
+import { getFileStorageKey, getSavedFiles, saveFileToStorage, loadFileFromStorage, deleteFileFromStorage } from './file_manager.js'
+import Parser from "./libs/sourlang/parser.js"
+import SpannableText from "./libs/spannable-text.js"
 
 const codeEditor = document.getElementById('code-editor');
 
@@ -25,10 +26,6 @@ function debounce(func, delay) {
 
 const highlightingArea = document.getElementById('highlighting-area');
 const highlightingLayer = document.getElementById('highlighting-layer');
-
-let sourSyntaxError = null;
-let lastValidAST = null; // To store the last valid AST received from the worker
-const sourWorker = new Worker('./sour_worker.js');
 
 let activeFileName = null;
 
@@ -483,78 +480,37 @@ if (runSourButton) {
     });
 }
 
-// --- Syntax Highlighting Logic ---
-function escapeHtml(unsafe) {
-    if (unsafe === null || unsafe === undefined) return '';
-    return unsafe
-         .replace(/&/g, "&amp;")
-         .replace(/</g, "&lt;")
-         .replace(/>/g, "&gt;")
-         .replace(/"/g, "&quot;")
-         .replace(/'/g, "&#039;");
-}
 
-// updateHighlighting now accepts the code string and tokens as arguments
-function updateHighlighting(currentCode, prog) {
-    const htmlParts = [];
-
-    tokensToHighlight.forEach(token => {
-        const value = escapeHtml(token.value);
-        let classList = '';
-        let isErrorToken = false;
-
-        if (sourSyntaxError &&
-            token.line === sourSyntaxError.line &&
-            token.column === sourSyntaxError.column &&
-            token.originalLength > 0) {
-            isErrorToken = true;
+function updateHighlighting(code, prog) {
+    const text = new SpannableText(code)
+    
+    console.log(code, prog)
+    
+    prog.ast.forEach(stmt => {
+        if (!stmt) return
+        
+        if (stmt.type === 'print') {
+            highlightToken(text, stmt.kw, 'tok-kw')
+            highlightExpr(text, stmt.expr)
         }
+    })
 
-        switch (token.type) {
-            case SourLang.TOKEN_TYPES.PRINT:
-                classList = 'sour-keyword';
-                if (isErrorToken) classList += ' sour-error-segment';
-                htmlParts.push(`<span class="${classList}">${value}</span>`);
-                break;
-            case SourLang.TOKEN_TYPES.STRING:
-                classList = 'sour-string';
-                if (isErrorToken) classList += ' sour-error-segment';
-                htmlParts.push(`<span class="${classList}">"${value}"</span>`);
-                break;
-            case SourLang.TOKEN_TYPES.NEWLINE:
-                htmlParts.push('\n');
-                break;
-            case SourLang.TOKEN_TYPES.WHITESPACE:
-                if (isErrorToken) {
-                    htmlParts.push(`<span class="sour-error-segment">${value}</span>`);
-                } else {
-                    htmlParts.push(value);
-                }
-                break;
-            case SourLang.TOKEN_TYPES.EOF:
-                break;
-            default: // UNKNOWN tokens
-                if (isErrorToken) {
-                     htmlParts.push(`<span class="sour-error-segment">${value}</span>`);
-                } else {
-                    htmlParts.push(value);
-                }
-                break;
-        }
-    });
-
-    let finalHtml = htmlParts.join('');
-    // Use currentCode (passed as argument) for this check
-    if (currentCode.endsWith('\n') && !finalHtml.endsWith('\n')) {
-        finalHtml += '\n';
-    }
-
-    highlightingLayer.innerHTML = finalHtml;
+    highlightingLayer.innerHTML = text.toString();
 
     // Synchronize scroll
     if (highlightingArea) {
         highlightingArea.scrollTop = codeEditor.scrollTop;
         highlightingArea.scrollLeft = codeEditor.scrollLeft;
+    }
+}
+
+function highlightToken(text, token, color) {
+    text.color(token.start.index, token.end.index, color)
+}
+
+function highlightExpr(text, expr) {
+    if (expr.type === 'str') {
+        highlightToken(text, expr, "tok-str")
     }
 }
 

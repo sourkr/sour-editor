@@ -90,7 +90,7 @@ body {
         #code-editor {
             resize: none;
             background-color: transparent;
-            color: var(--zed-text-color);
+            color: transparent;
             caret-color: var(--zed-text-color);
             position: relative;
             z-index: 0;
@@ -107,7 +107,6 @@ body {
             pointer-events: none;
             overflow: hidden;
             color: var(--color-on-background);
-            background-color: var(--color-background);
             
             code {
                 display: block;
@@ -134,7 +133,6 @@ body {
     }
 }
 
-{
 /* Zed-like theme */
 @font-face {
     font-family: 'Zed Mono Extended';
@@ -144,12 +142,11 @@ body {
 }
 
 
-
-.sour-keyword {
+.tok-kw {
     color: #C586C0;
 }
 
-.sour-string {
+.tok-str {
     color: #CE9178;
 }
 
