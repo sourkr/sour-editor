@@ -2,22 +2,73 @@ import { getFileStorageKey, getSavedFiles, saveFileToStorage, loadFileFromStorag
 import Parser from "./libs/sourlang/parser.js"
 import Interpreter from "./libs/sourlang/interpreter.js"
 import SpannableText from "./libs/spannable-text.js"
+import { Menu } from "./libs/ui.js"
+
+const actionBar = document.querySelector('action-bar')
 
 const codeEditor = document.getElementById('code-editor');
-
-const toggleFileTreeButton = document.getElementById('nav-icon');
-const actionBarSaveButton = document.getElementById('save'); // Added
 
 const fileSystemContainer = document.getElementById('file-system-container');
 const fileListContainer = document.getElementById('file-list');
 
-const runSourButton = document.getElementById('run');
 const sourOutputContainer = document.getElementById('sour-output-container');
 
 const highlightingArea = document.getElementById('highlighting-area');
 const highlightingLayer = document.getElementById('highlighting-layer');
 
 let activeFileName = null;
+
+
+// Action Bar
+const menu = new Menu()
+
+menu.addItem("save", "icon/save.svg")
+menu.addItem("run", "icon/play-arrow.svg")
+
+actionBar.navigationIconSrc = 'icon/menu.svg'
+actionBar.menu = menu
+
+actionBar.onnavigation = () => fileSystemContainer.classList.toggle('open')
+
+actionBar.onmenuitemclicked = ev => {
+    switch(ev.detail) {
+        case 'save': {
+            const fileName = activeFileName
+            
+            if (!fileName) {
+                alert("No active file selected to save. Please open a file or create a new one via the context menu.");
+                return;
+            }
+            
+            saveActiveFile(fileName, codeEditor.value)
+            break
+        }
+        
+        case 'run': {
+            const interpreter = new Interpreter(codeEditor.value, "internal.sour")
+        
+            interpreter.interprete()
+        
+            ;(async () => {
+                while(true) {
+                    const chunk = await interpreter.inputStream.read()
+                    sourOutputContainer.innerText += chunk
+                }
+            })()
+        
+            ;(async () => {
+                while(true) {
+                    const chunk = await interpreter.errorStream.read()
+                    sourOutputContainer.innerText += chunk
+                }
+            })()
+            
+            break
+        }
+    }
+}
+
+// Others
 
 function displayFiles() {
     fileListContainer.innerHTML = ''; // Clear current list
@@ -144,7 +195,6 @@ function displayFiles() {
     // The _root_ loop is no longer needed as root files are handled by the '/' folder.
 }
 
-// UI-facing save operation
 function saveActiveFile(fileName, content) {
     if (!fileName || fileName.trim() === '') {
         alert('Please enter a valid file name.'); // This alert can stay here as it's UI feedback
@@ -322,61 +372,6 @@ function handleContextMenu(event) { // For desktop right-click
 
 
 // --- File Tree Toggle ---
-toggleFileTreeButton.addEventListener('click', () => {
-    fileSystemContainer.classList.toggle('open');
-    if (fileSystemContainer.classList.contains('open')) {
-        toggleFileTreeButton.title = 'Hide File Tree';
-        // Optional: Change icon to 'close'
-        // toggleFileTreeButton.querySelector('.material-symbols-rounded').textContent = 'close';
-    } else {
-        toggleFileTreeButton.title = 'Show File Tree';
-        // Optional: Change icon back to 'menu'
-        // toggleFileTreeButton.querySelector('.material-symbols-rounded').textContent = 'menu';
-    }
-});
-
-// Action Bar Save Button
-actionBarSaveButton.addEventListener('click', () => {
-    const fileName = activeFileName; // fileNameInput.value.trim() fallback removed
-    if (!fileName) {
-        alert("No active file selected to save. Please open a file or create a new one via the context menu.");
-        return;
-    }
-    if (saveActiveFile(fileName, codeEditor.value)) { // Use the new UI-facing save function
-        // Optional: Show a temporary message like "File saved!"
-        const originalText = actionBarSaveButton.querySelector('.material-symbols-rounded').textContent;
-        const originalTitle = actionBarSaveButton.title;
-        actionBarSaveButton.querySelector('.material-symbols-rounded').textContent = 'check';
-        actionBarSaveButton.title = 'Saved!';
-        setTimeout(() => {
-            actionBarSaveButton.querySelector('.material-symbols-rounded').textContent = originalText;
-            actionBarSaveButton.title = originalTitle;
-        }, 1500);
-    }
-});
-
-// Sour Lang Run Button
-if (runSourButton) {
-    runSourButton.addEventListener('click', () => {
-        const interpreter = new Interpreter(codeEditor.value, "internal.sour")
-        
-        interpreter.interprete()
-        
-        ;(async () => {
-            while(true) {
-                const chunk = await interpreter.inputStream.read()
-                sourOutputContainer.innerText += chunk
-            }
-        })()
-        
-        ;(async () => {
-            while(true) {
-                const chunk = await interpreter.errorStream.read()
-                sourOutputContainer.innerText += chunk
-            }
-        })()
-    });
-}
 
 function highlightToken(text, token, cssClass) { // Renamed color to cssClass for clarity
     if (token && typeof token.start !== 'undefined' && typeof token.end !== 'undefined') {

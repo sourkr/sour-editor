@@ -10,17 +10,9 @@
 </head>
 
 <body>
-    <div id="container">
-        <div id="action-bar">
-            <span id="nav-icon" class="material-symbols-rounded">menu</span>
-            <h1 id="title">Sour Editor</h1>
+    <coordinator-layout>
+        <action-bar></action-bar>
         
-            <div id="action-buttons">
-                <span id="save" class="material-symbols-rounded">save</span>
-                <span id="run" class="material-symbols-rounded">play_arrow</span>
-            </div>
-        </div>
-    
         <div id="main">
             <div id="editor-container">
                 <pre id="highlighting-area" aria-hidden="true"><code id="highlighting-layer"></code></pre>
@@ -29,13 +21,15 @@
     
             <div id="sour-output-container"></div>
         </div>
-    </div>
+    </coordinator-layout>
     
     <div id="file-system-container">
         <div id="file-list">
         </div>
     </div>
-
+    
+    <script src="https://cdn.jsdelivr.net/npm/eruda"></script>
+    <script>eruda.init();</script>
     <script type="module" src="main.js"></script>
 </body>
 </html>
