@@ -1,0 +1,1 @@
+dont add unnecssery semicolon in js code
