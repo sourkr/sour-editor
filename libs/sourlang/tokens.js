@@ -50,9 +50,19 @@ export class TokenStream {
         }
         
         if (char === '"') {
-            this.#chars.next()
-            const str = this.#read(() => this.#chars.peek() !== '"' || this.#chars.peek() !== EOF)
-            return this.#tok("str", str.slice(1, -1))
+            let strValue = "";
+            this.#chars.next(); // Consume the opening quote
+            while (this.#chars.has && this.#chars.peek() !== '"' && this.#chars.peek() !== EOF) {
+                strValue += this.#chars.next();
+            }
+            if (this.#chars.peek() === '"') {
+                this.#chars.next(); // Consume the closing quote
+            } else {
+                // Unterminated string, an error should probably be reported by the parser
+                // or here if we add error reporting to the tokenizer.
+                // For now, the parser will likely complain about unexpected EOF or next token.
+            }
+            return this.#tok("str", strValue);
         }
         
         if (char === EOF) {

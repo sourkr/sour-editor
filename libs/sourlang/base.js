@@ -15,12 +15,29 @@ export default class BaseParser {
     }
     
     error(msg) {
-        this.#errors.push(`ParseError: ${msg}`)
+        // Store more detailed error objects
+        let errorObject = { message: msg };
+        if (typeof msg === 'object' && msg.token && msg.message) { // If a rich error object is passed
+            errorObject = msg;
+        } else if (msg.token) { // If an object with a token and implicit message is passed
+             errorObject.message = `Unexpected token '${msg.token.value}'`;
+             errorObject.token = msg.token;
+        } else { // Simple message string
+            errorObject.message = msg;
+        }
+
+        // Add token details if not already part of a rich error object
+        if (errorObject.token && errorObject.token.start) {
+            errorObject.line = errorObject.token.start.lineno;
+            errorObject.column = errorObject.token.start.col;
+            // errorObject.length = errorObject.token.end.index - errorObject.token.start.index;
+        }
+        this.#errors.push(errorObject);
     }
     
     file() {
-        // console.log(this.#tokens.next())
-        this.error(`Unexpected token '${this.next().value}'.`)
+        const token = this.next(); // Consume the token
+        this.error({ message: `Unexpected token '${token.value}'`, token: token });
     }
     
     peek() {
@@ -43,8 +60,9 @@ export default class BaseParser {
         if (!type) return token
         if (token.type === type) return token
         
-        this.error(`Expecting '${this.#token(type)}' but got '${token.value}'`)
-        return token
+        // Pass the unexpected token to the error method for more detailed error reporting
+        this.error({ message: `Expecting '${this.#token(type)}' but got '${token.value}'`, token: token });
+        return token; // Return the problematic token as per original logic, parser might try to recover or stop.
     }
     
     is(type, value) {
