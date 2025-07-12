@@ -9,12 +9,21 @@ export function initializeEditor(codeEditor, highlightingArea, highlightingLayer
     // Event Listeners
     if (codeEditor) {
         codeEditor.addEventListener('input', (e) => {
-            if (e.inputType === 'insertText' && e.data === '"') {
+            if (e.inputType === 'insertText') {
                 const start = codeEditor.selectionStart;
                 const end = codeEditor.selectionEnd;
                 const text = codeEditor.value;
-                codeEditor.value = text.substring(0, start - 1) + '""' + text.substring(end);
-                codeEditor.selectionStart = codeEditor.selectionEnd = start;
+
+                if (e.data === '"') {
+                    codeEditor.value = text.substring(0, start - 1) + '""' + text.substring(end);
+                    codeEditor.selectionStart = codeEditor.selectionEnd = start;
+                } else if (e.data === "'") {
+                    codeEditor.value = text.substring(0, start - 1) + "''" + text.substring(end);
+                    codeEditor.selectionStart = codeEditor.selectionEnd = start;
+                } else if (e.data === '(') {
+                    codeEditor.value = text.substring(0, start - 1) + '()' + text.substring(end);
+                    codeEditor.selectionStart = codeEditor.selectionEnd = start;
+                }
             }
 
             updateHighlighting(codeEditor.value, codeEditor, highlightingArea, highlightingLayer);
@@ -47,7 +56,7 @@ export function initializeEditor(codeEditor, highlightingArea, highlightingLayer
                     e.preventDefault();
                     const selected = autocompletePopup.querySelector('.selected');
                     if (selected) {
-                        insertSuggestion(selected.dataset.suggestion, codeEditor);
+                        insertSuggestion(selected.dataset.suggestion, selected.dataset.suggestionType, codeEditor);
                     }
                 } else if (e.key === 'Escape') {
                     e.preventDefault();
@@ -85,6 +94,8 @@ function highlightExpr(text, expr) {
     if (!expr) return;
     if (expr.type === 'str') {
         highlightToken(text, expr, "tok-str");
+    } else if (expr.type === 'char') {
+        highlightToken(text, expr, "tok-char");
     }
     // Add more expression types here
 }
@@ -211,28 +222,35 @@ function showAutocomplete(codeEditor) {
 
     if (currentWord.length === 0) return;
 
-    const keywords = ['print']; // Add more keywords as needed
-    const suggestions = keywords.filter(kw => kw.startsWith(currentWord));
+    const keywords = ['print'];
+        const functions = ['_stdout'];
 
-    if (suggestions.length > 0) {
-        autocompletePopup = document.createElement('div');
-        autocompletePopup.className = 'autocomplete-popup';
+        const keywordSuggestions = keywords.filter(kw => kw.startsWith(currentWord)).map(s => ({ type: 'keyword', value: s }));
+        const functionSuggestions = functions.filter(func => func.startsWith(currentWord)).map(s => ({ type: 'function', value: s }));
 
-        suggestions.forEach((suggestion, index) => {
-            const item = document.createElement('div');
-            item.className = 'autocomplete-item';
-            const boldedPart = suggestion.substring(0, currentWord.length);
-            const remainingPart = suggestion.substring(currentWord.length);
-            item.innerHTML = `<span class="autocomplete-icon">\ueb62</span><strong>${boldedPart}</strong>${remainingPart}`;
-            item.dataset.suggestion = suggestion;
-            if (index === 0) {
-                item.classList.add('selected');
-            }
-            item.addEventListener('click', () => {
-                insertSuggestion(suggestion, codeEditor);
+        const suggestions = [...keywordSuggestions, ...functionSuggestions];
+
+        if (suggestions.length > 0) {
+            autocompletePopup = document.createElement('div');
+            autocompletePopup.className = 'autocomplete-popup';
+
+            suggestions.forEach((suggestion, index) => {
+                const item = document.createElement('div');
+                item.className = 'autocomplete-item';
+                const boldedPart = suggestion.value.substring(0, currentWord.length);
+                const remainingPart = suggestion.value.substring(currentWord.length);
+                const icon = suggestion.type === 'function' ? '\uea8c' : '\ueb62';
+                item.innerHTML = `<span class="autocomplete-icon">${icon}</span><strong>${boldedPart}</strong>${remainingPart}`;
+                item.dataset.suggestion = suggestion.value;
+                item.dataset.suggestionType = suggestion.type; // Add this line
+                if (index === 0) {
+                    item.classList.add('selected');
+                }
+                item.addEventListener('click', () => {
+                    insertSuggestion(suggestion.value, suggestion.type, codeEditor);
+                });
+                autocompletePopup.appendChild(item);
             });
-            autocompletePopup.appendChild(item);
-        });
 
         const cursorCoords = getCursorCoords(codeEditor);
         autocompletePopup.style.left = `${cursorCoords.x}px`;
@@ -242,13 +260,21 @@ function showAutocomplete(codeEditor) {
     }
 }
 
-function insertSuggestion(suggestion, codeEditor) {
+function insertSuggestion(suggestion, suggestionType, codeEditor) {
     const cursorPosition = codeEditor.selectionStart;
     const textBeforeCursor = codeEditor.value.substring(0, cursorPosition);
     const currentWord = textBeforeCursor.split(/\s+/).pop();
     const textAfterCursor = codeEditor.value.substring(cursorPosition);
 
-    const newText = textBeforeCursor.substring(0, textBeforeCursor.length - currentWord.length) + suggestion + textAfterCursor;
+    let newText = textBeforeCursor.substring(0, textBeforeCursor.length - currentWord.length) + suggestion;
+    let newCursorPosition = cursorPosition - currentWord.length + suggestion.length;
+
+    if (suggestionType === 'function') {
+        newText += '()';
+        newCursorPosition += 1; // Move cursor inside the parentheses
+    }
+
+    newText += textAfterCursor;
     codeEditor.value = newText;
     updateHighlighting(newText, codeEditor);
 
@@ -258,7 +284,7 @@ function insertSuggestion(suggestion, codeEditor) {
     }
 
     codeEditor.focus();
-    codeEditor.selectionEnd = cursorPosition - currentWord.length + suggestion.length;
+    codeEditor.selectionEnd = newCursorPosition;
 }
 
 function navigateAutocomplete(key) {

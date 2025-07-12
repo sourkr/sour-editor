@@ -6,20 +6,37 @@ export class BaseParser {
     #filepath
     #input
     
+    #scopes = []
+    
     constructor(input, filepath = 'internal.sour') {
         this.#tokens = new TokenStream(input)
         this.#input = input
         this.#filepath = filepath
     }
     
+    scope(parse, ...args) {
+        this.#scopes.push({ hasError: false })
+        const res = parse.call(this, ...args)
+        this.#scopes.pop()
+        return res
+    }
+    
+    hasError() {
+        return this.#scopes.at(-1).hasError
+    }
+    
     parse() {
         const ast = []
-        while (this.#tokens.has) ast.push(this.file())
+        while (this.#tokens.has) ast.push(this.scope(this.file))
         return { ast, errors: this.#errors }
     }
     
     error(msg, token) {
         this.#errors.push(new ErrorData(msg, token, this.#input, this.#filepath));
+        
+        if (this.#scopes.length) {
+            this.#scopes.at(-1).hasError = true
+        }
     }
     
     file() {
@@ -29,6 +46,11 @@ export class BaseParser {
     }
     
     get has() {
+        if (this.peek().type === 'space') {
+            this.#tokens.next()
+            return this.#tokens.has
+        }
+        
         return this.#tokens.has
     }
     

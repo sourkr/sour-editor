@@ -49,8 +49,8 @@ export default class Interpreter {
     
     #interprete(expr, resolve, reject) {
         if (expr.type === 'func-call') {
-            if (expr.name === '_stdout') {
-                this.#interprete(expr.args[0], char => {
+            if (expr.name.value === '_stdout') {
+                this.#interprete(expr.args.list[0], char => {
                     this.#outstream.write(String.fromCharCode(char))
                     resolve()
                 }, reject)
@@ -68,6 +68,11 @@ export default class Interpreter {
         
         if (expr.type === 'str') {
             resolve(expr.value)
+            return
+        }
+        
+        if (expr.type === 'char') {
+            resolve(expr.value.charCodeAt(0))
             return
         }
     }

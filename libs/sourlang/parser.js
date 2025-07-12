@@ -37,6 +37,8 @@ export default class Parser extends BaseParser {
             while(this.has) {
                list.push(parse.call(this))
                
+               if (this.hasError()) return { startTok, list, sep }
+               
                if (this.is('punc', cond[2])) {
                    const endTok = this.next()
                    return { startTok, list, sep, endTok }
