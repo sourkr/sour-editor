@@ -627,7 +627,9 @@ function showAutocomplete() {
         suggestions.forEach((suggestion, index) => {
             const item = document.createElement('div');
             item.className = 'autocomplete-item';
-            item.innerHTML = `<span class="autocomplete-icon"></span>${suggestion}`;
+            const boldedPart = suggestion.substring(0, currentWord.length);
+            const remainingPart = suggestion.substring(currentWord.length);
+            item.innerHTML = `<span class="autocomplete-icon"></span><strong>${boldedPart}</strong>${remainingPart}`;
             item.dataset.suggestion = suggestion;
             if (index === 0) {
                 item.classList.add('selected');
@@ -706,6 +708,11 @@ function updateHighlighting(code) {
         if (stmt.type === 'print') {
             if (stmt.kw) highlightToken(text, stmt.kw, 'tok-kw');
             if (stmt.expr) highlightExpr(text, stmt.expr);
+        } else if (stmt.type === 'func-call') {
+            if (stmt.name) highlightToken(text, stmt.name, 'tok-func-call');
+            if (stmt.args) {
+                stmt.args.list.forEach(arg => highlightExpr(text, arg));
+            }
         }
     });
     
