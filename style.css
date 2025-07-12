@@ -175,6 +175,22 @@ nav-drawer {
     color: #DCDCAA; /* A common color for function calls */
 }
 
+.tok-bracket-depth-0 {
+    color: #FFD700; /* Gold */
+}
+
+.tok-bracket-depth-1 {
+    color: #ADFF2F; /* GreenYellow */
+}
+
+.tok-bracket-depth-2 {
+    color: #87CEFA; /* LightSkyBlue */
+}
+
+.tok-bracket-depth-3 {
+    color: #FF69B4; /* HotPink */
+}
+
 .tok-err {
     display: inline-block;
     text-decoration: underline;

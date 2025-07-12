@@ -471,6 +471,116 @@ function highlightExpr(text, expr) {
     // Add more expression types here
 }
 
+// Function to find the matching bracket
+function findMatchingBracket(code, position) {
+    const brackets = {
+        '(': ')',
+        '[': ']',
+        '{': '}',
+        ')': '(',
+        ']': '[',
+        '}': '{'
+    };
+
+    const openBrackets = ['(', '[', '{'];
+    const closeBrackets = [')', ']', '}'];
+
+    const char = code[position];
+    if (!brackets[char]) {
+        return -1; // Not a bracket
+    }
+
+    const isOpening = openBrackets.includes(char);
+    const targetBracket = brackets[char];
+    let balance = 0;
+
+    if (isOpening) {
+        for (let i = position + 1; i < code.length; i++) {
+            if (openBrackets.includes(code[i])) {
+                balance++;
+            } else if (closeBrackets.includes(code[i])) {
+                if (code[i] === targetBracket) {
+                    if (balance === 0) {
+                        return i;
+                    } else {
+                        balance--;
+                    }
+                }
+            }
+        }
+    } else { // Closing bracket
+        for (let i = position - 1; i >= 0; i--) {
+            if (closeBrackets.includes(code[i])) {
+                balance++;
+            } else if (openBrackets.includes(code[i])) {
+                if (code[i] === targetBracket) {
+                    if (balance === 0) {
+                        return i;
+                    } else {
+                        balance--;
+                    }
+                }
+            }
+        }
+    }
+    return -1; // No matching bracket found
+}
+
+
+function findMatchingBracket(code, position) {
+    const brackets = {
+        '(': ')',
+        '[': ']',
+        '{': '}',
+        ')': '(',
+        ']': '[',
+        '}': '{'
+    };
+
+    const openBrackets = ['(', '[', '{'];
+    const closeBrackets = [')', ']', '}'];
+
+    const char = code[position];
+    if (!brackets[char]) {
+        return -1; // Not a bracket
+    }
+
+    const isOpening = openBrackets.includes(char);
+    const targetBracket = brackets[char];
+    let balance = 0;
+
+    if (isOpening) {
+        for (let i = position + 1; i < code.length; i++) {
+            if (openBrackets.includes(code[i])) {
+                balance++;
+            } else if (closeBrackets.includes(code[i])) {
+                if (code[i] === targetBracket) {
+                    if (balance === 0) {
+                        return i;
+                    } else {
+                        balance--;
+                    }
+                }
+            }
+        }
+    } else { // Closing bracket
+        for (let i = position - 1; i >= 0; i--) {
+            if (closeBrackets.includes(code[i])) {
+                balance++;
+            } else if (openBrackets.includes(code[i])) {
+                if (code[i] === targetBracket) {
+                    if (balance === 0) {
+                        return i;
+                    } else {
+                        balance--;
+                    }
+                }
+            }
+        }
+    }
+    return -1; // No matching bracket found
+}
+
 
 if (codeEditor) {
     codeEditor.addEventListener('input', (e) => {
@@ -496,6 +606,10 @@ if (codeEditor) {
         }
     });
     
+    codeEditor.addEventListener('keyup', () => {
+        updateHighlighting(codeEditor.value);
+    });
+
     codeEditor.addEventListener('keydown', (e) => {
         console.log(e)
         if (autocompletePopup) {
@@ -516,7 +630,6 @@ if (codeEditor) {
                 }
             }
         }
-        
         
 
         if (e.ctrlKey && e.key === 'i') {
@@ -629,7 +742,7 @@ function showAutocomplete() {
             item.className = 'autocomplete-item';
             const boldedPart = suggestion.substring(0, currentWord.length);
             const remainingPart = suggestion.substring(currentWord.length);
-            item.innerHTML = `<span class="autocomplete-icon"></span><strong>${boldedPart}</strong>${remainingPart}`;
+            item.innerHTML = `<span class="autocomplete-icon">\ueb62</span><strong>${boldedPart}</strong>${remainingPart}`;
             item.dataset.suggestion = suggestion;
             if (index === 0) {
                 item.classList.add('selected');
@@ -719,6 +832,30 @@ function updateHighlighting(code) {
     prog.errors.forEach(err => {
         text.error(err.start.index, err.end.index)
     })
+
+    // Depth-based bracket highlighting
+    const bracketMap = {
+        '(': ')', ')': '(',
+        '[': ']', ']': '[',
+        '{': '}', '}': '{'
+    };
+    const openBrackets = ['(', '[', '{'];
+    const closeBrackets = [')', ']', '}'];
+    const MAX_DEPTH = 4; // Number of distinct colors
+    let bracketDepth = 0;
+
+    for (let i = 0; i < code.length; i++) {
+        const char = code[i];
+        if (openBrackets.includes(char)) {
+            text.color(i, i + 1, `tok-bracket-depth-${bracketDepth % MAX_DEPTH}`);
+            bracketDepth++;
+        } else if (closeBrackets.includes(char)) {
+            if (bracketDepth > 0) {
+                bracketDepth--;
+            }
+            text.color(i, i + 1, `tok-bracket-depth-${bracketDepth % MAX_DEPTH}`);
+        }
+    }
     
     highlightingLayer.innerHTML = text.toString();
 
