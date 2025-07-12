@@ -1,91 +1,75 @@
-import { getFileStorageKey, getSavedFiles, saveFileToStorage, loadFileFromStorage, deleteFileFromStorage } from './filetree.js'
-import Parser from "./libs/sourlang/parser.js"
-import Interpreter from "./libs/sourlang/interpreter.js"
-import SpannableText from "./libs/spannable-text.js"
-import { Menu } from "./libs/ui.js"
+import { getFileStorageKey, getSavedFiles, saveFileToStorage, loadFileFromStorage, deleteFileFromStorage } from './filetree.js';
+import { initializeEditor, updateHighlighting } from './editor.js'; // Import editor functions
+import Interpreter from "./libs/sourlang/interpreter.js";
+import { Menu } from "./libs/ui.js";
 
-const actionBar = document.querySelector('action-bar')
-
+const actionBar = document.querySelector('action-bar');
 const codeEditor = document.getElementById('code-editor');
-
 const fileSystemContainer = document.getElementById('file-system-container');
 const fileListContainer = document.getElementById('file-list');
-
 const highlightingArea = document.getElementById('highlighting-area');
 const highlightingLayer = document.getElementById('highlighting-layer');
-
 const tabBar = document.getElementById('tab-bar');
 const tabContent = document.getElementById('tab-content');
 
 let activeFileName = null;
-let activeTabs = []; // Array to store currently open files/tabs
+let activeTabs = [];
 
 // Action Bar
-const menu = new Menu()
-
-menu.addItem("save", "icon/save.svg")
-menu.addItem("run", "icon/play-arrow.svg")
-
-// actionBar.navigationIconSrc = 'icon/menu.svg'
-actionBar.menu = menu
-
-// actionBar.onnavigation = () => fileSystemContainer.classList.toggle('open')
+const menu = new Menu();
+menu.addItem("save", "icon/save.svg");
+menu.addItem("run", "icon/play-arrow.svg");
+actionBar.menu = menu;
 
 actionBar.onmenuitemclicked = ev => {
-    switch(ev.detail) {
+    switch (ev.detail) {
         case 'save': {
-            const fileName = activeFileName
-            
+            const fileName = activeFileName;
             if (!fileName) {
                 alert("No active file selected to save. Please open a file or create a new one via the context menu.");
                 return;
             }
-            
-            saveActiveFile(fileName, codeEditor.value)
-            break
+            saveActiveFile(fileName, codeEditor.value);
+            break;
         }
-        
         case 'run': {
             const interpreter = new Interpreter(codeEditor.value, "internal.sour");
             const outputFileName = "Output";
             let outputContent = "";
-            addTab(outputFileName, outputContent); // Create or activate the Output tab
+            addTab(outputFileName, outputContent);
             
             interpreter.interprete();
         
             const updateOutput = (chunk) => {
                 const tabIndex = activeTabs.findIndex(tab => tab.fileName === outputFileName);
-                
                 if (tabIndex !== -1) {
                     activeTabs[tabIndex].content += chunk;
-                    if (activeFileName === outputFileName) { // Only update editor if Output tab is active
+                    if (activeFileName === outputFileName) {
                         codeEditor.value = activeTabs[tabIndex].content;
                     }
                 }
             };
         
             (async () => {
-                while(true) {
+                while (true) {
                     const chunk = await interpreter.inputStream.read();
                     updateOutput(chunk);
                 }
             })();
         
             (async () => {
-                while(true) {
+                while (true) {
                     const chunk = await interpreter.errorStream.read();
                     updateOutput(chunk);
                 }
             })();
-            
-            break
+            break;
         }
     }
-}
+};
 
 // Tab System Functions
 function addTab(fileName, content) {
-    // Check if tab already exists
     const existingTab = activeTabs.find(tab => tab.fileName === fileName);
     if (existingTab) {
         activateTab(fileName);
@@ -97,14 +81,14 @@ function addTab(fileName, content) {
     tabItem.dataset.fileName = fileName;
 
     const tabNameSpan = document.createElement('span');
-    tabNameSpan.textContent = fileName.split('/').pop(); // Display only the file name
+    tabNameSpan.textContent = fileName.split('/').pop();
     tabItem.appendChild(tabNameSpan);
 
     const closeButton = document.createElement('span');
     closeButton.classList.add('tab-close-button');
-    closeButton.innerHTML = '&times;'; // 'x' icon
+    closeButton.innerHTML = '×';
     closeButton.addEventListener('click', (e) => {
-        e.stopPropagation(); // Prevent tab activation when closing
+        e.stopPropagation();
         closeTab(fileName);
     });
     tabItem.appendChild(closeButton);
@@ -117,19 +101,16 @@ function addTab(fileName, content) {
 }
 
 function activateTab(fileName) {
-    // Deactivate current active tab
     const currentActiveTab = tabBar.querySelector('.tab-item.active');
     if (currentActiveTab) {
         currentActiveTab.classList.remove('active');
     }
 
-    // Activate new tab
     const newActiveTab = tabBar.querySelector(`.tab-item[data-file-name="${fileName}"]`);
     if (newActiveTab) {
         newActiveTab.classList.add('active');
     }
 
-    // Save current file's content before loading new one
     if (activeFileName && activeFileName !== fileName) {
         const currentFileIndex = activeTabs.findIndex(tab => tab.fileName === activeFileName);
         if (currentFileIndex !== -1) {
@@ -137,22 +118,20 @@ function activateTab(fileName) {
         }
     }
 
-    // Load content of the activated tab
     const tabToLoad = activeTabs.find(tab => tab.fileName === fileName);
     if (tabToLoad) {
         codeEditor.value = tabToLoad.content;
         activeFileName = fileName;
-        updateHighlighting(codeEditor.value);
+        updateHighlighting(codeEditor.value, codeEditor, highlightingArea, highlightingLayer);
 
-        // Set editor to read-only if it's the output tab
         if (fileName === "Output") {
             codeEditor.setAttribute('readonly', 'true');
             codeEditor.classList.add('output-mode');
-            highlightingArea.style.display = 'none'; // Hide highlighting area for output tab
+            highlightingArea.style.display = 'none';
         } else {
             codeEditor.removeAttribute('readonly');
             codeEditor.classList.remove('output-mode');
-            highlightingArea.style.display = 'block'; // Show highlighting area for code tabs
+            highlightingArea.style.display = 'block';
         }
     }
 }
@@ -168,30 +147,25 @@ function closeTab(fileName) {
         activeTabs.splice(indexToRemove, 1);
     }
 
-    // If the closed tab was the active one, activate another tab or clear editor
     if (activeFileName === fileName) {
         if (activeTabs.length > 0) {
-            activateTab(activeTabs[activeTabs.length - 1].fileName); // Activate the last tab
+            activateTab(activeTabs[activeTabs.length - 1].fileName);
         } else {
             activeFileName = null;
             codeEditor.value = '';
-            updateHighlighting('');
+            updateHighlighting('', codeEditor, highlightingArea, highlightingLayer);
         }
     }
 }
 
-// Others
-
 function displayFiles() {
-    fileListContainer.innerHTML = ''; // Clear current list
-    const files = getSavedFiles(); // These are full paths, e.g., "folder/file.js" or "file.js"
-
-    // Initialize fileTree with a root folder '/'
+    fileListContainer.innerHTML = '';
+    const files = getSavedFiles();
     const fileTree = { '/': [] };
 
     files.forEach(fullPath => {
         const parts = fullPath.split('/');
-        if (parts.length > 1 && parts[0] !== '') { // Ensure folder name is not empty
+        if (parts.length > 1 && parts[0] !== '') {
             const folderName = parts[0];
             const fileName = parts.slice(1).join('/');
             if (!fileTree[folderName]) {
@@ -199,26 +173,18 @@ function displayFiles() {
             }
             fileTree[folderName].push(fileName);
         } else {
-            // Files like "file.js" or "/file.js" (if user types it) go to root '/'
             fileTree['/'].push(fullPath.startsWith('/') ? fullPath.substring(1) : fullPath);
         }
     });
 
-    // Get all folder names, ensure '/' is first if present, then sort others
     let folderNames = Object.keys(fileTree);
-    if (fileTree['/'] && fileTree['/'].length === 0 && folderNames.length > 1) {
-        // If root is empty and there are other folders, maybe don't show it unless it's the *only* thing
-        // For now, always show '/' if it exists (it always will due to initialization)
-    }
-
     folderNames = folderNames.sort((a, b) => {
-        if (a === '/') return -1; // '/' always first
-        if (b === '/') return 1;  // '/' always first
-        return a.localeCompare(b); // बाकी सब बाद में
+        if (a === '/') return -1;
+        if (b === '/') return 1;
+        return a.localeCompare(b);
     });
 
     folderNames.forEach(folderName => {
-        // Skip empty folders unless it's the root folder (which might be empty)
         if (folderName !== '/' && fileTree[folderName].length === 0) {
             return;
         }
@@ -226,19 +192,14 @@ function displayFiles() {
         const folderContainer = document.createElement('div');
         folderContainer.classList.add('folder-entry');
 
-        // Special handling for root display name if preferred, but folderName is '/'
-        // const displayFolderName = (folderName === '/') ? 'Root' : folderName;
-
         const folderHeader = document.createElement('div');
         folderHeader.classList.add('folder-header');
-        // Add data attributes for context menu
         folderHeader.dataset.folderPath = folderName === '/' ? '/' : `${folderName}/`;
         folderHeader.dataset.isRoot = (folderName === '/').toString();
 
-
         const folderIcon = document.createElement('span');
         folderIcon.classList.add('material-symbols-rounded', 'folder-icon');
-        folderIcon.textContent = 'folder'; // Default icon
+        folderIcon.textContent = 'folder';
         folderHeader.appendChild(folderIcon);
 
         const folderNameSpan = document.createElement('span');
@@ -251,13 +212,9 @@ function displayFiles() {
         filesInFolderDiv.classList.add('files-in-folder');
 
         fileTree[folderName].sort().forEach(fileNameInFolder => {
-            // If folderName is '/', fileNameInFolder is already the full path for root files.
-            // Otherwise, construct fullPath.
             const fullPath = (folderName === '/') ? fileNameInFolder : `${folderName}/${fileNameInFolder}`;
-
             const fileEntry = document.createElement('div');
             fileEntry.classList.add('file-entry');
-            // For root files under '/', fileNameInFolder is the full path. For others, it's the relative path.
             fileEntry.textContent = (folderName === '/') ? fullPath : fileNameInFolder;
             fileEntry.dataset.fullPath = fullPath;
 
@@ -265,14 +222,13 @@ function displayFiles() {
                 fileEntry.classList.add('active-file');
             }
             fileEntry.addEventListener('click', (e) => {
-                e.stopPropagation(); // Prevent folder click event
+                e.stopPropagation();
                 loadFile(fullPath);
             });
             filesInFolderDiv.appendChild(fileEntry);
         });
         folderContainer.appendChild(filesInFolderDiv);
 
-        // Basic expand/collapse
         folderHeader.addEventListener('click', () => {
             const isOpen = filesInFolderDiv.style.display !== 'none';
             filesInFolderDiv.style.display = isOpen ? 'none' : 'block';
@@ -280,17 +236,10 @@ function displayFiles() {
             folderIcon.textContent = isOpen ? 'folder' : 'folder_open';
         });
 
-        // Check if active file is in this folder to auto-expand and set icon
         let shouldBeOpen = false;
         if (folderName === '/') {
-            // Open root if active file is a root file (no slash in its name after initial possible slash)
-            // and activeFileName itself is not null or just "/"
             shouldBeOpen = activeFileName && activeFileName.indexOf('/') === -1 && activeFileName !== '';
-             if (!activeFileName && fileTree['/'].length > 0) { // If no active file, but root has files, open root by default
-                // shouldBeOpen = true; // User feedback might prefer this default to closed
-             }
         } else {
-            // Open folder if active file is within this folder
             shouldBeOpen = activeFileName && activeFileName.startsWith(folderName + '/');
         }
 
@@ -304,72 +253,51 @@ function displayFiles() {
         }
         fileListContainer.appendChild(folderContainer);
     });
-    // The _root_ loop is no longer needed as root files are handled by the '/' folder.
 }
 
 function saveActiveFile(fileName, content) {
     if (!fileName || fileName.trim() === '') {
-        alert('Please enter a valid file name.'); // This alert can stay here as it's UI feedback
+        alert('Please enter a valid file name.');
         return false;
     }
     if (saveFileToStorage(fileName.trim(), content)) {
         activeFileName = fileName.trim();
-        // Update content in activeTabs array
         const tabIndex = activeTabs.findIndex(tab => tab.fileName === fileName);
         if (tabIndex !== -1) {
             activeTabs[tabIndex].content = content;
         }
-        displayFiles(); // Refresh file list after successful save
+        displayFiles();
         return true;
     }
-    return false; // Should not happen if fileName is valid, but as a fallback
+    return false;
 }
 
-// UI-facing load operation
-function loadFile(fileName) { // Renamed from loadFileToEditor to avoid confusion
+function loadFile(fileName) {
     const content = loadFileFromStorage(fileName);
     if (content !== null) {
-        addTab(fileName, content); // Add/activate tab
-        // The editor content and activeFileName are set by activateTab
-        // updateHighlighting is also called by activateTab
+        addTab(fileName, content);
     } else {
         alert(`File "${fileName}" not found.`);
     }
-    // Ensure highlighting is updated after loading a file
-    // updateHighlighting(codeEditor.value); // This is now handled by activateTab
 }
 
-// UI-facing delete operation
 function deleteActiveFile(fileName) {
     if (!fileName || fileName.trim() === '') {
-        alert('No file selected or name provided to delete.'); // UI feedback
+        alert('No file selected or name provided to delete.');
         return;
     }
-    if (confirm(`Are you sure you want to delete "${fileName.trim()}"?`)) { // UI feedback
+    if (confirm(`Are you sure you want to delete "${fileName.trim()}"?`)) {
         deleteFileFromStorage(fileName.trim());
-        closeTab(fileName.trim()); // Close the tab if it's open
-        displayFiles(); // Refresh file list
+        closeTab(fileName.trim());
+        displayFiles();
     }
 }
 
-// Initial load
-document.addEventListener('DOMContentLoaded', () => {
-    displayFiles();
-    // Optionally, load the first file or a last opened file
-    // const files = getSavedFiles();
-    // if (files.length > 0) {
-    //     loadFile(files[0]);
-    // }
-    // fileSystemContainer.style.display = 'none'; // No longer needed, drawer is positioned off-screen by default
-    initializeContextMenu();
-});
-
-// --- Context Menu Logic ---
+// Context Menu Logic
 let contextMenuTimeout;
-const CONTEXT_MENU_HOLD_DURATION = 700; // ms
+const CONTEXT_MENU_HOLD_DURATION = 700;
 
 function showContextMenu(x, y, targetElement) {
-    // Remove existing context menu if any
     const existingMenu = document.getElementById('context-menu');
     if (existingMenu) {
         existingMenu.remove();
@@ -380,9 +308,8 @@ function showContextMenu(x, y, targetElement) {
     menu.style.left = `${x}px`;
     menu.style.top = `${y}px`;
 
-    // Check if the target is the root folder or a specific folder
     const isRootFolder = targetElement.dataset.isRoot === 'true';
-    const folderPath = targetElement.dataset.folderPath; // Will be '/' for root or 'folderName/'
+    const folderPath = targetElement.dataset.folderPath;
 
     const createFileOption = document.createElement('div');
     createFileOption.textContent = 'Create File';
@@ -392,51 +319,42 @@ function showContextMenu(x, y, targetElement) {
         const newFileName = prompt(`Enter name for new file in ${folderPath === '/' ? 'root' : folderPath}:`);
         if (newFileName && newFileName.trim() !== '') {
             const fullPath = folderPath === '/' ? newFileName.trim() : `${folderPath}${newFileName.trim()}`;
-            // Check if file already exists
-            if (getSavedFiles().includes(fullPath)) { // getSavedFiles is from filetree.js
+            if (getSavedFiles().includes(fullPath)) {
                 alert(`File "${fullPath}" already exists.`);
             } else {
-                // codeEditor.value = ''; // Handled by addTab
-                // activeFileName = fullPath; // Handled by addTab
-                saveFileToStorage(fullPath, ''); // Save empty file to storage
-                addTab(fullPath, ''); // Add and activate new tab
-                displayFiles(); // Refresh file list
+                saveFileToStorage(fullPath, '');
+                addTab(fullPath, '');
+                displayFiles();
                 alert(`File "${fullPath}" created.`);
-                // updateHighlighting(''); // Handled by addTab
             }
         }
     });
     menu.appendChild(createFileOption);
 
-    // Add more options as needed, e.g., "Create Folder", "Rename", "Delete" for specific items
-
     document.body.appendChild(menu);
 
-    // Close menu when clicking outside
-    setTimeout(() => { // Add to event queue to prevent immediate closing
+    setTimeout(() => {
         document.addEventListener('click', function closeMenuOnClickOutside(event) {
             if (!menu.contains(event.target)) {
                 menu.remove();
                 document.removeEventListener('click', closeMenuOnClickOutside);
             }
-        }, { once: true }); // Use once: true for self-removing listener
+        }, { once: true });
     }, 0);
 }
 
 function initializeContextMenu() {
-    // Listener for file list container to handle long press on folder items
     fileListContainer.addEventListener('touchstart', handleTouchStart, { passive: true });
     fileListContainer.addEventListener('touchend', handleTouchEnd);
-    fileListContainer.addEventListener('contextmenu', handleContextMenu); // For desktop testing
+    fileListContainer.addEventListener('contextmenu', handleContextMenu);
 }
 
 function handleTouchStart(event) {
     const targetFolderHeader = event.target.closest('.folder-header');
     if (targetFolderHeader) {
-        clearTimeout(contextMenuTimeout); // Clear any existing timeout
+        clearTimeout(contextMenuTimeout);
         contextMenuTimeout = setTimeout(() => {
-            event.preventDefault(); // Prevent default touch behavior like scrolling
-            // For touch, clientX/Y might not be what we want, pageX/Y is better
+            event.preventDefault();
             showContextMenu(event.touches[0].pageX, event.touches[0].pageY, targetFolderHeader);
         }, CONTEXT_MENU_HOLD_DURATION);
     }
@@ -444,424 +362,19 @@ function handleTouchStart(event) {
 
 function handleTouchEnd(event) {
     clearTimeout(contextMenuTimeout);
-    // If it was a short tap, the folder click handler will manage expand/collapse
 }
 
-function handleContextMenu(event) { // For desktop right-click
+function handleContextMenu(event) {
     const targetFolderHeader = event.target.closest('.folder-header');
     if (targetFolderHeader) {
-        event.preventDefault(); // Prevent native context menu
+        event.preventDefault();
         showContextMenu(event.pageX, event.pageY, targetFolderHeader);
     }
 }
 
-
-// --- File Tree Toggle ---
-
-function highlightToken(text, token, cssClass) {
-    text.color(token.start.index, token.end.index, cssClass)
-}
-
-function highlightExpr(text, expr) {
-    if (!expr) return;
-    if (expr.type === 'str') {
-        // Assuming string literal tokens have start/end directly
-        highlightToken(text, expr, "tok-str");
-    }
-    // Add more expression types here
-}
-
-// Function to find the matching bracket
-function findMatchingBracket(code, position) {
-    const brackets = {
-        '(': ')',
-        '[': ']',
-        '{': '}',
-        ')': '(',
-        ']': '[',
-        '}': '{'
-    };
-
-    const openBrackets = ['(', '[', '{'];
-    const closeBrackets = [')', ']', '}'];
-
-    const char = code[position];
-    if (!brackets[char]) {
-        return -1; // Not a bracket
-    }
-
-    const isOpening = openBrackets.includes(char);
-    const targetBracket = brackets[char];
-    let balance = 0;
-
-    if (isOpening) {
-        for (let i = position + 1; i < code.length; i++) {
-            if (openBrackets.includes(code[i])) {
-                balance++;
-            } else if (closeBrackets.includes(code[i])) {
-                if (code[i] === targetBracket) {
-                    if (balance === 0) {
-                        return i;
-                    } else {
-                        balance--;
-                    }
-                }
-            }
-        }
-    } else { // Closing bracket
-        for (let i = position - 1; i >= 0; i--) {
-            if (closeBrackets.includes(code[i])) {
-                balance++;
-            } else if (openBrackets.includes(code[i])) {
-                if (code[i] === targetBracket) {
-                    if (balance === 0) {
-                        return i;
-                    } else {
-                        balance--;
-                    }
-                }
-            }
-        }
-    }
-    return -1; // No matching bracket found
-}
-
-
-function findMatchingBracket(code, position) {
-    const brackets = {
-        '(': ')',
-        '[': ']',
-        '{': '}',
-        ')': '(',
-        ']': '[',
-        '}': '{'
-    };
-
-    const openBrackets = ['(', '[', '{'];
-    const closeBrackets = [')', ']', '}'];
-
-    const char = code[position];
-    if (!brackets[char]) {
-        return -1; // Not a bracket
-    }
-
-    const isOpening = openBrackets.includes(char);
-    const targetBracket = brackets[char];
-    let balance = 0;
-
-    if (isOpening) {
-        for (let i = position + 1; i < code.length; i++) {
-            if (openBrackets.includes(code[i])) {
-                balance++;
-            } else if (closeBrackets.includes(code[i])) {
-                if (code[i] === targetBracket) {
-                    if (balance === 0) {
-                        return i;
-                    } else {
-                        balance--;
-                    }
-                }
-            }
-        }
-    } else { // Closing bracket
-        for (let i = position - 1; i >= 0; i--) {
-            if (closeBrackets.includes(code[i])) {
-                balance++;
-            } else if (openBrackets.includes(code[i])) {
-                if (code[i] === targetBracket) {
-                    if (balance === 0) {
-                        return i;
-                    } else {
-                        balance--;
-                    }
-                }
-            }
-        }
-    }
-    return -1; // No matching bracket found
-}
-
-
-if (codeEditor) {
-    codeEditor.addEventListener('input', (e) => {
-        if (e.inputType === 'insertText' && e.data === '"') {
-            const start = codeEditor.selectionStart;
-            const end = codeEditor.selectionEnd;
-            const text = codeEditor.value;
-            codeEditor.value = text.substring(0, start - 1) + '""' + text.substring(end);
-            codeEditor.selectionStart = codeEditor.selectionEnd = start;
-        }
-
-        // updateHighlighting now parses the code itself
-        updateHighlighting(codeEditor.value);
-        removeErrorTooltip();
-        showAutocomplete();
-    });
-
-    codeEditor.addEventListener('scroll', () => {
-        if (highlightingArea) {
-            highlightingArea.scrollTop = codeEditor.scrollTop;
-            highlightingArea.scrollLeft = codeEditor.scrollLeft;
-            // highlightingArea.scrollLeft = codeEditor.scrollLeft; // Redundant line
-        }
-    });
-    
-    codeEditor.addEventListener('keyup', () => {
-        updateHighlighting(codeEditor.value);
-    });
-
-    codeEditor.addEventListener('keydown', (e) => {
-        console.log(e)
-        if (autocompletePopup) {
-            if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
-                e.preventDefault();
-                navigateAutocomplete(e.key);
-            } else if (e.key === 'Enter') {
-                e.preventDefault();
-                const selected = autocompletePopup.querySelector('.selected');
-                if (selected) {
-                    insertSuggestion(selected.dataset.suggestion);
-                }
-            } else if (e.key === 'Escape') {
-                e.preventDefault();
-                if (autocompletePopup) {
-                    autocompletePopup.remove();
-                    autocompletePopup = null;
-                }
-            }
-        }
-        
-
-        if (e.ctrlKey && e.key === 'i') {
-            e.preventDefault();
-            if (lastParseResult && lastParseResult.errors.length > 0) {
-                const cursorPosition = codeEditor.selectionStart;
-                const error = lastParseResult.errors.find(err => {
-                    return cursorPosition >= err.start.index && cursorPosition <= err.end.index;
-                });
-
-                if (error) {
-                    showErrorTooltip(error);
-                } else {
-                    removeErrorTooltip();
-                }
-            }
-        }
-    });
-
-}
-
-function getCursorCoords() {
-    // Create a mirror div
-    const mirrorDiv = document.createElement('div');
-    const style = mirrorDiv.style;
-    const computed = window.getComputedStyle(codeEditor);
-
-    // Copy styles
-    const properties = [
-        'border', 'boxSizing', 'fontFamily', 'fontSize', 'fontWeight', 'height', 'letterSpacing',
-        'lineHeight', 'padding', 'textAlign', 'textDecoration', 'textIndent',
-        'textTransform', 'whiteSpace', 'wordSpacing', 'wordWrap', 'width', 'tabSize', '-moz-tab-size'
-    ];
-    properties.forEach(prop => {
-        style[prop] = computed[prop];
-    });
-
-    // Position off-screen
-    style.position = 'absolute';
-    style.visibility = 'hidden';
-
-    document.body.appendChild(mirrorDiv);
-
-    // Set content and add a span to measure position
-    mirrorDiv.textContent = codeEditor.value.substring(0, codeEditor.selectionStart);
-    const span = document.createElement('span');
-    span.textContent = '.'; // A character to get position from
-    mirrorDiv.appendChild(span);
-
-    // Get position of the span
-    const coords = {
-        x: span.offsetLeft + parseInt(computed['borderLeftWidth']),
-        y: span.offsetTop + parseInt(computed['borderTopWidth'])
-    };
-
-    document.body.removeChild(mirrorDiv);
-
-    const editorRect = codeEditor.getBoundingClientRect();
-
-    // Adjust for scroll position and editor's position on the page
-    return {
-        x: editorRect.left + coords.x - codeEditor.scrollLeft,
-        y: editorRect.top + coords.y - codeEditor.scrollTop
-    };
-}
-
-function showErrorTooltip(error) {
-    removeErrorTooltip(); // Remove existing tooltip
-
-    const tooltip = document.createElement('div');
-    tooltip.className = 'error-tooltip';
-    tooltip.textContent = error.message;
-    document.body.appendChild(tooltip);
-
-    const cursorCoords = getCursorCoords();
-    tooltip.style.left = `${cursorCoords.x}px`;
-    tooltip.style.top = `${cursorCoords.y - tooltip.offsetHeight}px`; // Position above cursor
-}
-
-function removeErrorTooltip() {
-    const existingTooltip = document.querySelector('.error-tooltip');
-    if (existingTooltip) {
-        existingTooltip.remove();
-    }
-}
-
-let autocompletePopup = null;
-
-function showAutocomplete() {
-    if (autocompletePopup) {
-        autocompletePopup.remove();
-        autocompletePopup = null;
-    }
-
-    const cursorPosition = codeEditor.selectionStart;
-    const textBeforeCursor = codeEditor.value.substring(0, cursorPosition);
-    const currentWord = textBeforeCursor.split(/\s+/).pop();
-
-    if (currentWord.length === 0) return;
-
-    const keywords = ['print']; // Add more keywords as needed
-    const suggestions = keywords.filter(kw => kw.startsWith(currentWord));
-
-    if (suggestions.length > 0) {
-        autocompletePopup = document.createElement('div');
-        autocompletePopup.className = 'autocomplete-popup';
-
-        suggestions.forEach((suggestion, index) => {
-            const item = document.createElement('div');
-            item.className = 'autocomplete-item';
-            const boldedPart = suggestion.substring(0, currentWord.length);
-            const remainingPart = suggestion.substring(currentWord.length);
-            item.innerHTML = `<span class="autocomplete-icon">\ueb62</span><strong>${boldedPart}</strong>${remainingPart}`;
-            item.dataset.suggestion = suggestion;
-            if (index === 0) {
-                item.classList.add('selected');
-            }
-            item.addEventListener('click', () => {
-                insertSuggestion(suggestion);
-            });
-            autocompletePopup.appendChild(item);
-        });
-
-        const cursorCoords = getCursorCoords();
-        autocompletePopup.style.left = `${cursorCoords.x}px`;
-        autocompletePopup.style.top = `${cursorCoords.y + 20}px`; // Position below cursor
-
-        document.body.appendChild(autocompletePopup);
-    }
-}
-
-function insertSuggestion(suggestion) {
-    const cursorPosition = codeEditor.selectionStart;
-    const textBeforeCursor = codeEditor.value.substring(0, cursorPosition);
-    const currentWord = textBeforeCursor.split(/\s+/).pop();
-    const textAfterCursor = codeEditor.value.substring(cursorPosition);
-
-    const newText = textBeforeCursor.substring(0, textBeforeCursor.length - currentWord.length) + suggestion + textAfterCursor;
-    codeEditor.value = newText;
-    updateHighlighting(newText);
-
-    if (autocompletePopup) {
-        autocompletePopup.remove();
-        autocompletePopup = null;
-    }
-
-    codeEditor.focus();
-    codeEditor.selectionEnd = cursorPosition - currentWord.length + suggestion.length;
-}
-
-function navigateAutocomplete(key) {
-    if (!autocompletePopup) return;
-
-    const items = autocompletePopup.querySelectorAll('.autocomplete-item');
-    if (items.length === 0) return;
-
-    let selectedIndex = -1;
-    items.forEach((item, index) => {
-        if (item.classList.contains('selected')) {
-            selectedIndex = index;
-        }
-    });
-
-    items[selectedIndex].classList.remove('selected');
-
-    if (key === 'ArrowDown') {
-        selectedIndex = (selectedIndex + 1) % items.length;
-    } else if (key === 'ArrowUp') {
-        selectedIndex = (selectedIndex - 1 + items.length) % items.length;
-    }
-
-    items[selectedIndex].classList.add('selected');
-    items[selectedIndex].scrollIntoView({ block: 'nearest' });
-}
-
-let lastParseResult = null;
-
-function updateHighlighting(code) {
-    if (typeof code !== 'string') {
-        code = codeEditor.value;
-    }
-    const parser = new Parser(code);
-    lastParseResult = parser.parse(); // Store parse result
-    const prog = lastParseResult;
-    const text = new SpannableText(code);
-
-    prog.ast.forEach(stmt => {
-        if (!stmt) return;
-        if (stmt.type === 'print') {
-            if (stmt.kw) highlightToken(text, stmt.kw, 'tok-kw');
-            if (stmt.expr) highlightExpr(text, stmt.expr);
-        } else if (stmt.type === 'func-call') {
-            if (stmt.name) highlightToken(text, stmt.name, 'tok-func-call');
-            if (stmt.args) {
-                stmt.args.list.forEach(arg => highlightExpr(text, arg));
-            }
-        }
-    });
-    
-    prog.errors.forEach(err => {
-        text.error(err.start.index, err.end.index)
-    })
-
-    // Depth-based bracket highlighting
-    const bracketMap = {
-        '(': ')', ')': '(',
-        '[': ']', ']': '[',
-        '{': '}', '}': '{'
-    };
-    const openBrackets = ['(', '[', '{'];
-    const closeBrackets = [')', ']', '}'];
-    const MAX_DEPTH = 4; // Number of distinct colors
-    let bracketDepth = 0;
-
-    for (let i = 0; i < code.length; i++) {
-        const char = code[i];
-        if (openBrackets.includes(char)) {
-            text.color(i, i + 1, `tok-bracket-depth-${bracketDepth % MAX_DEPTH}`);
-            bracketDepth++;
-        } else if (closeBrackets.includes(char)) {
-            if (bracketDepth > 0) {
-                bracketDepth--;
-            }
-            text.color(i, i + 1, `tok-bracket-depth-${bracketDepth % MAX_DEPTH}`);
-        }
-    }
-    
-    highlightingLayer.innerHTML = text.toString();
-
-    // Synchronize scroll
-    if (highlightingArea) {
-        highlightingArea.scrollTop = codeEditor.scrollTop;
-        highlightingArea.scrollLeft = codeEditor.scrollLeft;
-    }
-}
+// Initial load
+document.addEventListener('DOMContentLoaded', () => {
+    displayFiles();
+    initializeContextMenu();
+    initializeEditor(codeEditor, highlightingArea, highlightingLayer); // Initialize editor
+});
