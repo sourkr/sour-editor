@@ -33,6 +33,10 @@ export function initializeEditor(codeEditor, highlightingArea, highlightingLayer
             updateHighlighting(codeEditor.value, codeEditor, highlightingArea, highlightingLayer);
         });
 
+        codeEditor.addEventListener('click', () => {
+            updateHighlighting(codeEditor.value, codeEditor, highlightingArea, highlightingLayer);
+        });
+
         codeEditor.addEventListener('keydown', (e) => {
             console.log(e);
             if (autocompletePopup) {
@@ -328,6 +332,26 @@ export function updateHighlighting(code, codeEditor, highlightingArea, highlight
                 bracketDepth--;
             }
             text.color(i, i + 1, `tok-bracket-depth-${bracketDepth % MAX_DEPTH}`);
+        }
+    }
+
+    const cursorPosition = codeEditor.selectionStart;
+    const charBeforeCursor = code[cursorPosition - 1];
+    const charAtCursor = code[cursorPosition];
+
+    let bracketToHighlight = -1;
+
+    if (bracketMap[charBeforeCursor]) {
+        bracketToHighlight = cursorPosition - 1;
+    } else if (bracketMap[charAtCursor]) {
+        bracketToHighlight = cursorPosition;
+    }
+
+    if (bracketToHighlight !== -1) {
+        const matchingBracket = findMatchingBracket(code, bracketToHighlight);
+        if (matchingBracket !== -1) {
+            text.color(bracketToHighlight, bracketToHighlight + 1, 'tok-bracket-highlight');
+            text.color(matchingBracket, matchingBracket + 1, 'tok-bracket-highlight');
         }
     }
 

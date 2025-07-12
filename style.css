@@ -191,6 +191,11 @@ nav-drawer {
     color: #FF69B4; /* HotPink */
 }
 
+.tok-bracket-highlight {
+    background-color: #3A3A3A; /* A subtle background highlight */
+    border-radius: 3px;
+}
+
 .tok-err {
     display: inline-block;
     text-decoration: underline;
