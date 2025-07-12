@@ -1,4 +1,5 @@
 import Parser from "./libs/sourlang/parser.js";
+import Validator from "./libs/sourlang/validator.js";
 import SpannableText from "./libs/spannable-text.js";
 
 // Global variables (these could be passed as parameters or managed via a class if preferred)
@@ -223,10 +224,10 @@ function showAutocomplete(codeEditor) {
     if (currentWord.length === 0) return;
 
     const keywords = ['print'];
-        const functions = ['_stdout'];
+        const functions = [{ value: '_stdout', description: 'Prints output to the console.' }];
 
         const keywordSuggestions = keywords.filter(kw => kw.startsWith(currentWord)).map(s => ({ type: 'keyword', value: s }));
-        const functionSuggestions = functions.filter(func => func.startsWith(currentWord)).map(s => ({ type: 'function', value: s }));
+        const functionSuggestions = functions.filter(func => func.value.startsWith(currentWord)).map(s => ({ type: 'function', value: s.value, description: s.description }));
 
         const suggestions = [...keywordSuggestions, ...functionSuggestions];
 
@@ -242,12 +243,22 @@ function showAutocomplete(codeEditor) {
                 const icon = suggestion.type === 'function' ? '\uea8c' : '\ueb62';
                 item.innerHTML = `<span class="autocomplete-icon">${icon}</span><strong>${boldedPart}</strong>${remainingPart}`;
                 item.dataset.suggestion = suggestion.value;
-                item.dataset.suggestionType = suggestion.type; // Add this line
+                item.dataset.suggestionType = suggestion.type;
+                if (suggestion.description) {
+                    item.dataset.description = suggestion.description;
+                }
                 if (index === 0) {
                     item.classList.add('selected');
+                    showAutocompleteDocTooltip(item);
                 }
                 item.addEventListener('click', () => {
                     insertSuggestion(suggestion.value, suggestion.type, codeEditor);
+                });
+                item.addEventListener('mouseenter', () => {
+                    showAutocompleteDocTooltip(item);
+                });
+                item.addEventListener('mouseleave', () => {
+                    hideAutocompleteDocTooltip();
                 });
                 autocompletePopup.appendChild(item);
             });
@@ -257,6 +268,8 @@ function showAutocomplete(codeEditor) {
         autocompletePopup.style.top = `${cursorCoords.y + 20}px`;
 
         document.body.appendChild(autocompletePopup);
+    } else {
+        hideAutocompleteDocTooltip();
     }
 }
 
@@ -310,18 +323,46 @@ function navigateAutocomplete(key) {
 
     items[selectedIndex].classList.add('selected');
     items[selectedIndex].scrollIntoView({ block: 'nearest' });
+
+    const selectedItem = items[selectedIndex];
+    showAutocompleteDocTooltip(selectedItem);
+}
+
+let autocompleteDocTooltip = null;
+
+function showAutocompleteDocTooltip(item) {
+    hideAutocompleteDocTooltip();
+
+    const description = item.dataset.description;
+    if (!description) return;
+
+    autocompleteDocTooltip = document.createElement('div');
+    autocompleteDocTooltip.className = 'autocomplete-doc-tooltip';
+    autocompleteDocTooltip.textContent = description;
+    document.body.appendChild(autocompleteDocTooltip);
+
+    const itemRect = item.getBoundingClientRect();
+    autocompleteDocTooltip.style.left = `${itemRect.right + 10}px`;
+    autocompleteDocTooltip.style.top = `${itemRect.top}px`;
+}
+
+function hideAutocompleteDocTooltip() {
+    if (autocompleteDocTooltip) {
+        autocompleteDocTooltip.remove();
+        autocompleteDocTooltip = null;
+    }
 }
 
 export function updateHighlighting(code, codeEditor, highlightingArea, highlightingLayer) {
     if (typeof code !== 'string') {
         code = codeEditor.value;
     }
-    const parser = new Parser(code);
-    lastParseResult = parser.parse();
-    const prog = lastParseResult;
+    const validator = new Validator(code);
+    lastParseResult = validator.validate(); // Use validator instead of parser
+    const prog = lastParseResult.ast;
     const text = new SpannableText(code);
 
-    prog.ast.forEach(stmt => {
+    prog.forEach(stmt => {
         if (!stmt) return;
         if (stmt.type === 'print') {
             if (stmt.kw) highlightToken(text, stmt.kw, 'tok-kw');
@@ -334,7 +375,7 @@ export function updateHighlighting(code, codeEditor, highlightingArea, highlight
         }
     });
 
-    prog.errors.forEach(err => {
+    lastParseResult.errors.forEach(err => {
         text.error(err.start.index, err.end.index);
     });
 

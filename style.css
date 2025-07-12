@@ -223,6 +223,19 @@ nav-drawer {
     color: white;
 }
 
+.autocomplete-doc-tooltip {
+    position: absolute;
+    background-color: var(--color-container);
+    border: 1px solid var(--color-border);
+    border-radius: 3px;
+    padding: 8px;
+    font-size: 13px;
+    color: var(--color-on-background);
+    z-index: 101; /* Above autocomplete popup */
+    max-width: 300px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+}
+
 
 #file-system-container { /* Now the side drawer */
     position: fixed;
