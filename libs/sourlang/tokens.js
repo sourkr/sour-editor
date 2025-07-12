@@ -40,7 +40,7 @@ export class TokenStream {
             return this.#tok("space", this.#read(this.#space))
         }
         
-        if (/[a-zA-Z]/.test(char)) {
+        if (/[a-zA-Z_]/.test(char)) {
             const ident = this.#read(this.#ident)
             return this.#tok(KEYWORDS.has(ident) ? "kw" : "ident", ident)
         }
@@ -49,6 +49,28 @@ export class TokenStream {
             return this.#tok("int", this.#read(this.#int))
         }
         
+        if (/[(),]/.test(char)) {
+            return this.#tok("punc", this.#chars.next())
+        }
+
+        if (char === '\'') {
+            let charValue = "";
+            this.#chars.next(); // Consume the opening quote
+            charValue = this.#chars.next(); // Consume the character
+            if (this.#chars.peek() === '\'') {
+                this.#chars.next(); // Consume the closing quote
+                return this.#tok("char", charValue)
+            } else {
+                const token = this.#tok("char", charValue)
+                token.err =  {
+                    msg: "Unterminated char",
+                    start: this.#chars.position.sub(1),
+                    end: this.#chars.position
+                }
+                return token
+            }
+        }
+
         if (char === '"') {
             let strValue = "";
             this.#chars.next(); // Consume the opening quote

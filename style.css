@@ -4,7 +4,6 @@
     --color-border: #3c3c3c;
     --color-on-background: #d4d4d4;
     
-    --zed-editor-background: #252526;
     --zed-text-color: #d4d4d4;
     --zed-border-color: #3c3c3c;
     --zed-button-background: #0e639c;
@@ -58,6 +57,7 @@ action-bar {
         tab-size: 4;
         -moz-tab-size: 4;
         outline: none;
+        border: none;
     }
         
     #code-editor {
@@ -91,6 +91,7 @@ action-bar {
             font-family: inherit;
             font-size: inherit;
             line-height: inherit;
+            letter-spacing: inherit;
             padding: 0;
             margin: 0;
         }
@@ -156,7 +157,7 @@ nav-drawer {
 /* Zed-like theme */
 @font-face {
     font-family: 'Zed Mono Extended';
-    src: url('zed-mono-extended.ttf') format('truetype');
+    src: url('zed-mono.ttf') format('truetype');
     font-weight: normal;
     font-style: normal;
 }
@@ -171,6 +172,7 @@ nav-drawer {
 }
 
 .tok-err {
+    display: inline-block;
     text-decoration: underline;
     text-decoration-style: wavy;
     text-decoration-color: red;
@@ -353,4 +355,11 @@ nav-drawer {
 
 .autocomplete-item:hover, .autocomplete-item.selected {
     background-color: var(--zed-button-hover-background);
+}
+
+.autocomplete-item .autocomplete-icon {
+    font-family: var(--zed-font);
+    font-size: 1.2em;
+    margin-right: 8px;
+    vertical-align: middle;
 }

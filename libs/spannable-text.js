@@ -97,7 +97,7 @@ export default class SpannableText {
     
     toString() {
         return this.#spans.map(span => {
-            const text = this.#input.slice(span.start, span.end)
+            const text = this.#input.slice(span.start, span.end) || ' '
             const classes = []
             
             if (span.color) classes.push(span.color)

@@ -28,19 +28,24 @@ export class BaseParser {
         return token
     }
     
+    get has() {
+        return this.#tokens.has
+    }
+    
     peek() {
         return this.#tokens.peek()
     }
     
-    #token(type) {
+    #token(type, value) {
         switch (type) {
             case "ident": return "identifier"
             case "int": return "integer"
+            case "punc": return value
             default: return type
         }
     }
     
-    next(type) {
+    next(type, value) {
         const token = this.#tokens.next()
         
         if (token.type === 'space') return this.next(type)
@@ -50,7 +55,7 @@ export class BaseParser {
         }
         
         if (!type) return token
-        if (token.type === type) return token
+        if (token.type === type && token.value === (value ?? token.value)) return token
         
         this.error(`ParseError: Expecting '${this.#token(type)}' but got '${token.value}'`, token)
         return token;

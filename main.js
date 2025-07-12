@@ -473,7 +473,15 @@ function highlightExpr(text, expr) {
 
 
 if (codeEditor) {
-    codeEditor.addEventListener('input', () => {
+    codeEditor.addEventListener('input', (e) => {
+        if (e.inputType === 'insertText' && e.data === '"') {
+            const start = codeEditor.selectionStart;
+            const end = codeEditor.selectionEnd;
+            const text = codeEditor.value;
+            codeEditor.value = text.substring(0, start - 1) + '""' + text.substring(end);
+            codeEditor.selectionStart = codeEditor.selectionEnd = start;
+        }
+
         // updateHighlighting now parses the code itself
         updateHighlighting(codeEditor.value);
         removeErrorTooltip();
@@ -489,6 +497,7 @@ if (codeEditor) {
     });
     
     codeEditor.addEventListener('keydown', (e) => {
+        console.log(e)
         if (autocompletePopup) {
             if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
                 e.preventDefault();
@@ -497,7 +506,7 @@ if (codeEditor) {
                 e.preventDefault();
                 const selected = autocompletePopup.querySelector('.selected');
                 if (selected) {
-                    insertSuggestion(selected.textContent);
+                    insertSuggestion(selected.dataset.suggestion);
                 }
             } else if (e.key === 'Escape') {
                 e.preventDefault();
@@ -507,6 +516,8 @@ if (codeEditor) {
                 }
             }
         }
+        
+        
 
         if (e.ctrlKey && e.key === 'i') {
             e.preventDefault();
@@ -616,7 +627,8 @@ function showAutocomplete() {
         suggestions.forEach((suggestion, index) => {
             const item = document.createElement('div');
             item.className = 'autocomplete-item';
-            item.textContent = suggestion;
+            item.innerHTML = `<span class="autocomplete-icon"></span>${suggestion}`;
+            item.dataset.suggestion = suggestion;
             if (index === 0) {
                 item.classList.add('selected');
             }

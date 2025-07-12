@@ -48,6 +48,16 @@ export default class Interpreter {
     }
     
     #interprete(expr, resolve, reject) {
+        if (expr.type === 'func-call') {
+            if (expr.name === '_stdout') {
+                this.#interprete(expr.args[0], char => {
+                    this.#outstream.write(String.fromCharCode(char))
+                    resolve()
+                }, reject)
+            }
+            return
+        }
+        
         if (expr.type === 'print') {
             this.#interprete(expr.expr, str => {
                 this.#outstream.write(str)
