@@ -4,7 +4,6 @@
     --color-border: #3c3c3c;
     --color-on-background: #d4d4d4;
     
-    --zed-background: #1e1e1e;
     --zed-editor-background: #252526;
     --zed-text-color: #d4d4d4;
     --zed-border-color: #3c3c3c;
@@ -24,6 +23,10 @@ body {
     
     margin: 0;
     padding: 0;
+}
+
+action-bar {
+    border-color: var(--color-border)
 }
 
 #main {
@@ -66,6 +69,11 @@ body {
         z-index: 0;
         overflow-y: auto;
     }
+
+    #code-editor.output-mode {
+        color: var(--color-on-background); /* Make text visible in output mode */
+        background-color: var(--zed-editor-background); /* Ensure a solid background */
+    }
         
     #highlighting-area {
         position: absolute;
@@ -88,19 +96,12 @@ body {
         }
     }
 }
-    
-#sour-output-container {
-    background-color: var(--color-background);
-    padding: 10px;
-    border-top: 1px solid var(--color-border);
-    height: 100px;
-    overflow-y: auto;
-    box-sizing: border-box;
-    width: 100%;
-    font-family: var(--zed-font);
-    white-space: pre-wrap;
-    color: var(--color-on-background);
+
+nav-drawer {
+    background: var(--color-background);
+    border-color: var(--color-border);
 }
+
 
 /* Tab System */
 #tab-bar {

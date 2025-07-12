@@ -81,14 +81,14 @@ class Stream {
                 return
             }
             
-            this.#onclose = () => {
-                reject(new Error('Stream is closed'))
+            this.#reader = data => {
+                resolve(data)
                 this.#onclose = null
                 this.#reader = null
             }
             
-            this.#reader = data => {
-                resolve(data)
+            this.#onclose = () => {
+                reject(new Error('Stream is closed'))
                 this.#onclose = null
                 this.#reader = null
             }

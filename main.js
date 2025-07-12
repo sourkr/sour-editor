@@ -11,8 +11,6 @@ const codeEditor = document.getElementById('code-editor');
 const fileSystemContainer = document.getElementById('file-system-container');
 const fileListContainer = document.getElementById('file-list');
 
-const sourOutputContainer = document.getElementById('sour-output-container');
-
 const highlightingArea = document.getElementById('highlighting-area');
 const highlightingLayer = document.getElementById('highlighting-layer');
 
@@ -28,10 +26,10 @@ const menu = new Menu()
 menu.addItem("save", "icon/save.svg")
 menu.addItem("run", "icon/play-arrow.svg")
 
-actionBar.navigationIconSrc = 'icon/menu.svg'
+// actionBar.navigationIconSrc = 'icon/menu.svg'
 actionBar.menu = menu
 
-actionBar.onnavigation = () => fileSystemContainer.classList.toggle('open')
+// actionBar.onnavigation = () => fileSystemContainer.classList.toggle('open')
 
 actionBar.onmenuitemclicked = ev => {
     switch(ev.detail) {
@@ -48,23 +46,37 @@ actionBar.onmenuitemclicked = ev => {
         }
         
         case 'run': {
-            const interpreter = new Interpreter(codeEditor.value, "internal.sour")
+            const interpreter = new Interpreter(codeEditor.value, "internal.sour");
+            const outputFileName = "Output";
+            let outputContent = "";
+            addTab(outputFileName, outputContent); // Create or activate the Output tab
+            
+            interpreter.interprete();
         
-            interpreter.interprete()
-        
-            ;(async () => {
-                while(true) {
-                    const chunk = await interpreter.inputStream.read()
-                    sourOutputContainer.innerText += chunk
+            const updateOutput = (chunk) => {
+                const tabIndex = activeTabs.findIndex(tab => tab.fileName === outputFileName);
+                
+                if (tabIndex !== -1) {
+                    activeTabs[tabIndex].content += chunk;
+                    if (activeFileName === outputFileName) { // Only update editor if Output tab is active
+                        codeEditor.value = activeTabs[tabIndex].content;
+                    }
                 }
-            })()
+            };
         
-            ;(async () => {
+            (async () => {
                 while(true) {
-                    const chunk = await interpreter.errorStream.read()
-                    sourOutputContainer.innerText += chunk
+                    const chunk = await interpreter.inputStream.read();
+                    updateOutput(chunk);
                 }
-            })()
+            })();
+        
+            (async () => {
+                while(true) {
+                    const chunk = await interpreter.errorStream.read();
+                    updateOutput(chunk);
+                }
+            })();
             
             break
         }
@@ -131,6 +143,17 @@ function activateTab(fileName) {
         codeEditor.value = tabToLoad.content;
         activeFileName = fileName;
         updateHighlighting(codeEditor.value);
+
+        // Set editor to read-only if it's the output tab
+        if (fileName === "Output") {
+            codeEditor.setAttribute('readonly', 'true');
+            codeEditor.classList.add('output-mode');
+            highlightingArea.style.display = 'none'; // Hide highlighting area for output tab
+        } else {
+            codeEditor.removeAttribute('readonly');
+            codeEditor.classList.remove('output-mode');
+            highlightingArea.style.display = 'block'; // Show highlighting area for code tabs
+        }
     }
 }
 
