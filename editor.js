@@ -29,7 +29,7 @@ export function initializeEditor(codeEditor, highlightingArea, highlightingLayer
 
             updateHighlighting(codeEditor.value, codeEditor, highlightingArea, highlightingLayer);
             removeErrorTooltip();
-            showAutocomplete(codeEditor);
+            showAutocomplete(codeEditor, new Validator(codeEditor.value).builtins);
         });
 
         codeEditor.addEventListener('scroll', () => {
@@ -64,6 +64,7 @@ export function initializeEditor(codeEditor, highlightingArea, highlightingLayer
                     if (autocompletePopup) {
                         autocompletePopup.remove();
                         autocompletePopup = null;
+                        hideAutocompleteDocTooltip();
                     }
                 }
             }
@@ -211,10 +212,11 @@ function removeErrorTooltip() {
     }
 }
 
-function showAutocomplete(codeEditor) {
+function showAutocomplete(codeEditor, builtins) {
     if (autocompletePopup) {
         autocompletePopup.remove();
         autocompletePopup = null;
+        hideAutocompleteDocTooltip();
     }
 
     const cursorPosition = codeEditor.selectionStart;
@@ -224,7 +226,10 @@ function showAutocomplete(codeEditor) {
     if (currentWord.length === 0) return;
 
     const keywords = ['print'];
-        const functions = [{ value: '_stdout', description: 'Prints output to the console.' }];
+        const functions = Object.keys(builtins).map(key => ({
+            value: key,
+            description: builtins[key].doc
+        }));
 
         const keywordSuggestions = keywords.filter(kw => kw.startsWith(currentWord)).map(s => ({ type: 'keyword', value: s }));
         const functionSuggestions = functions.filter(func => func.value.startsWith(currentWord)).map(s => ({ type: 'function', value: s.value, description: s.description }));
@@ -234,6 +239,13 @@ function showAutocomplete(codeEditor) {
         if (suggestions.length > 0) {
             autocompletePopup = document.createElement('div');
             autocompletePopup.className = 'autocomplete-popup';
+
+            const cursorCoords = getCursorCoords(codeEditor);
+        console.log(`cursorCoords.y: ${cursorCoords.y}`);
+        autocompletePopup.style.left = `${cursorCoords.x}px`;
+        autocompletePopup.style.top = `${cursorCoords.y + 20}px`;
+
+        document.body.appendChild(autocompletePopup);
 
             suggestions.forEach((suggestion, index) => {
                 const item = document.createElement('div');
@@ -249,25 +261,19 @@ function showAutocomplete(codeEditor) {
                 }
                 if (index === 0) {
                     item.classList.add('selected');
-                    showAutocompleteDocTooltip(item);
+                    showAutocompleteDocTooltip(item, `${cursorCoords.y + 20}px`);
                 }
                 item.addEventListener('click', () => {
                     insertSuggestion(suggestion.value, suggestion.type, codeEditor);
                 });
                 item.addEventListener('mouseenter', () => {
-                    showAutocompleteDocTooltip(item);
+                    showAutocompleteDocTooltip(item, `${cursorCoords.y + 20}px`);
                 });
                 item.addEventListener('mouseleave', () => {
                     hideAutocompleteDocTooltip();
                 });
                 autocompletePopup.appendChild(item);
             });
-
-        const cursorCoords = getCursorCoords(codeEditor);
-        autocompletePopup.style.left = `${cursorCoords.x}px`;
-        autocompletePopup.style.top = `${cursorCoords.y + 20}px`;
-
-        document.body.appendChild(autocompletePopup);
     } else {
         hideAutocompleteDocTooltip();
     }
@@ -294,6 +300,7 @@ function insertSuggestion(suggestion, suggestionType, codeEditor) {
     if (autocompletePopup) {
         autocompletePopup.remove();
         autocompletePopup = null;
+        hideAutocompleteDocTooltip();
     }
 
     codeEditor.focus();
@@ -325,6 +332,7 @@ function navigateAutocomplete(key) {
     items[selectedIndex].scrollIntoView({ block: 'nearest' });
 
     const selectedItem = items[selectedIndex];
+    console.log(`autocompletePopup.style.top in navigateAutocomplete: ${autocompletePopup.style.top}`);
     showAutocompleteDocTooltip(selectedItem);
 }
 
@@ -341,9 +349,31 @@ function showAutocompleteDocTooltip(item) {
     autocompleteDocTooltip.textContent = description;
     document.body.appendChild(autocompleteDocTooltip);
 
-    const itemRect = item.getBoundingClientRect();
-    autocompleteDocTooltip.style.left = `${itemRect.right + 10}px`;
-    autocompleteDocTooltip.style.top = `${itemRect.top}px`;
+    const tooltipWidth = 200; // Approximate width of the tooltip, adjust as needed
+
+    // Get the autocomplete popup's explicitly set position
+    const autocompletePopupLeft = parseFloat(autocompletePopup.style.left);
+    const autocompletePopupTop = parseFloat(autocompletePopup.style.top);
+    const autocompletePopupWidth = autocompletePopup.offsetWidth; // Get the rendered width
+
+    const spaceOnRight = window.innerWidth - (autocompletePopupLeft + autocompletePopupWidth);
+    const spaceOnLeft = autocompletePopupLeft;
+
+    if (spaceOnRight >= tooltipWidth) {
+        // Position to the right of the autocomplete popup
+        autocompleteDocTooltip.style.left = `${autocompletePopupLeft + autocompletePopupWidth + 10}px`;
+    } else if (spaceOnLeft >= tooltipWidth) {
+        // Position to the left of the autocomplete popup
+        autocompleteDocTooltip.style.left = `${autocompletePopupLeft - tooltipWidth - 10}px`;
+    } else {
+        // Default to right if not enough space on left either
+        autocompleteDocTooltip.style.left = `${autocompletePopupLeft + autocompletePopupWidth + 10}px`;
+    }
+
+    // Align the tooltip's top with the autocomplete popup's top
+    autocompleteDocTooltip.style.top = `${autocompletePopupTop}px`;
+
+    console.log(`autocompleteDocTooltip.style.top: ${autocompleteDocTooltip.style.top}`);
 }
 
 function hideAutocompleteDocTooltip() {

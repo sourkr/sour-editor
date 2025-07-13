@@ -1,6 +1,6 @@
 import { CharStream, EOF } from "./chars.js"
 
-const KEYWORDS = new Set(['print'])
+const KEYWORDS = new Set(['print', 'func'])
 
 export class TokenStream {
     #chars
@@ -49,7 +49,7 @@ export class TokenStream {
             return this.#tok("int", this.#read(this.#int))
         }
         
-        if (/[(),]/.test(char)) {
+        if (/[(,):]/.test(char)) {
             return this.#tok("punc", this.#chars.next())
         }
 

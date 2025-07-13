@@ -1,7 +1,7 @@
 import { getFileStorageKey, getSavedFiles, saveFileToStorage, loadFileFromStorage, deleteFileFromStorage } from './filetree.js';
 import { initializeEditor, updateHighlighting } from './editor.js'; // Import editor functions
 import Interpreter from "./libs/sourlang/interpreter.js";
-import { Menu } from "./libs/ui.js";
+import { Menu } from "./libs/ui/ui.js";
 
 const actionBar = document.querySelector('action-bar');
 const codeEditor = document.getElementById('code-editor');
@@ -17,8 +17,8 @@ let activeTabs = [];
 
 // Action Bar
 const menu = new Menu();
-menu.addItem("save", "icon/save.svg");
-menu.addItem("run", "icon/play-arrow.svg");
+menu.addItem("save", "Save", "icon/save.svg");
+menu.addItem("run", "Run", "icon/play-arrow.svg");
 actionBar.menu = menu;
 
 actionBar.onmenuitemclicked = ev => {
@@ -374,6 +374,14 @@ function handleContextMenu(event) {
 
 // Initial load
 document.addEventListener('DOMContentLoaded', () => {
+    // Check if there are any saved files
+    if (getSavedFiles().length === 0) {
+        // If not, create a default file
+        const defaultFileName = "untitled.sour";
+        const defaultContent = 'print "Hello, Sour Lang!"\n';
+        saveFileToStorage(defaultFileName, defaultContent);
+        addTab(defaultFileName, defaultContent);
+    }
     displayFiles();
     initializeContextMenu();
     initializeEditor(codeEditor, highlightingArea, highlightingLayer); // Initialize editor

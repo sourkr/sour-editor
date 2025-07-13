@@ -15,11 +15,34 @@ export default class Parser extends BaseParser {
             return { type: 'func-call', name, args }
         }
         
+        if (this.is("kw", "func")) {
+            const kw = this.next()
+            const name = this.next('ident')
+            const params = this.list('(,)', this.param)
+            const colon = this.next('punc', ':')
+            const retType = this.type()
+            
+            return { type: 'func-def', kw, name, params, colon, retType }
+        }
+        
         return super.file()
     }
     
     expr(isStmt) {
         if (this.is("int") || this.is("str") || this.is("char")) return this.next()
+    }
+    
+    param() {
+        const name = this.next('ident')
+        const colon = this.next('punc', ':')
+        const type = this.type()
+        
+        return { name, colom, type }
+    }
+    
+    type() {
+        const name = this.next('ident')
+        return { type: 'simple', name }
     }
     
     list(cond, parse) {
