@@ -1,0 +1,2 @@
+/** Prints output to the console */
+func _stdout(ch: char): void
