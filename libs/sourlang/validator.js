@@ -1,95 +1,97 @@
+import { ErrorData } from "./base.js"
 import Parser from './parser.js';
+import DefinationParser from './dparser.js';
 
 export default class Validator {
+    globals = Validator.BUILTINS
+    
     constructor(code) {
         this.code = code;
         this.errors = [];
         this.parser = new Parser(code);
-        this.builtins = {}; // To store parsed built-in functions
-
-        this._loadBuiltins(); // Load built-in functions when validator is initialized
     }
-
-    async _loadBuiltins() {
-        try {
-            const response = await fetch('./libs/sourlang/builtin.sour');
-            const text = await response.text();
-            this._parseBuiltins(text);
-        } catch (error) {
-            console.error('Failed to load built-in functions:', error);
-            // Handle error, e.g., push an error to this.errors
-        }
-    }
-
-    _parseBuiltins(builtinCode) {
-        const lines = builtinCode.split('\n');
-        let currentDoc = '';
-        for (const line of lines) {
-            if (line.startsWith('/**') && line.endsWith('*/')) {
-                currentDoc = line.substring(3, line.length - 2).trim();
-            } else if (line.startsWith('func ')) {
-                const funcSignature = line.substring(5).trim();
-                const funcNameMatch = funcSignature.match(/^(\w+)\\((.*)\\):\\s*(\\w+)$/);
-                if (funcNameMatch) {
-                    const name = funcNameMatch[1];
-                    const params = funcNameMatch[2].split(',').map(p => p.trim()).filter(p => p !== '').map(p => {
-                        const [paramName, paramType] = p.split(':').map(s => s.trim());
-                        return { name: paramName, type: paramType };
-                    });
-                    const returnType = funcNameMatch[3];
-                    this.builtins[name] = {
-                        doc: currentDoc,
-                        params: params,
-                        returnType: returnType
-                    };
-                }
-                currentDoc = ''; // Reset doc after parsing a function
-            }
-        }
-    }
-
+    
     validate() {
-        const parseResult = this.parser.parse();
-        this.errors = [...parseResult.errors];
-        const ast = parseResult.ast;
+        const { ast, errors } = this.parser.parse();
+        this.errors.push(...errors);
 
-        this._typeCheck(ast);
+        for (const node of ast) {
+            this.stmt(node);
+        }
 
         return { ast, errors: this.errors };
     }
 
-    _typeCheck(ast) {
-        ast.forEach(node => {
-            if (!node) return;
-
-            if (node.type === 'print') {
-                if (!node.expr) {
-                    this.errors.push({ message: 'print statement expects an expression', start: node.kw.start, end: node.kw.end });
-                }
-            } else if (node.type === 'func-call') {
-                const builtin = this.builtins[node.name.value];
-                if (builtin) {
-                    // Validate number of arguments
-                    if (node.args.list.length !== builtin.params.length) {
-                        this.errors.push({
-                            message: `${node.name.value} expects ${builtin.params.length} argument(s) but got ${node.args.list.length}`,
-                            start: node.name.start,
-                            end: node.name.end
-                        });
-                    } else {
-                        // Validate argument types
-                        node.args.list.forEach((arg, index) => {
-                            if (builtin.params[index] && arg.type !== builtin.params[index].type) {
-                                this.errors.push({
-                                    message: `Argument ${index + 1} of ${node.name.value} expects type ${builtin.params[index].type} but got ${arg.type}`,
-                                    start: arg.start,
-                                    end: arg.end
-                                });
-                            }
-                        });
-                    }
-                } 
+    stmt(stmt) {
+        if (stmt.type === 'func-call') {
+            const name = stmt.name.value
+            const funcs = this.globals.get_funcs(name)
+            
+            if (!funcs.length) {
+                this.error(`${name} is not a function`, stmt.name)
+                return
             }
-        });
+            
+            const args = stmt.args.list.map(arg => this.expr(arg))
+            const argsStr = args.map(arg => arg?.name).join(',')
+            
+            const errors = []
+            let found = null
+            
+            for(let func of funcs) {
+                const params = func.params.map(p => p.type)
+                let index = 0
+                let found = true
+                
+                while(params.length) {
+                    console.log(params[0], args[index])
+                    
+                    if (!equalType(params[0], args[index])) {
+                        found = false
+                        break
+                    }
+                    
+                    params.shift()
+                    index++
+                }
+                
+                if (!found) {
+                    const paramsStr = func.params.map(p => p.type.name).join(',')
+                    errors.push(`${name}(${argsStr}) is not applicable for ${name}(${paramsStr})`)
+                } else {
+                    found = true
+                    return
+                }
+            }
+            
+            if (!found) {
+                this.error(`Cannot find suitable function call for ${name}(${argsStr})\n\n${errors.join('\n\n')}`, stmt.name)
+            }
+            
+            return
+        }
+    }
+    
+    expr(expr) {
+        if (expr.type === 'char') return { type: 'simple', name: 'char' }
+    }
+    
+    error(msg, token) {
+        this.errors.push(new ErrorData(`CompileError: ${msg}`, token, this.code, this.filepath))
     }
 }
+
+function equalType(a, b) {
+    if (a?.type !== b?.type) return false
+    
+    if (a.type === 'simple') {
+        return a.name === b.name
+    }
+    
+    return false
+}
+
+const dparser = new DefinationParser(await (await fetch('./libs/sourlang/builtin.sour')).text())
+dparser.parse()
+Validator.BUILTINS = dparser.globals
+console.log(Validator.BUILTINS.get_all_funcs())

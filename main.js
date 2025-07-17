@@ -1,4 +1,5 @@
-import { Menu, FileTree, Activity, R } from "ui";
+import { Menu, FileTree, Activity, R } from "ui/core.js";
+import "ui/editor.js"
 
 import Interpreter from "./libs/sourlang/interpreter.js";
 import Server from "./libs/sourlang/server.js"
@@ -64,7 +65,8 @@ class MainActivity extends Activity {
         const interpreter = new Interpreter(codeEditor.value, "internal.sour");
         const outputFileName = "Output";
         let outputContent = "";
-        addTab(outputFileName, outputContent);
+        
+        // this.tabbar.addTab(outputFileName, outputContent);
             
         interpreter.interprete();
         

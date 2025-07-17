@@ -9,6 +9,7 @@ export default class Server {
         const prog = validator.validate()
         
         this.prog = prog
+        this.globals = validator.globals
         
         prog.ast.forEach(stmt => {
             if (stmt.type == 'func-call') {
@@ -59,7 +60,11 @@ export default class Server {
         this.lint_token(expr.endTok, color)
     }
     
-    #touching(token) {
+    #touching(token, end) {
+        if (end) {
+            return this.cursorIndex === token.end.index
+        }
+        
         return this.cursorIndex >= token.start.index && this.cursorIndex <= token.end.index
     }
     
@@ -76,6 +81,23 @@ export default class Server {
     
     // Code Completions
     completions() {
-        
+        return this.list_body(this.prog.ast)
+    }
+    
+    list_body(body) {
+        for (let stmt of body) {
+            const list = this.list(stmt)
+            if (list?.length) return list
+        }
+    }
+    
+    list(stmt) {
+        if (stmt.type == 'func-call') {
+            if (this.#touching(stmt.name, true)) {                
+                return this.globals.get_all_funcs()
+                    .filter(func => func.name.startsWith(stmt.name.value))
+                    .map(func => { return { type: 'func', prefix: stmt.name.value, name: func.name, doc: func } })
+            }
+        }
     }
 }

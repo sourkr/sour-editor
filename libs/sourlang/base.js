@@ -17,7 +17,11 @@ export class BaseParser {
     scope(parse, ...args) {
         this.#scopes.push({ hasError: false })
         const res = parse.call(this, ...args)
-        this.#scopes.pop()
+        const scope = this.#scopes.pop()
+        
+        res.start = res.start || scope.start
+        res.end = res.end || scope.end
+        
         return res
     }
     
@@ -59,6 +63,7 @@ export class BaseParser {
     }
     
     #token(type, value) {
+        // console.log(type, value)
         switch (type) {
             case "ident": return "identifier"
             case "int": return "integer"
@@ -72,14 +77,29 @@ export class BaseParser {
         
         if (token.type === 'space') return this.next(type)
         
+        if (token.type === 'comment') {
+            this.lastComment = token;
+            return this.next(type)
+        }
+        
         if (token.err) {
             this.error(`ParseError: ${token.err.msg}`, token.err)
         }
         
-        if (!type) return token
-        if (token.type === type && token.value === (value ?? token.value)) return token
         
-        this.error(`ParseError: Expecting '${this.#token(type)}' but got '${token.value}'`, token)
+        if (!this.#scopes.at(-1).firstTok) {
+            this.#scopes.at(-1).firstTok = token
+        }
+        
+        this.#scopes.at(-1).lastTok = token
+        
+        if (!type) return token
+        
+        if (token.type === type && token.value === (value ?? token.value)) {
+            return token
+        }
+    
+        this.error(`ParseError: Expecting '${this.#token(type, value)}' but got '${token.value}'`, token)
         return token;
     }
     
@@ -97,12 +117,12 @@ export class BaseParser {
         return token.type === type && token.value === (value ?? token.value)
     }
     
-    skip() {
-        this.next()
+    skip(type, value) {
+        this.next(type, value)
     }
 }
 
-class ErrorData {
+export class ErrorData {
     #code
     
     constructor(message, token, code, filepath) {

@@ -8,8 +8,8 @@ export class CharStream {
         this.#input = input
     }
     
-    peek() {
-        return this.#input.charAt(this.#position.index)
+    peek(n = 0) {
+        return this.#input.charAt(this.#position.index + n)
     }
     
     next() {

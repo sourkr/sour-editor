@@ -39,6 +39,30 @@ export class TokenStream {
         if (/\s/.test(char)) {
             return this.#tok("space", this.#read(this.#space))
         }
+
+        if (char === '/' && this.#chars.peek(1) === '/') {
+            this.#chars.next();
+            this.#chars.next();
+            let comment = "";
+            while (this.#chars.has && this.#chars.peek() !== '\n') {
+                comment += this.#chars.next();
+            }
+            return this.#tok("comment", comment);
+        }
+
+        if (char === '/' && this.#chars.peek(1) === '*') {
+            this.#chars.next();
+            this.#chars.next();
+            let comment = "";
+            while (this.#chars.has && (this.#chars.peek() !== '*' || this.#chars.peek(1) !== '/')) {
+                comment += this.#chars.next();
+            }
+            if (this.#chars.has) {
+                this.#chars.next();
+                this.#chars.next();
+            }
+            return this.#tok("comment", comment);
+        }
         
         if (/[a-zA-Z_]/.test(char)) {
             const ident = this.#read(this.#ident)
@@ -49,7 +73,7 @@ export class TokenStream {
             return this.#tok("int", this.#read(this.#int))
         }
         
-        if (/[(,):]/.test(char)) {
+        if (/[(,){:}]/.test(char)) {
             return this.#tok("punc", this.#chars.next())
         }
 

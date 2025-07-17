@@ -8,13 +8,6 @@ export default class Parser extends BaseParser {
             return { type: 'print', kw, expr } 
         }
         
-        if (this.is('ident', '_stdout')) {
-            const name = this.next()
-            const args = this.list("(,)", this.expr)
-            
-            return { type: 'func-call', name, args }
-        }
-        
         if (this.is("kw", "func")) {
             const kw = this.next()
             const name = this.next('ident')
@@ -23,6 +16,13 @@ export default class Parser extends BaseParser {
             const retType = this.type()
             
             return { type: 'func-def', kw, name, params, colon, retType }
+        }
+        
+        if (this.is('ident')) {
+            const name = this.next()
+            const args = this.list("(,)", this.expr)
+            
+            return { type: 'func-call', name, args }
         }
         
         return super.file()
@@ -34,12 +34,16 @@ export default class Parser extends BaseParser {
         return super.file()
     }
     
+    ident(ident) {
+        
+    }
+    
     param() {
         const name = this.next('ident')
         const colon = this.next('punc', ':')
         const type = this.type()
         
-        return { name, colom, type }
+        return { name, colon, type }
     }
     
     type() {
