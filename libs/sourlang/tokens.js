@@ -53,10 +53,23 @@ export class TokenStream {
             return this.#tok("punc", this.#chars.next())
         }
 
-        if (char === '\'') {
-            let charValue = "";
-            this.#chars.next(); // Consume the opening quote
-            charValue = this.#chars.next(); // Consume the character
+        if (char === "'") {
+            let charValue = ""
+            this.#chars.next()
+            charValue = this.#chars.next()
+            
+            if (charValue == "'") {
+                const token = this.#tok("char", '')
+                
+                token.err =  {
+                    msg: "Missing char value",
+                    start: this.#chars.position.sub(1),
+                    end: this.#chars.position
+                }
+                
+                return token
+            }
+            
             if (this.#chars.peek() === '\'') {
                 this.#chars.next(); // Consume the closing quote
                 return this.#tok("char", charValue)
@@ -67,6 +80,7 @@ export class TokenStream {
                     start: this.#chars.position.sub(1),
                     end: this.#chars.position
                 }
+                token.unmatched = true
                 return token
             }
         }

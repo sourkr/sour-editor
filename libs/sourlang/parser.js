@@ -30,6 +30,8 @@ export default class Parser extends BaseParser {
     
     expr(isStmt) {
         if (this.is("int") || this.is("str") || this.is("char")) return this.next()
+        
+        return super.file()
     }
     
     param() {
@@ -52,6 +54,8 @@ export default class Parser extends BaseParser {
             
             const startTok = this.next('punc', cond[0])
             
+            if (this.hasError()) return { startTok, list, sep }
+            
             if (this.is('punc', cond[2])) {
                 const endTok = this.next()
                 return { startTok, list, sep, endTok }
@@ -60,12 +64,12 @@ export default class Parser extends BaseParser {
             while(this.has) {
                list.push(parse.call(this))
                
-               if (this.hasError()) return { startTok, list, sep }
-               
                if (this.is('punc', cond[2])) {
                    const endTok = this.next()
                    return { startTok, list, sep, endTok }
                }
+               
+               if (this.hasError()) return { startTok, list, sep }
                
                sep.push(this.next('punc', cond[1]))
             }

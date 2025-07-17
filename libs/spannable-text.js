@@ -7,6 +7,10 @@ export default class SpannableText {
         this.#spans.push({ start: 0, end: input.length })
     }
     
+    get text() {
+        return this.#input
+    }
+    
     color(start, end, color) {
         // if (start == end) return
         

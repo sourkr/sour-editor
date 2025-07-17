@@ -48,7 +48,7 @@ export class BaseParser {
     get has() {
         if (this.peek().type === 'space') {
             this.#tokens.next()
-            return this.#tokens.has
+            return this.has
         }
         
         return this.#tokens.has

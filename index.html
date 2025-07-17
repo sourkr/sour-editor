@@ -7,32 +7,28 @@
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet" />
     <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Source+Code+Pro:wght@400;500;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
+    
+    <script type="importmap">{
+        "imports": {
+            "ui": "./libs/ui/ui.js"
+        }
+    }</script>
 </head>
 
 <body>
-    <coordinator-layout>
+    <coordinator-layout id='main'>
         <action-bar></action-bar>
+        <tab-bar></tab-bar>
         
         <div id="main">
-            <div id="tab-bar">
-                <!-- Tabs will be inserted here by JavaScript -->
-            </div>
-            <div id="tab-content">
-                <div id="editor-container">
-                    <pre id="highlighting-area" aria-hidden="true"><code id="highlighting-layer"></code></pre>
-                    <textarea id="code-editor" placeholder="Write your code here..." wrap="off" spellcheck="false" autocapitalize="off" autocorrect="off"></textarea>
-                </div>
-            </div>
+            <code-editor></code-editor>
         </div>
         
         <nav-drawer>
-            <div id="file-list"></div>
+            <file-tree></file-tree>
         </nav-drawer>
-    </coordinator-layout>
-    
-    <!--div id="file-system-container">
         
-    </div-->
+    </coordinator-layout>
     
     <script src="https://cdn.jsdelivr.net/npm/eruda"></script>
     <script>eruda.init();</script>

@@ -1,6 +1,7 @@
 {
-    "icon": [
+    "drawable": [
         "ic_menu", "ic_close",
-        "ic_folded"
+        "ic_folder", "ic_folder_open",
+        "ic_file"
     ]
 }

@@ -1,13 +1,15 @@
+import SpannableText from "../spannable-text.js"
+
 const paths = await (await fetch('./libs/ui/paths.json')).json()
 
-const R = {
-    icon: new Proxy({}, {
+export const R = {
+    drawable: new Proxy({}, {
         get(target, prop, reciver) {
             if (typeof prop == 'symbol') {
                 return Reflect.get(target, prop, reciver)
             }
             
-            if (paths.icon.includes(prop)) {
+            if (paths.drawable.includes(prop)) {
                 return `libs/ui/icon/${prop}.svg`
             }
             
@@ -16,6 +18,16 @@ const R = {
         
         ownKeys(target) {
             return paths.icon
+        }
+    }),
+    
+    layout: new Proxy({}, {
+        get(target, prop, reciver) {
+            if (typeof prop == 'symbol') {
+                return Reflect.get(target, prop, reciver)
+            }
+            
+            return document.getElementById(prop)
         }
     })
 }
@@ -119,7 +131,13 @@ export class Coordinator extends HTMLElement {
     connectedCallback() {        
         const actionbar = this.querySelector('action-bar')
         
-        if (this.children[1]) this.children[1].style.flex = 1
+        let index = 1
+        
+        if (this.children[index].localName == 'tab-bar') {
+            index++
+        }
+        
+        if (this.children[index]) this.children[index].style.flex = 1
         
         const drawer = this.querySelector('nav-drawer')
         
@@ -127,7 +145,7 @@ export class Coordinator extends HTMLElement {
             const rect = actionbar.getBoundingClientRect()
             const blocker = this.#blocker = document.createElement('div')
         
-            actionbar.navigationIconSrc = R.icon.ic_menu
+            actionbar.navigationIconSrc = R.drawable.ic_menu
             drawer.before(blocker)
             
             drawer.style.height = `calc(100% - ${rect.height + 3.5}px)`
@@ -147,11 +165,11 @@ export class Coordinator extends HTMLElement {
                 if (drawer.style.left == '0px') {
                     drawer.style.left = 'calc(-80% - 1px)'
                     this.#hideBlocker()
-                    actionbar.navigationIconSrc = R.icon.ic_menu
+                    actionbar.navigationIconSrc = R.drawable.ic_menu
                 } else {
                     drawer.style.left = '0'
                     this.#showBlocker()
-                    actionbar.navigationIconSrc = R.icon.ic_close
+                    actionbar.navigationIconSrc = R.drawable.ic_close
                 }
             }
             
@@ -160,7 +178,7 @@ export class Coordinator extends HTMLElement {
                 
                 drawer.style.left = 'calc(-80% - 1px)'
                 this.#hideBlocker()
-                actionbar.navigationIconSrc = MENU_ICON_URL
+                actionbar.navigationIconSrc = R.drawable.ic_menu
                 
                 this.#blocker.onhide?.()
             }
@@ -224,21 +242,25 @@ export class FileTree extends HTMLElement {
                     gap: 10px;
                 }
             </style>
+            
+            <div id="wrapper"></div>
         `
+        
+        this.wrapper = this.shadowRoot.getElementById('wrapper')
     }
     
-    setFolder(dir, root) {
+    setFolder(dir, context) {
         const rootDir = document.createElement('div')
         const icon = new Image(24, 24)
         const title = document.createElement('span')
         
-        
+        this.wrapper.innerHTML = ''
         rootDir.classList.add('dir')
-        icon.src = FOLDER_ICON_URL
+        icon.src = R.drawable.ic_folder
         title.innerText = dir.name
         
         rootDir.append(icon, title)
-        this.shadowRoot.append(rootDir)
+        this.wrapper.append(rootDir)
         
         rootDir.oncontextmenu = ev => {
             ev.preventDefault()
@@ -252,15 +274,54 @@ export class FileTree extends HTMLElement {
             sheet.onmenuitemclicked = ev => {
                 switch(ev.detail) {
                     case 'new-file': {
-                        dir.create(name)
-                        this.setFolder(dir, root)
+                        dir.create(prompt('Enter File Name:'))
+                        this.setFolder(dir, context)
                         break
                     }
                 }
             }
             
-            sheet.open(root)
+            sheet.open(context.content)
         }
+        
+        let layout;
+        
+        rootDir.onclick = () => {
+            if (icon.src.endsWith(R.drawable.ic_folder)) {
+                icon.src = R.drawable.ic_folder_open
+                layout = this.#listFolder(rootDir, dir, 1)
+            } else {
+                icon.src = R.drawable.ic_folder
+                layout.remove()
+            }
+        }
+    }
+    
+    #listFolder(dirItem, dir, tab) {
+        const root = document.createElement('div')
+        
+        dir.list.forEach(name => {
+            const layout = document.createElement('div')
+            const icon = new Image(24, 24)
+            const title = document.createElement('span')
+            
+            layout.classList.add('dir')
+            layout.style.marginLeft = `${24 * tab}px`
+            icon.src = R.drawable.ic_file
+            title.innerText = name
+            
+            
+            layout.append(icon, title)
+            root.append(layout)
+            
+            layout.onclick = () => {
+                const event = new CustomEvent('itemclick', { detail: `${name}` })
+                this.onitemclick?.(event)
+            }
+        })
+        
+        dirItem.after(root)
+        return root
     }
 }
 
@@ -351,11 +412,426 @@ export class Menu {
     }
 }
 
+export class Activity {
+    #content
+    
+    onCreate() {}
+    
+    onCreateOptionMenu(menu) {}
+    
+    static start(activityConstructor) {
+        const activity = new activityConstructor()
+        activity.onCreate()
+        
+        const menu = new Menu()
+        activity.onCreateOptionMenu(menu)
+        activity.actionBar.menu = menu
+    }
+    
+    set content(content) {
+        if (content instanceof HTMLElement) {
+            content.display = 'flex'
+            this.#content = content
+        }
+        
+        this.actionBar = this.querySelector('action-bar')
+    }
+    
+    get content() {
+        return this.#content
+    }
+    
+    querySelector(id) {
+        return this.#content.querySelector(id)
+    }
+}
+
+class TabBar extends HTMLElement {
+    #tabs = new Map()
+    #ids = 0
+    
+    constructor() {
+        super()
+        
+        this.attachShadow({ mode: 'open' })
+        
+        this.shadowRoot.innerHTML = `
+            <style>
+                :host {
+                    display: block;
+                    border-bottom: 1px solid;
+                }
+                
+                .tab, div {
+                    padding: 15px;
+                    border-right: 1px solid;
+                    border-color: inherit;
+                    width: fit-content;
+                }
+            </style>
+        `
+    }
+    
+    addTab(name) {
+        const tab = document.createElement('div')
+        // const title = document.createElement('span')
+        
+        tab.innerText = name
+        
+        tab.classList.add('tab')
+        
+        this.shadowRoot.append(tab)
+    }
+}
+
+class Editor extends HTMLElement {
+    #lineno
+    #textarea
+    #pre
+    #errTooltip
+
+    #server
+    #lastInputEvent
+    
+    constructor() {
+        super()
+        
+        this.attachShadow({ mode: "open" })
+        
+        this.shadowRoot.innerHTML = `
+            <style>
+                :host {
+                    font-family: inherit;
+                    width: fit-content;
+                    height: fit-content;
+                    background: inherit;
+                    color: inherit;
+                    padding: 10px 10px 10px 0;
+                    font-size: 16px;
+                }
+                
+                .wrapper {
+                    width: 100%;
+                    height: 100%;
+                    display: flex;
+                }
+                
+                .lineno {
+                    padding-inline: 10px 10px;
+                    font-size: inherit;
+                    color: grey;
+                    text-align: end;
+                }
+                
+                .editor {
+                    position: relative;
+                    flex: 1;
+                }
+                
+                textarea, pre {
+                    padding: 0;
+                    margin: 0;
+                    font-family: inherit;
+                    outline: none;
+                    border: none;
+                    font-size: inherit;
+                    width: 100%;
+                    height: 100%;
+                }
+                
+                textarea {
+                    position: absolute;
+                    resize: none;
+                    color: transparent;
+                    background: transparent;
+                    top: 0;
+                    padding-left: 5px;
+                    caret-color: white;
+                }
+                
+                pre {
+                    color: inherit;
+                    background: inherit;
+                }
+                
+                .cur-line {
+                    background: hsl(0deg, 0%, 100%, .05);
+                    padding-left: 5px;
+                }
+                
+                .line {
+                    padding-left: 5px;
+                }
+                
+                .tok-kw {
+                    color: #C586C0;
+                }
+                
+                .tok-func-call {
+                    color: #DCDCAA;
+                }
+                
+                .tok-bracket-depth-0 {
+                    color: #FFD700; /* Gold */
+                }
+
+                .tok-bracket-depth-1 {
+                    color: #ADFF2F; /* GreenYellow */
+                }
+
+                .tok-bracket-depth-2 {
+                    color: #87CEFA; /* LightSkyBlue */
+                }
+
+                .tok-bracket-depth-3 {
+                    color: #FF69B4; /* HotPink */
+                }
+                
+                .tok-str {
+                    color: #CE9178;
+                }
+
+                .tok-char {
+                    color: #98C379;
+                }
+                
+                .tok-bracket-lit {
+                    background-color: hsl(0deg, 0%, 100%, .2);
+                    border-radius: 3px;
+                }
+                
+                .tok-err {
+                    display: inline-block;
+                    text-decoration: underline;
+                    text-decoration-style: wavy;
+                    text-decoration-color: red;
+                }
+                
+                .error-tooltip {
+                    position: absolute;
+                    background: var(--tooltip-background);
+                    height: fit-content;
+                    border: 1px solid red;
+                    padding: 10px;
+                    margin: 10px;
+                    display: none;
+                }
+            </style>
+            
+            <div class="wrapper">
+                <div class="lineno"></div>
+                
+                <div class="editor">
+                    <textarea></textarea>
+                    <pre></pre>
+                </div>
+                
+                <div class="error-tooltip"></div>
+            </div>
+        `
+        
+        this.#lineno = this.shadowRoot.querySelector('.lineno')
+        this.#textarea = this.shadowRoot.querySelector('textarea')
+        this.#pre = this.shadowRoot.querySelector('pre')
+        this.#errTooltip = this.shadowRoot.querySelector('.error-tooltip')
+    }
+    
+    connectedCallback() {
+        this.#lineno.innerText = '1'
+        
+        this.#textarea.oninput = ev => {
+            this.#lastInputEvent = ev
+        }
+        
+        this.#textarea.onkeyup = this.#update.bind(this)
+        this.#textarea.onclick = this.#update.bind(this)
+    }
+    
+    get value() {
+        return this.#textarea.value
+    }
+    
+    get cursorIndex() {
+        return this.#textarea.selectionStart || 0
+    }
+    
+    set cursorIndex(val) {
+        this.#textarea.selectionStart = this.#textarea.selectionEnd = val
+    }
+    
+    insert(text) {
+        const left = this.value.slice(0, this.cursorIndex)
+        const right = this.value.slice(this.cursorIndex)
+        
+        this.#textarea.value = left + text + right
+        this.#update()
+    }
+    
+    set server(server) {
+        this.#server = server
+        
+        server.match = (start, end) => {
+            this.addEventListener('updated', () => {
+                if (this.#lastInputEvent.inputType != 'insertText' || this.#lastInputEvent.data != start) return
+                
+                this.insert(end)
+                this.cursorIndex--
+            }, { once: true })
+        } 
+    }
+    
+    get cursorY() {
+        const rect = this.shadowRoot.querySelector('.cur-line')?.getBoundingClientRect()
+        return rect?.y || 0
+    }
+    
+    get cursorX() {
+        const cursorIndex = this.cursorIndex;
+        const text = this.value;
+        const lines = text.split('\n');
+    
+        // Find current line and column
+        let currentLine = 0;
+        let currentCol = 0;
+        let count = 0;
+        for (let i = 0; i < lines.length; i++) {
+            const line = lines[i];
+            if (cursorIndex >= count && cursorIndex <= count + line.length) {
+                currentLine = i;
+                currentCol = cursorIndex - count;
+                break;
+            }
+                count += line.length + 1; // +1 for newline character
+        }
+        
+        const currentLineElement = this.shadowRoot.querySelector('.cur-line');
+        if (!currentLineElement) return 0;
+
+        // Create range to measure cursor position
+        const range = document.createRange();
+        const walker = document.createTreeWalker(
+            currentLineElement,
+            NodeFilter.SHOW_TEXT,
+            null
+        );
+    
+        let totalChars = 0;
+        let startNode = null;
+        let startOffset = 0;
+    
+        // Find text node containing cursor position
+        while (walker.nextNode()) {
+            const node = walker.currentNode;
+            const nodeLength = node.textContent.length;
+            if (currentCol <= totalChars + nodeLength) {
+                startNode = node;
+                startOffset = currentCol - totalChars;
+                break;
+            }
+            totalChars += nodeLength;
+        }
+    
+        // Set range position
+        if (startNode) {
+            range.setStart(startNode, startOffset);
+        } else {
+            // Handle case where cursor is at end of line
+            range.selectNodeContents(currentLineElement);
+            range.collapse(false);
+        }
+    
+        range.collapse(true);
+        const rect = range.getBoundingClientRect();
+        return rect.left;
+    }
+    
+    #update() {
+        const code = this.#textarea.value
+        const lines = code.split('\n')
+        
+        const span = new SpannableText(code)
+        
+        if (this.#server) {
+            this.#server.cursorIndex = this.cursorIndex
+            this.#server.lint(span, this)
+            
+            const errMsg = this.#server.error()
+            
+            if (errMsg) {
+                this.#showError(errMsg)
+            } else {
+                this.#hideError()
+            }
+        }
+        
+        const hlLines = span.toString().split('\n')
+        
+        const currentLineNo = this.#getCurrentLineNo(lines)
+        
+        const linesTop = hlLines.slice(0, currentLineNo - 1).map(line => `<div class="line">${line || ' '}</div>`)
+        const currentLine = `<div class="cur-line">${hlLines[currentLineNo - 1] || ' '}</div>`
+        const linesBottom = hlLines.slice(currentLineNo).map(line => `<div class="line">${line || ' '}</div>`)
+            
+        this.#pre.innerHTML = [...linesTop, currentLine, ...linesBottom].join('')
+            
+        this.#lineno.innerText = lines.map((_, i) => i + 1)
+            .join('\n')
+        
+        const event = new CustomEvent('updated')
+        this.dispatchEvent(event)
+    }
+    
+    #getCurrentLineNo(lines) {
+        const cursorIndex = this.#textarea.selectionStart
+        let lineStart = 0
+        
+        for(let i = 0; i < lines.length; i++) {
+            if (cursorIndex < lineStart) return i
+            lineStart += lines[i].length + 1
+        }
+        
+        return lines.length;
+    }
+    
+    #showError(msg) {
+        this.#errTooltip.innerText = msg
+        this.#errTooltip.style.display = 'inline-block'
+        
+        const rect = this.#errTooltip.getBoundingClientRect()
+        
+        if (rect.height >= this.cursorY) {
+            this.#errTooltip.style.top = `${this.cursorY}px`
+        } else {
+            this.#errTooltip.style.top = `${this.cursorY - rect.height - 10}px`
+        }
+        
+        if (this.cursorX < (innerWidth / 3)) {
+            this.#errTooltip.style.left = `0`
+            this.#errTooltip.style.translateX = `0`
+            this.#errTooltip.style.right = 'auto'
+        } else if (this.cursorX > (innerWidth * .75)) {
+            this.#errTooltip.style.left = `auto`
+            this.#errTooltip.style.translateX = `0`
+            this.#errTooltip.style.right = `0`
+        } else {
+            this.#errTooltip.style.left = `50%`
+            this.#errTooltip.style.translateX = `-50%`
+            this.#errTooltip.style.right = `auto`
+        }
+    }
+    
+    #hideError(msg) {
+        this.#errTooltip.style.display = 'none'
+    }
+}
+
+
 customElements.define("action-bar", ActionBar)
 customElements.define("coordinator-layout", Coordinator)
 customElements.define("nav-drawer", Drawer)
 customElements.define("file-tree", FileTree)
 customElements.define("bottom-sheet", BottomSheet)
-// scustomElements.define("holdable-element", HoldableElement)
+customElements.define("tab-bar", TabBar)
+customElements.define("code-editor", Editor)
 
 // cubic-bezier(0.68, -0.55, 0.27, 1.55)
