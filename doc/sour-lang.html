@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sour Language - Documentation</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #1e1e1e;
+            color: #d4d4d4;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+        }
+        .container {
+            text-align: center;
+            padding: 20px;
+            max-width: 800px;
+            background-color: #2d2d2d;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        }
+        h1 {
+            color: #007acc;
+            margin-bottom: 10px;
+        }
+        h2 {
+            color: #007acc;
+            margin-top: 20px;
+            margin-bottom: 10px;
+        }
+        p {
+            margin-bottom: 20px;
+            line-height: 1.6;
+        }
+        ul {
+            list-style: disc;
+            padding-left: 20px;
+            margin-bottom: 20px;
+            text-align: left;
+        }
+        pre {
+            background-color: #3c3c3c;
+            padding: 15px;
+            border-radius: 5px;
+            overflow-x: auto;
+            margin-bottom: 20px;
+            text-align: left;
+        }
+        code {
+            font-family: "Courier New", Courier, monospace;
+            color: #e0e0e0;
+        }
+        .button {
+            display: inline-block;
+            background-color: #007acc;
+            color: white;
+            padding: 10px 20px;
+            text-decoration: none;
+            border-radius: 5px;
+            transition: background-color 0.3s ease;
+        }
+        .button:hover {
+            background-color: #005f99;
+        }
+        footer {
+            margin-top: 40px;
+            font-size: 0.9em;
+            color: #888;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Sour Language Documentation</h1>
+        <p>Sour Language is a simple, interpreted programming language designed for educational purposes and to demonstrate basic language parsing and interpretation concepts.</p>
+        
+        <h2>Core Concepts</h2>
+        <ul>
+            <li><strong>Keywords:</strong> <code>print</code></li>
+            <li><strong>Functions:</strong> <code>_stdout</code> (for character output)</li>
+            <li><strong>Data Types:</strong> Currently supports strings and characters.</li>
+        </ul>
+        
+        <h2>Syntax</h2>
+        <h3>Printing to Console</h3>
+        <p>To print a string to the console:</p>
+        <pre><code>print "Hello, World!"</code></pre>
+        
+        <h3>Character Output</h3>
+        <p>To print a single character to standard output (e.g., for building strings character by character):</p>
+        <pre><code>_stdout('A')</code></pre>
+        
+        <h3>Comments</h3>
+        <p>Sour Language does not currently support comments.</p>
+        
+        <h2>Error Handling</h2>
+        <p>The interpreter provides basic error messages for syntax and type errors.</p>
+        
+        <h2>Extending the Language</h2>
+        <ul>
+            <li><strong>Lexer (Tokenizer):</strong> <code>libs/sourlang/tokens.js</code> performs lexical analysis.</li>
+            <li><strong>Parser:</strong> <code>libs/sourlang/parser.js</code> builds an Abstract Syntax Tree (AST).</li>
+            <li><strong>Validator:</strong> <code>libs/sourlang/validator.js</code> performs semantic checks and type validation.</li>
+            <li><strong>Interpreter:</strong> <code>libs/sourlang/interpreter.js</code> executes the AST.</li>
+            <li><strong>Character Utilities:</strong> <code>libs/sourlang/chars.js</code> defines character-related utilities.</li>
+        </ul>
+        
+        <a href="index.html" class="button">Back to Sour Editor Landing Page</a>
+    </div>
+
+    <footer>
+        <p>&copy; 2025 Sour Editor. All rights reserved.</p>
+    </footer>
+</body>
+</html>

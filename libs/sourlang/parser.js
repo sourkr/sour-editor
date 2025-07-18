@@ -18,18 +18,18 @@ export default class Parser extends BaseParser {
             return { type: 'func-def', kw, name, params, colon, retType }
         }
         
+        return this.expr(true)
+    }
+    
+    expr(isStmt) {
+        if (this.is("int") || this.is("str") || this.is("char")) return this.next()
+        
         if (this.is('ident')) {
             const name = this.next()
             const args = this.list("(,)", this.expr)
             
             return { type: 'func-call', name, args }
         }
-        
-        return super.file()
-    }
-    
-    expr(isStmt) {
-        if (this.is("int") || this.is("str") || this.is("char")) return this.next()
         
         return super.file()
     }

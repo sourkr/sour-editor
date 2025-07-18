@@ -1,20 +1,15 @@
-import { Menu, FileTree, Activity, R } from "ui/core.js";
+import { Menu, FileTree, Activity, R, Mutable } from "ui/core.js";
 import "ui/editor.js"
 
 import Interpreter from "./libs/sourlang/interpreter.js";
 import Server from "./libs/sourlang/server.js"
 
 
-// const codeEditor = document.getElementById('code-editor');
-// const highlightingArea = document.getElementById('highlighting-area');
-// const highlightingLayer = document.getElementById('highlighting-layer');
-const tabBar = document.getElementById('tab-bar');
-// const tabContent = document.getElementById('tab-content');
-
-let activeFileName = null;
-let activeTabs = [];
-
 class MainActivity extends Activity {
+    tabs = []
+    
+    dir = new File('/')
+    
     onCreate() {
         this.content = R.layout.main
         
@@ -30,23 +25,77 @@ class MainActivity extends Activity {
         this.editor = this.querySelector('code-editor')
         
         // Initilize File Tree
-        this.filetree.setFolder(new LocalStorageRoot(), this)
+        this.filetree.setFolder(this.dir, this)
         
-        this.filetree.onitemclick = ev => {
-            const path = ev.detail
-            // const content = localStorage.getItem(`/${path}`) || ''
+        this.filetree.onitemclick = ev => this.openFile(ev.detail)
+        
+        // Initilize Tab Bar
+        this.tabbar.ontabselected = ({ detail: index }) => {
+            const tab = this.tabs[index]
             
-            this.tabbar.addTab(path)
+            if (tab?.type == 'output') {
+                // this.editor.disable()
+                this.editor.disableLineNo()
+                this.editor.server = null
+                this.editor.value = tab.content
+                this.editor.outputStream = tab.outputStream
+                console.dir(this.editor)
+                console.log(tab.outputStream)
+            } else {
+                this.editor.enable()
+                this.editor.enableLineNo()
+                this.editor.server = new Server()
+                this.editor.value = tab.content
+                this.editor.outputStream = null
+                
+                const savefile = new File('.sourcode')
+                
+                if (!savefile.exists()) {
+                    savefile.create()
+                    savefile.write('{}')
+                }
+                
+                const data = JSON.parse(savefile.read())
+                data.active_file = tab.path
+                savefile.write(JSON.stringify(data))
+            }
         }
         
         
         // Initilize Editor
-        this.editor.server = new Server()
+        this.editor.server = null
+        this.editor.disable()
+        this.editor.disableLineNo()
+        
+        const savefile = new File('.sourcode')
+        
+        if (savefile.exists()) {
+            const data = JSON.parse(savefile.read())
+            
+            if (data.active_file) {
+                this.openFile(data.active_file)
+            }
+        }
     }
     
     onCreateOptionMenu(menu) {
         menu.addItem("save", "Save", "icon/save.svg");
         menu.addItem("run", "Run", "icon/play-arrow.svg");
+    }
+    
+    openFile(path) {
+        if (this.tabs.some(tab => tab.path === path)) return
+        
+        const content = new Mutable(new File(path).read())
+        
+        this.tabs.push({
+            type: 'file',
+            path, content
+        })
+        
+        content.subscribe(data => new File(path).write(data))
+        
+        this.tabbar.addTab(path)
     }
     
     
@@ -62,53 +111,104 @@ class MainActivity extends Activity {
     }
     
     runActiveFile() {
-        const interpreter = new Interpreter(codeEditor.value, "internal.sour");
-        const outputFileName = "Output";
-        let outputContent = "";
+        const interpreter = new Interpreter(this.editor.value, "internal.sour");
         
-        // this.tabbar.addTab(outputFileName, outputContent);
+        
+        if (!this.tabs.some(tab => tab.type == 'output')) {
+            this.tabs.push({
+                type: 'output',
+                outputStream: interpreter.outputStream,
+                content: new Mutable('')
+            })
             
-        interpreter.interprete();
+            this.tabbar.addTab('Output')
+        }
         
-        const updateOutput = (chunk) => {
-            const tabIndex = activeTabs.findIndex(tab => tab.fileName === outputFileName);
-            if (tabIndex !== -1) {
-                activeTabs[tabIndex].content += chunk;
-                if (activeFileName === outputFileName) {
-                    codeEditor.value = activeTabs[tabIndex].content;
-                }
-            }
-        };
+        const tab = this.tabs.find(tab => tab.type == 'output')
         
-        (async () => {
+        tab.outputStream = interpreter.outputStream
+            
+        interpreter.interprete()
+        
+        ;(async () => {
             while (true) {
                 const chunk = await interpreter.inputStream.read();
-                updateOutput(chunk);
+                tab.content.value += chunk
             }
-        })();
+        })()
         
-        (async () => {
+        ;(async () => {
             while (true) {
                 const chunk = await interpreter.errorStream.read();
-                updateOutput(chunk);
+                tab.content.value += chunk
             }
         })();
     }
 }
 
-class LocalStorageRoot extends FileTree.Folder {
-    get name() {
-        return '/'
+class File {
+    
+    #path
+    
+    constructor(path) {
+        this.#path = path
+    }
+    
+    exists() {
+        return this.name in JSON.parse(localStorage.getItem(this.parent.path))
+    }
+    
+    create() {
+        try {
+            const data = JSON.parse(localStorage.getItem(this.parent.path))
+            data[this.name] = 'file'
+            localStorage.setItem(this.path, '')
+            localStorage.setItem(this.parent.path, JSON.stringify(data))
+            
+            return true
+        } catch {
+            return false
+        }
+    }
+    
+    read() {
+        return localStorage.getItem(this.path)
+    }
+    
+    write(data) {
+        localStorage.setItem(this.path, data)
+    }
+    
+    child(path) {
+        return new File(this.path + '/' + path)
     }
     
     get list() {
-        const list = localStorage.getItem('/')
-        return list ? list.split('\n') : []
+        return Object.keys(JSON.parse(localStorage.getItem(this.parent.path)))
     }
     
-    create(name) {
-        localStorage.setItem('/', [...this.list, name].join('\n'))
+    get name() {
+        return this.#path.split('/')
+            .filter(Boolean)
+            .at(-1) || '/'
     }
+    
+    get path() {
+        return '/' + this.#path.split('/')
+            .filter(Boolean)
+            .join('/')
+    }
+    
+    get parent() {
+        return new File('/' + this.#path.split('/')
+            .filter(Boolean)
+            .slice(0, -1)
+            .join('/'))
+    }
+}
+
+if (!localStorage.getItem('/')) {
+    localStorage.setItem('/', '{}')
 }
 
 Activity.start(MainActivity)

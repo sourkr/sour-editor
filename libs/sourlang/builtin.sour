@@ -1,2 +1,24 @@
-/** Prints output to the console */
+/**
+ * Writes a single character to the standard output stream.
+ * This function is primarily used for low-level character output,
+ * allowing programs to build strings character by character or
+ * to output individual characters directly.
+ * @param ch The character to write to stdout.
+ */
 func _stdout(ch: char): void
+
+/**
+ * Writes a single character to the standard error stream.
+ * This function is used for outputting error messages or diagnostic information
+ * separately from regular program output.
+ * @param ch The character to write to stderr.
+ */
+func _stderr(ch: char): void
+
+/**
+ * Reads a single character from the standard input stream.
+ * This function allows programs to receive character input from the user
+ * or another input source, useful for interactive applications.
+ * @returns The character read from stdin.
+ */
+func _stdin(): char

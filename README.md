@@ -78,6 +78,13 @@ To modify or extend Sour Editor:
 
 No build process is currently required.
 
+## Documentation
+
+Comprehensive documentation for Sour Editor and Sour Language is available:
+
+*   **Sour Editor Landing Page**: `/doc/index.html`
+*   **Sour Language Documentation**: `/doc/sour-lang.html`
+
 ## License
 
 This project is licensed under the [MIT License](LICENSE). (Assuming MIT, please update if different).

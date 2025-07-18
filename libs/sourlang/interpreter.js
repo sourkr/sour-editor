@@ -48,13 +48,31 @@ export default class Interpreter {
     }
     
     #interprete(expr, resolve, reject) {
+        if (!expr) return
+        
         if (expr.type === 'func-call') {
             if (expr.name.value === '_stdout') {
                 this.#interprete(expr.args.list[0], char => {
                     this.#outstream.write(String.fromCharCode(char))
                     resolve()
                 }, reject)
+                
+                return
             }
+            
+            if (expr.name.value === '_stderr') {
+                this.#interprete(expr.args.list[0], char => {
+                    this.#errstream.write(String.fromCharCode(char))
+                    resolve()
+                }, reject)
+                
+                return
+            }
+            
+            if (expr.name.value === '_stdin') {
+                this.#inpstream.read().then(char => resolve(char.charCodeAt(0)))
+            }
+            
             return
         }
         
@@ -113,12 +131,16 @@ class Stream {
     write(data) {
         if (this.#closed) throw new Error('Stream is closed')
         
-        if (this.#reader) this.#reader()
+        if (this.#reader) this.#reader(data)
         else this.#buffer.push(data)
     }
     
     close() {
         this.#closed = true
         this.#onclose?.()
+    }
+    
+    [Symbol.dispose]() {
+        this.close()
     }
 }

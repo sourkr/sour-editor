@@ -23,6 +23,10 @@ export default class Validator {
     }
 
     stmt(stmt) {
+        
+    }
+    
+    expr(expr) {
         if (stmt.type === 'func-call') {
             const name = stmt.name.value
             const funcs = this.globals.get_funcs(name)
@@ -60,7 +64,7 @@ export default class Validator {
                     errors.push(`${name}(${argsStr}) is not applicable for ${name}(${paramsStr})`)
                 } else {
                     found = true
-                    return
+                    return func.retType
                 }
             }
             
@@ -70,9 +74,7 @@ export default class Validator {
             
             return
         }
-    }
-    
-    expr(expr) {
+        
         if (expr.type === 'char') return { type: 'simple', name: 'char' }
     }
     
@@ -94,4 +96,4 @@ function equalType(a, b) {
 const dparser = new DefinationParser(await (await fetch('./libs/sourlang/builtin.sour')).text())
 dparser.parse()
 Validator.BUILTINS = dparser.globals
-console.log(Validator.BUILTINS.get_all_funcs())
+// console.log(Validator.BUILTINS.get_all_funcs())

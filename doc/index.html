@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sour Editor - Mobile-First IDE</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #1e1e1e;
+            color: #d4d4d4;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+        }
+        .container {
+            text-align: center;
+            padding: 20px;
+            max-width: 800px;
+            background-color: #2d2d2d;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        }
+        h1 {
+            color: #007acc;
+            margin-bottom: 10px;
+        }
+        p {
+            margin-bottom: 20px;
+            line-height: 1.6;
+        }
+        .features-list {
+            list-style: none;
+            padding: 0;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+        .features-list li {
+            background-color: #3c3c3c;
+            padding: 15px;
+            border-radius: 5px;
+            text-align: left;
+        }
+        .features-list li strong {
+            color: #007acc;
+        }
+        .button {
+            display: inline-block;
+            background-color: #007acc;
+            color: white;
+            padding: 10px 20px;
+            text-decoration: none;
+            border-radius: 5px;
+            transition: background-color 0.3s ease;
+        }
+        .button:hover {
+            background-color: #005f99;
+        }
+        footer {
+            margin-top: 40px;
+            font-size: 0.9em;
+            color: #888;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Sour Editor</h1>
+        <p>A lightweight, mobile-first JavaScript IDE that runs directly in your browser. Designed for simplicity and efficiency, Sour Editor provides a seamless coding experience on the go.</p>
+        
+        <h2>Features:</h2>
+        <ul class="features-list">
+            <li><strong>File Management:</strong> Create, save, load, and delete files using local storage. Manage multiple open files with intuitive tabs.</li>
+            <li><strong>Run Code:</strong> Execute your Sour Language code directly within the editor and view real-time output and errors in a dedicated console.</li>
+            <li><strong>Enhanced Syntax Highlighting:</strong> Enjoy advanced syntax highlighting for Sour Language, including smart bracket matching with depth-based coloring and current line highlighting.</li>
+            <li><strong>Intelligent Autocompletion:</strong> Get smart code completion suggestions for keywords and functions, complete with function signatures to speed up your coding.</li>
+            <li><strong>Interactive Error Tooltips:</strong> Debug with ease thanks to detailed error messages displayed directly in the editor.</li>
+            <li><strong>Contextual Documentation:</strong> Access documentation for autocompletion suggestions, including function parameters and return types, right when you need it.</li>
+        </ul>
+        
+        <a href="../../index.html" class="button">Launch Sour Editor</a>
+        <a href="sour-lang.html" class="button">Sour Language Documentation</a>
+    </div>
+
+    <footer>
+        <p>&copy; 2025 Sour Editor. All rights reserved.</p>
+    </footer>
+</body>
+</html>

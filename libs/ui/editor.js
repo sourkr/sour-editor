@@ -1,4 +1,5 @@
 import SpannableText from "../spannable-text.js"
+import { Mutable } from './core.js'
 
 const TYPE_CODES = {
     func: '\uea8c'
@@ -15,7 +16,6 @@ class Editor extends HTMLElement {
 
     #server
     #lastInputEvent
-    
     
     constructor() {
         super()
@@ -46,6 +46,7 @@ class Editor extends HTMLElement {
                     font-size: inherit;
                     color: grey;
                     text-align: end;
+                    line-height: 1.5;
                 }
                 
                 .editor {
@@ -62,6 +63,9 @@ class Editor extends HTMLElement {
                     font-size: inherit;
                     width: 100%;
                     height: 100%;
+                    line-height: 1.5;
+                    font-weight: normal;
+                    box-sizing: border-box;
                 }
                 
                 textarea {
@@ -101,7 +105,7 @@ class Editor extends HTMLElement {
                 }
 
                 .tok-bracket-depth-1 {
-                    color: #ADFF2F; /* GreenYellow */
+                    color: #FF69B4; /* HotPink */
                 }
 
                 .tok-bracket-depth-2 {
@@ -109,7 +113,7 @@ class Editor extends HTMLElement {
                 }
 
                 .tok-bracket-depth-3 {
-                    color: #FF69B4; /* HotPink */
+                    color: #ADFF2F; /* GreenYellow */
                 }
                 
                 .tok-str {
@@ -123,6 +127,7 @@ class Editor extends HTMLElement {
                 .tok-bracket-lit {
                     background-color: hsl(0deg, 0%, 100%, .2);
                     border-radius: 3px;
+                    box-sizing: border-box;
                 }
                 
                 .tok-err {
@@ -140,6 +145,7 @@ class Editor extends HTMLElement {
                     padding: 10px;
                     margin: 10px;
                     display: none;
+                    pointer-events: none;
                 }
                 
                 .completion {
@@ -204,6 +210,8 @@ class Editor extends HTMLElement {
         
         this.#completer = new AutoCompletionManager(this,this.shadowRoot.querySelector('.completion'))
         this.#doc = new DocToolTipManager(this.shadowRoot.querySelector('.doc-tooltip'))
+        
+        this.valueListener = val => this.#setValue(val, { update: true })
     }
     
     connectedCallback() {
@@ -213,15 +221,57 @@ class Editor extends HTMLElement {
         this.#lineno.innerText = '1'
         
         this.#textarea.oninput = ev => {
+            
             this.#lastInputEvent = ev
+            
+            if (this.outputStream) {
+                if (ev.inputType === 'insertText') {
+                    this.#setValue(this.value.slice(0, -ev.data.length))
+                }
+                
+                this.outputStream.write(ev.data)
+
+                return
+            }
+            
+            if (this.mutabelValue) {
+                this.mutabelValue.value = this.value
+            }
         }
         
         this.#textarea.onkeyup = this.#update.bind(this)
         this.#textarea.onclick = this.#update.bind(this)
     }
     
+    set value(val) {
+        if (this.mutableValue) {
+            this.mutabelValue.unsubscribe(this.valueListener)
+            this.mutableValue = null
+        }
+        
+        if (val instanceof Mutable) {
+            this.mutabelValue = val
+            val.subscribe(this.valueListener)
+        } else {
+            this.#textarea.value = val
+            this.#update()
+        }
+    }
+    
     get value() {
         return this.#textarea.value
+    }
+    
+    #setValue(val, option = {}) {
+        if (this.mutableValue && option.mutate) {
+            this.mutableValue.value = val
+        }
+        
+        this.#textarea.value = val
+        
+        if (option.update) {
+            this.#update()
+        }
     }
     
     get cursorIndex() {
@@ -236,15 +286,37 @@ class Editor extends HTMLElement {
         const left = this.value.slice(0, this.cursorIndex)
         const right = this.value.slice(this.cursorIndex)
         
-        this.#textarea.value = left + text + right
-        this.#update()
+        this.#setValue(left + text + right, {
+            mutate: true,
+            update: true
+        })
+    }
+    
+    disable() {
+        this.#textarea.disabled = true
+        this.#errTooltip.style.display = 'none'
+        this.#completer.hide()
+    }
+    
+    enable() {
+        this.#textarea.disabled = false
+    }
+    
+    disableLineNo() {
+        this.#lineno.style.display = 'none'
+    }
+    
+    enableLineNo() {
+        this.#lineno.style.display = 'block'
     }
     
     set server(server) {
         this.#server = server
         
+        if (!server) return
+        
         server.match = (start, end) => {
-            if (this.#lastInputEvent.inputType != 'insertText' || this.#lastInputEvent.data != start) return
+            if (this.#lastInputEvent?.inputType != 'insertText' || this.#lastInputEvent.data != start) return
                 
             this.addEventListener('updated', () => {
                 this.insert(end)
@@ -417,7 +489,6 @@ class AutoCompletionManager {
         this.doc = doc
         
         window.addEventListener('keydown', ev => {
-            console.log(ev, this)
             if (!this.isVisible) return
             
             if (ev.key === 'Enter') {
@@ -425,6 +496,42 @@ class AutoCompletionManager {
                 ev.stopPropagation()
                 
                 this.complete(this.itemList[this.selected])
+                return
+            }
+            
+            if (ev.key === 'ArrowDown') {
+                ev.preventDefault()
+                ev.stopPropagation()
+                
+                this.selected = Math.max(0, Math.min(this.itemList.length - 1, this.selected + 1))
+                
+                this.itemList.forEach((item, i) => {
+                    if (i === this.selected) {
+                        item.layout.style.background = 'hsla(200deg, 100%, 50%, .5)'
+                        this.doc.show(item.doc)
+                    } else {
+                        item.layout.style.background = 'transparent'
+                    }
+                })
+                
+                return
+            }
+            
+            if (ev.key === 'ArrowUp') {
+                ev.preventDefault()
+                ev.stopPropagation()
+                
+                this.selected = Math.max(0, Math.min(this.itemList.length - 1, this.selected - 1))
+                
+                this.itemList.forEach((item, i) => {
+                    if (i === this.selected) {
+                        item.layout.style.background = 'hsla(200deg, 100%, 50%, .5)'
+                        this.doc.show(item.doc)
+                    } else {
+                        item.layout.style.background = 'transparent'
+                    }
+                })
+                
                 return
             }
             
@@ -500,7 +607,6 @@ class DocToolTipManager {
         this.symbol.innerHTML = this.toStringType(type)
         
         this.doc.innerHTML = type.doc
-        console.log(type)
         
         this.tooltip.style.display = 'block'
         

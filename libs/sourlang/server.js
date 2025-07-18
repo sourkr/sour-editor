@@ -11,26 +11,26 @@ export default class Server {
         this.prog = prog
         this.globals = validator.globals
         
-        prog.ast.forEach(stmt => {
-            if (stmt.type == 'func-call') {
-                this.lint_token(stmt.name, 'tok-func-call')
-                this.lint_bracket(stmt.args, 0)
-                this.lint_list(stmt.args)
-                return
-            }
-        })
+        prog.ast.forEach(stmt => this.lint_expr(stmt, 0))
         
         prog.errors.forEach(err => {
             span.error(err.start.index, err.end.index)
         })
     }
     
-    lint_list(list) {
-        list.list.forEach(expr => this.lint_expr(expr))
+    lint_list(list, depth) {
+        list.list.forEach(expr => this.lint_expr(expr, depth))
     }
     
-    lint_expr(expr) {
+    lint_expr(expr, depth) {
         if (!expr) return
+        
+        if (expr.type == 'func-call') {
+            this.lint_token(expr.name, 'tok-func-call')
+            this.lint_bracket(expr.args, depth)
+            this.lint_list(expr.args, depth + 1)
+            return
+        }
         
         if (expr.type == 'char') {
             if (expr.unmatched) this.match("'", "'")
@@ -98,6 +98,8 @@ export default class Server {
                     .filter(func => func.name.startsWith(stmt.name.value))
                     .map(func => { return { type: 'func', prefix: stmt.name.value, name: func.name, doc: func } })
             }
+            
+            return this.list_body(stmt.args.list)
         }
     }
 }

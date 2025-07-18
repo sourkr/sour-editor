@@ -36,8 +36,8 @@ The interpreter provides basic error messages for syntax and type errors.
 
 ## Extending the Language
 
-- **Parser**: `libs/sourlang/parser.js` handles the syntax analysis.
+- **Lexer (Tokenizer)**: `libs/sourlang/tokens.js` performs lexical analysis.
+- **Parser**: `libs/sourlang/parser.js` builds an Abstract Syntax Tree (AST).
 - **Validator**: `libs/sourlang/validator.js` performs semantic checks and type validation.
-- **Interpreter**: `libs/sourlang/interpreter.js` executes the abstract syntax tree (AST).
-- **Tokens**: `libs/sourlang/tokens.js` defines the language's tokens.
-- **Chars**: `libs/sourlang/chars.js` defines character-related utilities.
+- **Interpreter**: `libs/sourlang/interpreter.js` executes the AST.
+- **Character Utilities**: `libs/sourlang/chars.js` defines character-related utilities.

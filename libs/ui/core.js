@@ -272,7 +272,7 @@ export class FileTree extends HTMLElement {
             sheet.onmenuitemclicked = ev => {
                 switch(ev.detail) {
                     case 'new-file': {
-                        dir.create(prompt('Enter File Name:'))
+                        dir.child(prompt('Enter File Name:')).create()
                         this.setFolder(dir, context)
                         break
                     }
@@ -445,8 +445,7 @@ export class Activity {
 }
 
 class TabBar extends HTMLElement {
-    #tabs = new Map()
-    #ids = 0
+    #tabs = []
     
     constructor() {
         super()
@@ -456,12 +455,13 @@ class TabBar extends HTMLElement {
         this.shadowRoot.innerHTML = `
             <style>
                 :host {
-                    display: block;
+                    display: flex;
                     border-bottom: 1px solid;
+                    font-size: .9rem;
                 }
                 
                 .tab, div {
-                    padding: 15px;
+                    padding: 10px;
                     border-right: 1px solid;
                     border-color: inherit;
                     width: fit-content;
@@ -472,13 +472,48 @@ class TabBar extends HTMLElement {
     
     addTab(name) {
         const tab = document.createElement('div')
-        // const title = document.createElement('span')
+        const index = this.#tabs.length
         
         tab.innerText = name
         
         tab.classList.add('tab')
         
+        const event = new CustomEvent('tabselected', { detail: index })
+        this.ontabselected?.(event)
+        
         this.shadowRoot.append(tab)
+        this.#tabs.push(tab)
+        
+        tab.onclick = () => {
+            this.ontabselected?.(event)
+        }
+    }
+}
+
+export class Mutable {
+    #val
+    #subscribers = []
+    
+    constructor(initialValue) {
+        this.#val = initialValue
+    }
+    
+    get value() {
+        return this.#val
+    }
+    
+    set value(val) {
+        this.#val = val
+        this.#subscribers.forEach(callback => callback(val))
+    }
+    
+    subscribe(callback) {
+        this.#subscribers.push(callback)
+        callback(this.value)
+    }
+    
+    unsubscribe(callback) {
+        this.#subscribers.splice(this.#subscribers.indexOf(callback), 1)
     }
 }
 
