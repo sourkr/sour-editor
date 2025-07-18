@@ -2,7 +2,10 @@ import SpannableText from "../spannable-text.js"
 import { Mutable } from './core.js'
 
 const TYPE_CODES = {
-    func: '\uea8c'
+    func: '\uea8c',
+    kw: '\ueb62',
+    type: '\ueb62',
+    var: '\uea88'
 }
 
 class Editor extends HTMLElement {
@@ -66,6 +69,7 @@ class Editor extends HTMLElement {
                     line-height: 1.5;
                     font-weight: normal;
                     box-sizing: border-box;
+                    tab-size: 4;
                 }
                 
                 textarea {
@@ -96,6 +100,22 @@ class Editor extends HTMLElement {
                     color: #C586C0;
                 }
                 
+                .tok-def {
+                    color: #569CD6;
+                }
+                
+                .tok-type {
+                    color: #4EC9B0;
+                }
+                
+                .tok-num {
+                    color: #B5CEA8;
+                }
+                
+                .tok-var {
+                    color: #9CDCFE;
+                }
+                
                 .tok-func-call {
                     color: #DCDCAA;
                 }
@@ -109,7 +129,7 @@ class Editor extends HTMLElement {
                 }
 
                 .tok-bracket-depth-2 {
-                    color: #87CEFA; /* LightSkyBlue */
+                    color: #6fabdc; /* LightSkyBlue */
                 }
 
                 .tok-bracket-depth-3 {
@@ -137,12 +157,20 @@ class Editor extends HTMLElement {
                     text-decoration-color: red;
                 }
                 
+                .dim {
+                    filter: brightness(60%);
+                }
+                
+                .tab {
+                    border-left: 1px solid grey;
+                }
+                
                 .error-tooltip {
                     position: absolute;
                     background: var(--tooltip-background);
                     height: fit-content;
                     border: 1px solid red;
-                    padding: 10px;
+                    padding: 5px;
                     margin: 10px;
                     display: none;
                     pointer-events: none;
@@ -239,6 +267,15 @@ class Editor extends HTMLElement {
             }
         }
         
+        this.#textarea.onkeydown = ev => {
+            this.#lastInputEvent = null
+            
+            if (ev.key == 'Tab') {
+                ev.preventDefault()
+                this.insert('\t')
+            }
+        }
+        
         this.#textarea.onkeyup = this.#update.bind(this)
         this.#textarea.onclick = this.#update.bind(this)
     }
@@ -267,7 +304,9 @@ class Editor extends HTMLElement {
             this.mutableValue.value = val
         }
         
+        const cursorIndex = this.cursorIndex
         this.#textarea.value = val
+        this.cursorIndex = cursorIndex
         
         if (option.update) {
             this.#update()
@@ -285,11 +324,14 @@ class Editor extends HTMLElement {
     insert(text) {
         const left = this.value.slice(0, this.cursorIndex)
         const right = this.value.slice(this.cursorIndex)
+        const cursorIndex = this.cursorIndex
         
         this.#setValue(left + text + right, {
             mutate: true,
             update: true
         })
+        
+        this.cursorIndex = cursorIndex + text.length
     }
     
     disable() {
@@ -317,12 +359,11 @@ class Editor extends HTMLElement {
         
         server.match = (start, end) => {
             if (this.#lastInputEvent?.inputType != 'insertText' || this.#lastInputEvent.data != start) return
+            if (this.value[this.cursorIndex] === end) return
                 
             this.addEventListener('updated', () => {
                 this.insert(end)
                 this.cursorIndex--
-                
-                if (start == "'") this.cursorIndex--        
             }, { once: true })
         } 
     }
@@ -574,7 +615,11 @@ class AutoCompletionManager {
     complete(item) {
         if (item.type == 'func') {
             this.editor.insert(`${item.name.slice(item.prefix.length)}()`)
-            this.editor.cursorIndex--
+            if (item.doc.params.length) this.editor.cursorIndex--
+        } else if (item.type == 'kw') {
+            this.editor.insert(`${item.name.slice(item.prefix.length)} `)
+        } else {
+            this.editor.insert(item.name.slice(item.prefix.length))
         }
         
         this.hide()
@@ -604,14 +649,67 @@ class DocToolTipManager {
     }
     
     show(type) {
+        if (!type) return
+        
         this.symbol.innerHTML = this.toStringType(type)
         
-        this.doc.innerHTML = type.doc
+        this.doc.innerHTML = this.formatDocComment(type.doc)
         
         this.tooltip.style.display = 'block'
         
         this.tooltip.style.top = `${this.completion.rect.top}px`
         this.tooltip.style.left = `${this.completion.rect.right}px`
+    }
+
+    formatDocComment(docString) {
+        if (!docString) return '';
+
+        // Remove JSDoc block start/end and leading asterisks
+        const cleanedDoc = docString
+            .replace(/^\/\*\*\s*/, '') // Remove /** at the beginning
+            .replace(/\s*\*\/$/, '')   // Remove */ at the end
+            .split('\n')
+            .map(line => line.replace(/^\s*\*\s?/, '').trim()) // Remove leading * and trim
+            .filter(line => line !== ''); // Remove empty lines
+
+        let description = [];
+        let params = [];
+        let returns = '';
+
+        for (const line of cleanedDoc) {
+            if (line.startsWith('@param')) {
+                params.push(line.substring('@param'.length).trim());
+            } else if (line.startsWith('@returns')) {
+                returns = line.substring('@returns'.length).trim();
+            } else {
+                description.push(line);
+            }
+        }
+
+        let html = '';
+        if (description.length > 0) {
+            html += `<p>${description.join('<br>')}</p>`;
+        }
+
+        if (params.length > 0) {
+            html += '<h4>Parameters:</h4><ul>';
+            for (const param of params) {
+                // Expected format: {paramName} {description}
+                const match = param.match(/^(\S+)\s+(.*)/);
+                if (match) {
+                    html += `<li><strong>${match[1]}</strong>: ${match[2]}</li>`;
+                } else {
+                    html += `<li>${param}</li>`;
+                }
+            }
+            html += '</ul>';
+        }
+
+        if (returns) {
+            html += `<h4>Returns:</h4><p>${returns}</p>`;
+        }
+
+        return html;
     }
     
     hide() {
@@ -619,17 +717,27 @@ class DocToolTipManager {
     }
     
     toStringType(type) {
-        console.log(type)
-        
         if (type.type === 'func') {
             const kw = this.span('tok-kw', 'func')
             const name = this.span('tok-func-call', type.name)
             
             const params = type.params
-                .map(param => `${param.name}: ${param.type.name}`)
+                .map(param => `${this.span('tok-var', param.name)}: ${this.span('tok-type', param.type.name)}`)
                 .join(',')
                 
-            return `${kw} ${name}(${params}): ${type.retType.name}`
+            return `${kw} ${name}(${params}): ${this.span('tok-type', type.retType.name)}`
+        }
+        
+        if (type.type == 'simple') {
+            if (type.is_param) {
+                return `<span style="color:grey">(param)</span> ${this.span('tok-var', type.param_name)}: ${this.span('tok-type', type.name)}`
+            }
+            
+            if (type.is_var) {
+                return `${this.span('tok-def', 'var')} ${this.span('tok-var', type.var_name)}: ${this.span('tok-type', type.name)}`
+            }
+            
+            return `${this.span('tok-type', type.name)}`
         }
     }
     

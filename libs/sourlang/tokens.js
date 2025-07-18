@@ -1,6 +1,6 @@
 import { CharStream, EOF } from "./chars.js"
 
-const KEYWORDS = new Set(['print', 'func'])
+const KEYWORDS = new Set(['func', 'if', 'else', 'for', 'var'])
 
 export class TokenStream {
     #chars
@@ -70,11 +70,15 @@ export class TokenStream {
         }
         
         if (/[0-9]/.test(char)) {
-            return this.#tok("int", this.#read(this.#int))
+            return this.#tok("num", this.#read(this.#int))
         }
         
-        if (/[(,){:}]/.test(char)) {
+        if (/[(,){:};.]/.test(char)) {
             return this.#tok("punc", this.#chars.next())
+        }
+        
+        if (/[<+>%\/=]/.test(char)) {
+            return this.#tok("op", this.#chars.next())
         }
 
         if (char === "'") {
@@ -96,7 +100,7 @@ export class TokenStream {
             
             if (this.#chars.peek() === '\'') {
                 this.#chars.next(); // Consume the closing quote
-                return this.#tok("char", charValue)
+                return this.#tok("char", charValue, `'${charValue}'`)
             } else {
                 const token = this.#tok("char", charValue)
                 token.err =  {
@@ -148,8 +152,8 @@ export class TokenStream {
         return /\s/.test(this.#chars.peek())
     }
     
-    #tok(type, value) {
-        const tok = new Token(type, value)
+    #tok(type, value, source = value) {
+        const tok = new Token(type, value, source)
         tok.start = this.#start
         tok.end = this.#chars.position
         return tok

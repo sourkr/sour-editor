@@ -14,16 +14,20 @@
             display: flex;
             flex-direction: column;
             align-items: center;
-            justify-content: center;
+            justify-content: flex-start; /* Align to start for better mobile scrolling */
             min-height: 100vh;
+            padding: 20px; /* Add some padding to the body */
+            box-sizing: border-box; /* Include padding in element's total width and height */
         }
         .container {
             text-align: center;
             padding: 20px;
             max-width: 800px;
+            width: 100%; /* Make container take full width on small screens */
             background-color: #2d2d2d;
             border-radius: 8px;
             box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            box-sizing: border-box;
         }
         h1 {
             color: #007acc;
@@ -51,7 +55,9 @@
             color: #007acc;
         }
         .button {
-            display: inline-block;
+            display: block; /* Make buttons block-level for better stacking on mobile */
+            width: fit-content; /* Adjust width to content */
+            margin: 10px auto; /* Center buttons and add vertical spacing */
             background-color: #007acc;
             color: white;
             padding: 10px 20px;
@@ -66,6 +72,17 @@
             margin-top: 40px;
             font-size: 0.9em;
             color: #888;
+            text-align: center;
+        }
+
+        /* Mobile-specific adjustments */
+        @media (max-width: 600px) {
+            .features-list {
+                grid-template-columns: 1fr; /* Stack features vertically on small screens */
+            }
+            .button {
+                width: 90%; /* Make buttons wider on small screens */
+            }
         }
     </style>
 </head>

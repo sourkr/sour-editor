@@ -22,3 +22,7 @@ func _stderr(ch: char): void
  * @returns The character read from stdin.
  */
 func _stdin(): char
+
+class string {
+    var len: byte
+}

@@ -84,6 +84,7 @@ Comprehensive documentation for Sour Editor and Sour Language is available:
 
 *   **Sour Editor Landing Page**: `/doc/index.html`
 *   **Sour Language Documentation**: `/doc/sour-lang.html`
+*   **Sour Language Built-in Functions**: `/doc/builtins.html`
 
 ## License
 

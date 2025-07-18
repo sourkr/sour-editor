@@ -19,8 +19,8 @@ export class BaseParser {
         const res = parse.call(this, ...args)
         const scope = this.#scopes.pop()
         
-        res.start = res.start || scope.start
-        res.end = res.end || scope.end
+        res.start = res.start || scope.firstTok.start
+        res.end = res.end || scope.lastTok.end
         
         return res
     }
@@ -63,11 +63,10 @@ export class BaseParser {
     }
     
     #token(type, value) {
-        // console.log(type, value)
         switch (type) {
             case "ident": return "identifier"
             case "int": return "integer"
-            case "punc": return value
+            case "punc": return value || type
             default: return type
         }
     }

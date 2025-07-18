@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sour Language - Documentation</title>
+    <title>Sour Language Built-in Functions</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -38,14 +38,14 @@
             margin-top: 20px;
             margin-bottom: 10px;
         }
-        p {
-            margin-bottom: 20px;
-            line-height: 1.6;
+        h3 {
+            color: #007acc;
+            margin-top: 15px;
+            margin-bottom: 5px;
         }
-        ul {
-            list-style: disc;
-            padding-left: 20px;
-            margin-bottom: 20px;
+        p {
+            margin-bottom: 10px;
+            line-height: 1.6;
             text-align: left;
         }
         pre {
@@ -59,6 +59,13 @@
         code {
             font-family: "Courier New", Courier, monospace;
             color: #e0e0e0;
+        }
+        .function-section {
+            margin-bottom: 30px;
+            border: 1px solid #444;
+            padding: 15px;
+            border-radius: 8px;
+            background-color: #252525;
         }
         .button {
             display: block; /* Make buttons block-level for better stacking on mobile */
@@ -91,47 +98,37 @@
 </head>
 <body>
     <div class="container">
-        <h1>Sour Language Documentation</h1>
-        <p>Sour Language is a simple, interpreted programming language designed for educational purposes and to demonstrate basic language parsing and interpretation concepts.</p>
+        <h1>Sour Language Built-in Functions</h1>
+        <p>Sour Language provides a set of essential built-in functions to interact with the environment, such as standard input/output operations.</p>
+
+        <div class="function-section">
+            <h2><code>_stdout(ch: char): void</code></h2>
+            <p>Writes a single character to the standard output stream. This function is primarily used for low-level character output, allowing programs to build strings character by character or to output individual characters directly.</p>
+            <h3>Parameters:</h3>
+            <ul>
+                <li><code>ch</code>: The character to write to stdout.</li>
+            </ul>
+        </div>
+
+        <div class="function-section">
+            <h2><code>_stderr(ch: char): void</code></h2>
+            <p>Writes a single character to the standard error stream. This function is used for outputting error messages or diagnostic information separately from regular program output.</p>
+            <h3>Parameters:</h3>
+            <ul>
+                <li><code>ch</code>: The character to write to stderr.</li>
+            </ul>
+        </div>
+
+        <div class="function-section">
+            <h2><code>_stdin(): char</code></h2>
+            <p>Reads a single character from the standard input stream. This function allows programs to receive character input from the user or another input source, useful for interactive applications.</p>
+            <h3>Returns:</h3>
+            <ul>
+                <li>The character read from stdin.</li>
+            </ul>
+        </div>
         
-        <h2>Core Concepts</h2>
-        <ul>
-            <li><strong>Keywords:</strong> <code>print</code></li>
-            <li><strong>Functions:</strong> See <a href="builtins.html">Built-in Functions</a> for details.</li>
-            <li><strong>Data Types:</strong> Currently supports strings and characters.</li>
-        </ul>
-        
-        <h2>Syntax</h2>
-        <h3>Printing to Console</h3>
-        <p>To print a string to the console:</p>
-        <pre><code>print "Hello, World!"</code></pre>
-        
-        <h3>Character Output</h3>
-        <p>To print a single character to standard output (e.g., for building strings character by character):</p>
-        <pre><code>_stdout('A')</code></pre>
-        
-        <h3>Function Declaration</h3>
-        <p>Functions are declared using the <code>func</code> keyword, followed by the function name, a parameter list, a return type, and a code block enclosed in curly braces.</p>
-        <pre><code>func my_function(param1: type1, param2: type2): return_type {
-    // function body
-    print "Hello from function!"
-}</code></pre>
-        <h3>Comments</h3>
-        <p>Sour Language does not currently support comments.</p>
-        
-        <h2>Error Handling</h2>
-        <p>The interpreter provides basic error messages for syntax and type errors.</p>
-        
-        <h2>Extending the Language</h2>
-        <ul>
-            <li><strong>Lexer (Tokenizer):</strong> <code>libs/sourlang/tokens.js</code> performs lexical analysis.</li>
-            <li><strong>Parser:</strong> <code>libs/sourlang/parser.js</code> builds an Abstract Syntax Tree (AST).</li>
-            <li><strong>Validator:</strong> <code>libs/sourlang/validator.js</code> performs semantic checks and type validation.</li>
-            <li><strong>Interpreter:</strong> <code>libs/sourlang/interpreter.js</code> executes the AST.</li>
-            <li><strong>Character Utilities:</strong> <code>libs/sourlang/chars.js</code> defines character-related utilities.</li>
-        </ul>
-        
-        <a href="index.html" class="button">Back to Sour Editor Landing Page</a>
+        <a href="sour-lang.html" class="button">Back to Sour Language Documentation</a>
     </div>
 
     <footer>
