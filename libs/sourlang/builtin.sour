@@ -26,3 +26,9 @@ func _stdin(): char
 class string {
     var len: byte
 }
+
+class byte {}
+
+class bool {}
+
+class char {}

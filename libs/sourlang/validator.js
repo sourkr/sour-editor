@@ -360,8 +360,65 @@ export class FunctionScope {
     }
 }
 
+class BuiltinScope {
+    #funcs = []
+    #classes = new Map()
+    
+    // functions
+    def_func(func) {
+        this.#funcs.push(func)
+    }
+    
+    has_func(name) {
+        return this.get_all_funcs()
+            .some(func => func.name === name)
+    }
+    
+    get_funcs(name) {
+        return this.get_all_funcs()
+            .filter(func => func.name === name)
+    }
+    
+    get_all_funcs() {
+        return this.#funcs
+    }
+    
+    // classes 
+    def_class(name, klass) {
+        this.#classes.set(name, klass)
+    }
+    
+    has_class(name) {
+        return this.#classes.has(name)
+    }
+    
+    get_class(name) {
+        return this.#classes.get(name)
+    }
+    
+    get_all_classes() {
+        return this.#classes.entries()
+            .map(e => { return { name: e[0], class: e[1] } })
+    }
+}
 
-const dparser = new DefinationParser(await (await fetch('./libs/sourlang/builtin.sour')).text())
-dparser.parse()
-Validator.BUILTINS = dparser.globals
-// console.log(Validator.BUILTINS.get_all_funcs())
+async function load_builtins() {
+    const dparser = new DefinationParser(await (await fetch('./libs/sourlang/builtin.sour')).text())
+    const prog = dparser.parse()
+    const builtins = Validator.BUILTINS = new BuiltinScope()
+    
+    const classes = new Map()
+    const funcs = []
+    
+    prog.ast.forEach(stmt => {
+        if (stmt.type === 'class') classes.set(stmt.name.value, stmt)
+        if (stmt.type === 'func') funcs.push(stmt)
+        // if (stmt.type === 'class') classes.set(stmt.name.value, stmt)
+    })
+    
+    classes.forEach((name, stmt) => {
+        const type = { name, stmt }
+    })
+}
+
+await load_builtins()

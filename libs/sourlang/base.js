@@ -58,9 +58,6 @@ export class BaseParser {
         return this.#tokens.has
     }
     
-    peek() {
-        return this.#tokens.peek()
-    }
     
     #token(type, value) {
         switch (type) {
@@ -104,10 +101,18 @@ export class BaseParser {
     
     peek() {
         const token = this.#tokens.peek()
+        
         if (token.type === 'space') {
             this.#tokens.next()
             return this.peek()
         }
+        
+        if (token.type == 'comment') {
+            this.lastComment = token
+            this.#tokens.next()
+            return this.peek()
+        }
+        
         return token
     }
     

@@ -21,7 +21,7 @@ export default class Parser extends BaseParser {
             return { type: 'func-dec', kw, name, params, colon, retType, body, doc }
         }
         
-        return this.expr(true)
+        return this.stmt(true)
     }
     
     stmt() {

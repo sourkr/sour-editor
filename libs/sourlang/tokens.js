@@ -1,6 +1,6 @@
 import { CharStream, EOF } from "./chars.js"
 
-const KEYWORDS = new Set(['func', 'if', 'else', 'for', 'var'])
+const KEYWORDS = new Set(['func', 'if', 'else', 'for', 'var', 'class'])
 
 export class TokenStream {
     #chars

@@ -1,27 +1,45 @@
 import { BaseParser } from './base.js'
+import { FunctionScope } from './validator.js'
+
+const TYPES = new Set(['char', 'byte', 'bool', 'string'])
 
 export default class DefinationParser extends BaseParser {
-    globals = new BuiltinScope()
-    
     file() {
-        const kw = this.next('kw', 'func')
-        const doc = this.lastComment
-        this.lastComment = null
+        if (this.is('kw', 'var')) {
+            const kw = this.next()
+            const doc = this.lastComment
+            const name = this.next('ident')
+            this.skip('punc', ':')
+            const type = this.type()
+            
+            return { type: 'var-def', kw, doc, name, type }
+        }
         
-        const name = this.next('ident')
-        const params = this.list('(,)', this.param)
-        const colon = this.next('punc', ':')
-        const retType = this.type()
+        if (this.is('kw', 'func')) {
+            const kw = this.next()
+            const doc = this.lastComment
+            this.lastComment = null
+            const name = this.next('ident')
+            const params = this.list('(,)', this.param)
+            const colon = this.next('punc', ':')
+            const retType = this.type()
         
-        this.globals.def_func({
-            type: 'func',
-            name: name.value,
-            params: params.list.map(p => { return { type: { type: p.type.type, name: p.type.name.value }, name: p.name.value } }),
-            retType: this.toType(retType),
-            doc: doc.value.slice(1).trim()
-        })
+            return { type: 'func-def', kw, doc, name, params, colon, retType }
+        }
         
-        return { type: 'func-def', kw, doc, name, params, colon, retType }
+        if (this.is('kw', 'class')) {
+            const kw = this.next()
+            const doc = this.lastComment
+            this.lastComment = null
+            const name = this.next('ident')
+            
+            const classScope = new FunctionScope(scope)
+            const body = this.list('{}', this.file, classScope)
+            
+            return { type: 'class-def', kw, doc, name, body, is_type: TYPES.has(type.name) }
+        }
+        
+        return super.file()
     }
     
     param() {
@@ -37,7 +55,7 @@ export default class DefinationParser extends BaseParser {
         return { type: 'simple', name }
     }
     
-    list(cond, parse) {
+    list(cond, parse, ...args) {
         if (cond.length == 3) {
             const list = []
             const sep = []
@@ -64,34 +82,31 @@ export default class DefinationParser extends BaseParser {
                sep.push(this.next('punc', cond[1]))
             }
         }
+        
+        if (cond.length == 2) {
+            const list = []
+            
+            const startTok = this.next('punc', cond[0])
+            
+            if (this.hasError()) return { startTok, list }
+            
+            while(this.has) {
+               if (this.is('punc', cond[2])) {
+                   const endTok = this.next()
+                   return { startTok, list, endTok }
+               }
+               
+               list.push(parse.call(this, ...args))
+               
+               
+               if (this.hasError()) return { startTok, list }
+            }
+        }
     }
     
     toType(type) {
         if (type.type === 'simple') {
             return { type: 'simple', name: type.name.value }
         }
-    }
-}
-
-
-class BuiltinScope {
-    #funcs = []
-    
-    def_func(func) {
-        this.#funcs.push(func)
-    }
-    
-    has_func(name) {
-        return this.get_all_funcs()
-            .some(func => func.name === name)
-    }
-    
-    get_funcs(name) {
-        return this.get_all_funcs()
-            .filter(func => func.name === name)
-    }
-    
-    get_all_funcs() {
-        return this.#funcs
     }
 }
