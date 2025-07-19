@@ -1,0 +1,18 @@
+{
+  "name": "sour-lang",
+  "version": "1.0.0",
+  "description": "Sour Editor is a lightweight, mobile-first JavaScript IDE that runs directly in your browser. It's designed for quick coding sessions, experimentation, and learning on the go. All files are stored locally in your browser's localStorage.",
+  "main": "main.js",
+  "directories": {
+    "doc": "doc"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "live-server": "^1.2.2",
+    "ui": "^0.2.4"
+  }
+}

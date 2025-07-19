@@ -1,10 +1,9 @@
-import Validator, { FunctionScope } from "./validator.js"
+import Validator, { FunctionScope } from "./parser/validator.js"
 
 const KEWWORD_STMT = new Set(['if', 'for'])
 const DEF_STMT = new Set(['func-dec', 'var-dec'])
 
 const GLOBAL_KEYWORDS = ['func', 'if', 'else', 'for', 'var']
-const TYPES = ['byte', 'char', 'string']
 
 export default class Server {
     // Linting
@@ -187,7 +186,7 @@ export default class Server {
             const funcScope = new FunctionScope(scope)
             
             for(let param of stmt.params.list) {
-                const list = this.list_type(param?.type)
+                const list = this.list_type(param?.type, scope)
                 funcScope.def_var(param.name.value, param.doc)
                 if (list?.length) return list
             }
@@ -255,13 +254,12 @@ export default class Server {
                 const keywords = GLOBAL_KEYWORDS
                     .filter(kw => kw.startsWith(prefix))
                     .map(kw => { return { type: 'kw', prefix, name: kw } })
-                
-                
+                 
                 const vars = scope.get_all_vars()
                     .filter(e => e.name.startsWith(prefix))
                     .map(v => { return { type: 'var', prefix, name: v.name, doc: v.type } })
-                
-                console.log(vars)
+
+                console.log(scope.get_all_funcs().toArray())
                 
                 const funcs = scope.get_all_funcs()
                     .filter(func => func.name.startsWith(prefix))
@@ -272,20 +270,35 @@ export default class Server {
         }
     }
     
-    list_type(type, allowVoid) {
+    list_type(type, scope, allowVoid) {
         if (type.type == 'simple') {
             if (!this.#touching(type.name, true)) return
             
             const types = []
-            
-            TYPES.filter(name => name.startsWith(type.name.value))
-                .forEach(name => types.push({ type: 'type', name, prefix: type.name.value }))
+
+            scope.get_all_classes()
+                .filter(cls => cls.name.startsWith(type.name.value))
+                .forEach(cls => types.push({
+                    type: cls.is_type ? 'type' : 'class',
+                    name: cls.name,
+                    prefix: type.name.value,
+                    doc: cls
+                }))
             
             if (allowVoid && 'void'.startsWith(type.name.value)) {
                 types.push({ type: 'type', name: 'void', prefix: type.name.value })
             }
             
             return types
+        }
+    }
+
+    // Doc Tooltip
+    doc() {
+        for(let node of this.prog.ast) {
+            if (node.type == 'func-call') {
+                if (this.#touching(node.name)) return node.doc
+            } 
         }
     }
 }

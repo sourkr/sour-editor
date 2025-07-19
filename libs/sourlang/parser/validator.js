@@ -1,6 +1,6 @@
 import { ErrorData } from "./base.js"
 import Parser from './parser.js';
-import DefinationParser from './dparser.js';
+import BUILTINS from "./builtin.js"
 
 const TYPES = {
     BYTE: { type: 'simple', name: 'byte' },
@@ -9,7 +9,7 @@ const TYPES = {
 }
 
 export default class Validator {
-    globals = new GlobalScope(Validator.BUILTINS)
+    globals = new GlobalScope(BUILTINS)
     
     constructor(code) {
         this.code = code;
@@ -147,13 +147,14 @@ export default class Validator {
     expr(expr, scope) {
         if (expr.type === 'func-call') {
             const name = expr.name.value
-            const funcs = this.globals.get_funcs(name)
-            
-            if (!funcs.length) {
-                this.error(`${name} is not a function`, expr.name)
+
+            if (!this.globals.has_func(name)) {
+                this.error(`'${name}' is not a function`, expr.name)
                 return
             }
             
+            const funcs = this.globals.get_funcs(name)
+                        
             const args = expr.args.list.map(arg => this.expr(arg, scope))
             const argsStr = args.map(arg => arg?.name).join(',')
             
@@ -233,10 +234,18 @@ export default class Validator {
                 return
             }
         }
-        
-        if (expr.type === 'char') return { type: 'simple', name: 'char' }
-        if (expr.type === 'str') return { type: 'simple', name: 'str' }
-        if (expr.type === 'num') return { type: 'simple', name: 'byte' }
+
+        if (expr.type === 'char') {
+            return scope.get_class('char')
+        }
+
+        if (expr.type === 'str') {
+            return scope.get_class('string')
+        }
+
+        if (expr.type === 'num') {
+            return scope.get_class('byte')
+        }
         
         if (expr.type === 'ident') {
             const name = expr.value
@@ -275,18 +284,34 @@ function equalType(a, b) {
     if (a.type === 'simple') {
         return a.name === b.name
     }
+
+    if (a.type === 'class') {
+        return a.name === b.name
+    }
     
     return false
 }
 
 export class GlobalScope {
-    #funcs = []
+    #funcs = new Set()
     #parent
     
     constructor(builtins) {
         this.#parent = builtins
     }
-    
+
+    // Classes
+    has_class(name) {
+        return this.#parent.has_class(name)
+    }
+
+    get_class(name) {
+        return this.#parent.get_class(name)
+    }
+
+    get_all_classes() {
+        return this.#parent.get_all_classes()
+    }
     
     // funcs
     def_func(func) {
@@ -304,7 +329,7 @@ export class GlobalScope {
     }
     
     get_all_funcs() {
-        return this.#funcs.concat(this.#parent.get_all_funcs())
+        return concat(this.#funcs.values(), this.#parent.get_all_funcs())
     }
     
     // vars
@@ -325,7 +350,6 @@ export class FunctionScope {
     constructor(builtins) {
         this.#parent = builtins
     }
-    
     
     // funcs
     has_func(name) {
@@ -402,23 +426,10 @@ class BuiltinScope {
     }
 }
 
-async function load_builtins() {
-    const dparser = new DefinationParser(await (await fetch('./libs/sourlang/builtin.sour')).text())
-    const prog = dparser.parse()
-    const builtins = Validator.BUILTINS = new BuiltinScope()
-    
-    const classes = new Map()
-    const funcs = []
-    
-    prog.ast.forEach(stmt => {
-        if (stmt.type === 'class') classes.set(stmt.name.value, stmt)
-        if (stmt.type === 'func') funcs.push(stmt)
-        // if (stmt.type === 'class') classes.set(stmt.name.value, stmt)
-    })
-    
-    classes.forEach((name, stmt) => {
-        const type = { name, stmt }
-    })
+function *concat(...iterators) {
+    for (let iterator of iterators) {
+        for (let item of iterator) {
+            yield item
+        }
+    }
 }
-
-await load_builtins()

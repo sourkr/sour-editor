@@ -1,8 +1,8 @@
-import { Menu, FileTree, Activity, R, Mutable } from "ui/core.js";
-import "ui/editor.js"
+import { Activity, R, Mutable } from "ui/core.js";
+import "ui/editor/editor.js"
 
-import Interpreter from "./libs/sourlang/interpreter.js";
-import Server from "./libs/sourlang/server.js"
+import Interpreter from "sour-lang/interpreter/interpreter.js";
+import Server from "sour-lang/server.js"
 
 
 class MainActivity extends Activity {
