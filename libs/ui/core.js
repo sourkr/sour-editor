@@ -90,7 +90,6 @@ export class ActionBar extends HTMLElement {
             this.#navicon.onclick = () => {
                 const event = new CustomEvent("navigation")
                 this.dispatchEvent(event)
-                // console.dir(this)
                 this.onnavigation?.(event)
             }
         }

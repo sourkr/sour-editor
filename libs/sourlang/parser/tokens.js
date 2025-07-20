@@ -116,9 +116,11 @@ export class TokenStream {
         if (char === '"') {
             let strValue = "";
             this.#chars.next(); // Consume the opening quote
+
             while (this.#chars.has && this.#chars.peek() !== '"' && this.#chars.peek() !== EOF) {
                 strValue += this.#chars.next();
             }
+            
             if (this.#chars.peek() === '"') {
                 this.#chars.next(); // Consume the closing quote
                 return this.#tok("str", strValue)
@@ -129,6 +131,7 @@ export class TokenStream {
                     start: this.#chars.position.sub(1),
                     end: this.#chars.position
                 }
+                token.unmatched = true
                 return token
             }
         }

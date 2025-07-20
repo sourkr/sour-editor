@@ -27,8 +27,16 @@ class string {
     var len: byte
 }
 
-class byte {}
+class byte {
+    func _add(n: byte): byte
+    func _div(n: byte): byte
+    func _mod(n: byte): byte
+    func _gt(n: byte): bool
+    func _lt(n: byte): bool
+}
 
 class bool {}
 
-class char {}
+class char {
+    func _add(n: byte): char
+}

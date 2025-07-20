@@ -7,10 +7,10 @@ export default class DocToolTipManager {
 
 	showAnchor(type, anchor) {
 		const rect = anchor.getBoundingClientRect();
-		this.showAt(type, rect.top, rect.right)
+		this.showAt(type, rect.right, rect.top);
 	}
 
-	showAt(type, x, y) {
+	showAt(type, x, y, gravity) {
 		if (!type) return;
 
 		this.symbol.innerHTML = type_to_doc_html(type);
@@ -21,11 +21,27 @@ export default class DocToolTipManager {
 		} else {
 			this.doc.style.display = "none";
 		}
-		
+
 		this.tooltip.style.display = "block";
 
-		this.tooltip.style.top = `${x}px`;
-		this.tooltip.style.left = `${y}px`;
+		this.tooltip.style.left = `${x}px`;
+
+		if (gravity == "bottom") {
+			this.tooltip.style.bottom = `${y}px`;
+			this.tooltip.style.top = `auto`;
+		} else {
+			this.tooltip.style.top = `${y}px`;
+			this.tooltip.style.bottom = `auto`;
+		}
+
+		const rect = this.tooltip.getBoundingClientRect();
+
+		if (rect.top < 0) {
+			this.tooltip.style.top = `calc(${innerHeight - y}px + 2em)`;
+			this.tooltip.style.bottom = `auto`;
+		}
+
+		this.is_visible = true
 	}
 
 	formatDocComment(docString) {
@@ -81,6 +97,7 @@ export default class DocToolTipManager {
 
 	hide() {
 		this.tooltip.style.display = "none";
+		this.is_visible = false
 	}
 }
 
@@ -88,8 +105,6 @@ function type_to_doc_html(type) {
 	if (type.type === "func") {
 		const kw = span("tok-kw", "func");
 		const name = span("tok-func-call", type.name);
-
-		console.log(type.params)
 
 		const params = type.params
 			.map((param) => `${span("tok-var", param.name)}: ${type_to_html(param.type)}`)
@@ -99,34 +114,38 @@ function type_to_doc_html(type) {
 	}
 
 	if (type.type == "simple") {
-		if (type.is_param) {
-			return `<span style="color:grey">(param)</span> ${this.span("tok-var", type.param_name)}: ${this.span("tok-type", type.name)}`;
-		}
-
-		if (type.is_var) {
-			return `${this.span("tok-def", "var")} ${this.span("tok-var", type.var_name)}: ${this.span("tok-type", type.name)}`;
-		}
-
-		return `${this.span("tok-type", type.name)}`;
+		return `${span('dim', '(type)')} ${span("tok-type", type.name)}`;
 	}
 
 	if (type.type == "class") {
-		if (type.is_type) {
-			return `<span style="color:grey">(type)</span> ${this.span("tok-type", type.name)}`;
-		} else {
-			return `${this.span("tok-def", "class")} ${this.span("tok-type", type.name)}`;
+		if (type.is_param) {
+			return `${span('dim', '(param)')} ${span("tok-var", type.param_name)}: ${type_to_html(type)}`
 		}
+
+		if (type.is_prop) {
+			return `${span('dim', '(property)')} ${span("tok-type", type.class_name)}.${span("tok-var", type.prop_name)}: ${type_to_html(type)}`
+		}
+
+		if (type.is_var) {
+			return `${span('tok-def', 'var')} ${span("tok-var", type.var_name)}: ${type_to_html(type)}`
+		}
+		
+		if (type.is_type) {
+			return `${span('dim', '(type)')} ${span("tok-type", type.name)}`;
+		}
+		
+		return `${span("tok-def", "class")} ${span("tok-type", type.name)}`;
 	}
 }
 
 function type_to_html(type) {
 	if (!type) return;
 
-	if (type.type === "class" || type.type === 'simple') {
+	if (type.type === "class" || type.type === "simple") {
 		return span("tok-type", type.name);
 	}
 
-	return span("dim", '(error)')
+	return span("dim", "(error)");
 }
 
 function span(color, data) {

@@ -1,12 +1,18 @@
 import { ErrorData } from "./base.js"
 import Parser from './parser.js';
 import BUILTINS from "./builtin.js"
+import { node_to_type, clone_type, gen_func_alias } from "./util.js"
 
-const TYPES = {
-    BYTE: { type: 'simple', name: 'byte' },
-    CHAR: { type: 'simple', name: 'char' },
-    BOOL: { type: 'simple', name: 'bool' },
-}
+const OP_NAMES = new Map([
+    ['+', '_add'],
+    ['-', '_sub'],
+    ['*', '_mul'],
+    ['/', '_div'],
+    ['%', '_mod'],
+    ['==', '_eq'],
+    ['>', '_gt'],
+    ['<', '_lt'],
+])
 
 export default class Validator {
     globals = new GlobalScope(BUILTINS)
@@ -35,7 +41,7 @@ export default class Validator {
             
             const params = stmt.params.list
                 .map(param => {
-                    const type = this.toType(param.type)
+                    const type = clone_type(node_to_type(scope, param.type))
                     param.doc = type
                     type.is_param = true
                     type.param_name = param.name.value
@@ -74,14 +80,14 @@ export default class Validator {
                 type: 'func',
                 name,
                 params: params.map(p => { return { type: p.type, name: p.name.value } }),
-                retType: this.toType(stmt.retType),
+                retType: node_to_type(scope, stmt.retType),
                 doc: stmt.doc
             }
             
             this.globals.def_func(func)
             stmt.doc = func
             
-            stmt.alias = stmt.doc.alias = `${name}__${params.map(p => typeToStr(p.type)).join('__')}`
+            stmt.alias = stmt.doc.alias = gen_func_alias(func)
             
             const funcScope = new FunctionScope(scope)
             params.forEach(param => funcScope.def_var(param.name.value, param.type))
@@ -93,8 +99,8 @@ export default class Validator {
         if (stmt.type === 'if') {
             const cond = this.expr(stmt.cond, scope)
             
-            if (!equalType(cond, TYPES.BOOL)) {
-                this.error(`The contition must be a 'bool'`, stmt.cond)
+            if (cond?.name !== 'bool') {
+                this.error(`The contition must be a 'bool' but got '${type_to_str(cond)}'`, stmt.cond)
             }
             
             this.validate_body(stmt.body.list, scope)
@@ -111,8 +117,8 @@ export default class Validator {
             
             const cond = this.expr(stmt.cond, scope)
             
-            if (!equalType(cond, TYPES.BOOL)) {
-                this.error(`The contition must be a 'bool'`, stmt.cond)
+            if (cond?.name !== 'bool') {
+                this.error(`The contition must be a 'bool' but got '${type_to_str(cond)}'`, stmt.cond)
             }
             
             this.expr(stmt.inc, scope)
@@ -123,7 +129,7 @@ export default class Validator {
         }
         
         if (stmt.type === 'var-dec') {
-            const type = this.expr(stmt.val, scope)
+            const type = clone_type(this.expr(stmt.val, scope))
             
             if (type) {
                 stmt.doc = type
@@ -145,6 +151,8 @@ export default class Validator {
     }
 
     expr(expr, scope) {
+        if (!expr) return
+        
         if (expr.type === 'func-call') {
             const name = expr.name.value
 
@@ -153,88 +161,87 @@ export default class Validator {
                 return
             }
             
-            const funcs = this.globals.get_funcs(name)
-                        
             const args = expr.args.list.map(arg => this.expr(arg, scope))
-            const argsStr = args.map(arg => arg?.name).join(',')
+            const errors = []            
+            const func = get_suitable_func(scope.get_funcs(name), name, args, errors)
             
-            const errors = []
-            let found = null
-            
-            for(let func of funcs) {
-                const params = func.params.map(p => p.type)
-                let index = 0
-                let found = true
-                
-                while(params.length) {
-                    if (!equalType(params[0], args[index])) {
-                        found = false
-                        break
-                    }
-                    
-                    params.shift()
-                    index++
-                }
-                
-                if (!found) {
-                    const paramsStr = func.params.map(p => p.type.name).join(',')
-                    errors.push(`${name}(${argsStr}) is not applicable for ${name}(${paramsStr})`)
-                } else {
-                    func.is_used = true
-                    expr.alias = func.alias
-                    return func.retType
-                }
-            }
-            
-            if (!found) {
+            if (!func) {
+                const argsStr = args.map(arg => arg?.name).join(',')
                 this.error(`Cannot find suitable function call for ${name}(${argsStr})\n\n${errors.join('\n\n')}`, expr.name)
+                return { type: 'simple', name: 'error' }
             }
             
-            return
+            func.is_used = true
+            expr.alias = func.alias
+            expr.doc = func
+            
+            return func.retType
         }
         
         if (expr.type === 'op') {
-            if (expr.op?.value === '+') {
-                const left = this.expr(expr.left, scope)
-                const right = this.expr(expr.right, scope)
-                
-                if (equalType(left, TYPES.CHAR) && equalType(right, TYPES.BYTE)) return TYPES.CHAR
-                
-                this.error(`'${typeToStr(left)}' + '${typeToStr(right)}' is not a valid operator`, expr.op)
-                return
+            const left = this.expr(expr.left, scope)
+            const right = this.expr(expr.right, scope)
+            const name = OP_NAMES.get(expr.op?.value)
+
+            if (is_error_type(left) || is_error_type(right)) {
+                return { type: 'simple', name: 'error' }
             }
             
-            if (expr.op?.value === '<' || expr.op?.value === '>') {
-                const left = this.expr(expr.left, scope)
-                const right = this.expr(expr.right, scope)
-                
-                if (equalType(left, TYPES.BYTE) && equalType(right, TYPES.BYTE)) return TYPES.BOOL
-                
-                this.error(`'${typeToStr(left)}' + '${typeToStr(right)}' is not a valid operator`, expr.op)
-                return
-            }
+            const func = get_suitable_func(left.scope.get_meths(name), name, [right])
             
-            if (expr.op?.value === '%') {
-                const left = this.expr(expr.left, scope)
-                const right = this.expr(expr.right, scope)
-                
-                if (equalType(left, TYPES.BYTE) && equalType(right, TYPES.BYTE)) return TYPES.BYTE
-                
-                this.error(`'${typeToStr(left)}' + '${typeToStr(right)}' is not a valid operator`, expr.op)
-                return
+            if (func) {
+                expr.alias = func.alias
+                return func.retType
             }
+
+            this.error(`${type_to_str(left)} ${expr.op.value} ${type_to_str(right)} is not a valid opeator`, expr.op)
+        }
+    
+        if (expr.type === 'dot') {
+            const left = this.expr(expr.left, scope)
+
+            if (is_error_type(left)) {
+                return { type: 'simple', name: 'error' }
+            }
+
+            const name = expr.right.value
             
-            if (expr.op?.value === '/') {
-                const left = this.expr(expr.left, scope)
-                const right = this.expr(expr.right, scope)
-                
-                if (equalType(left, TYPES.BYTE) && equalType(right, TYPES.BYTE)) return TYPES.BYTE
-                
-                this.error(`'${typeToStr(left)}' + '${typeToStr(right)}' is not a valid operator`, expr.op)
-                return
+            if (!left.scope.has_prop(name)) {
+                this.error(`'${name}' is not a property of ${type_to_str(left)}`, expr.right)
+                return { type: 'simple', name: 'error' }
             }
+
+            return expr.right.doc = left.scope.get_prop(name)
         }
 
+        if (expr.type === 'unary') {
+            const type = this.expr(expr.expr, scope)
+            
+            if (is_error_type(type)) {
+                return { type: 'simple', name: 'error' }
+            }
+
+            if (expr.op === '++') {
+                const type = this.expr(expr.expr, scope)
+                const func = get_suitable_func(type.scope.get_meths('_add'), '_add', [type])
+
+                expr.expr.doc = type
+
+                if (!func) {
+                    this.error(`'${type_to_str(type)}' is not incrementable`, expr.expr)
+                    return { type: 'simple', name: 'error' }
+                }
+
+                if (!equal_type(func.retType, type)) {
+                    this.error(`'${type_to_str(type)}' is not incrementable`, expr.expr)
+                    return { type: 'simple', name: 'error' }
+                }
+
+                expr.alias = func.alias
+                return type
+            }
+        }
+        
         if (expr.type === 'char') {
             return scope.get_class('char')
         }
@@ -252,6 +259,7 @@ export default class Validator {
             
             if (scope.has_var(name)) {
                 const type = scope.get_var(name)
+                expr.doc = type
                 type.is_used = true
                 return type
             }
@@ -259,6 +267,8 @@ export default class Validator {
             this.error(`Variable ${name} is not defined`, expr)
             return { type: 'simple', name: 'error' }
         }
+
+        return { type: 'simple', name: 'error' }
     }
     
     error(msg, token) {
@@ -272,12 +282,68 @@ export default class Validator {
     }
 }
 
+function get_suitable_func(funcs, name, args, errors = []) {
+    for(let func of funcs) {
+        const params = func.params.map(p => p.type)
+        let index = 0
+        let found = true
+
+        while(params.length) {
+            if (!equal_type(params[0], args[index])) {
+                found = false
+                break
+            }
+
+            params.shift()
+            index++
+        }
+
+        if (!found) {
+            const paramsStr = func.params.map(p => p.type.name).join(',')
+            const argsStr = args.map(arg => arg?.name).join(',')
+            
+            errors.push(`${name}(${argsStr}) is not applicable for ${name}(${paramsStr})`)
+        } else {
+            return func
+        }
+    }
+}
+
+function type_to_str(type) {
+    if (type.type === 'simple') {
+        return type.name
+    }
+
+    if (type.type === 'class') {
+        return type.name
+    }
+}
+
+function equal_type(a, b) {
+    if (a?.type !== b?.type) return false
+
+    if (a.type === 'simple') {
+        return a.name === b.name
+    }
+
+    if (a.type === 'class') {
+        return a.name === b.name
+    }
+}
+
+function is_error_type(type) {
+    if (!type) return true
+    return type.name === 'error'
+}
+
+/** @deprecated */
 function typeToStr(type, alias) {
     if (type?.type == 'simple') {
         return type.name
     }
 }
 
+/** @deprecated */
 function equalType(a, b) {
     if (a?.type !== b?.type) return false
     
@@ -315,7 +381,7 @@ export class GlobalScope {
     
     // funcs
     def_func(func) {
-        this.#funcs.push(func)
+        this.#funcs.add(func)
     }
     
     has_func(name) {
@@ -349,6 +415,15 @@ export class FunctionScope {
     
     constructor(builtins) {
         this.#parent = builtins
+    }
+
+    // Classes
+    has_class(name) {
+        return this.#parent.has_class(name)
+    }
+
+    get_class(name) {
+        return this.#parent.get_class(name)
     }
     
     // funcs

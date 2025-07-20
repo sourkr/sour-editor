@@ -10,6 +10,14 @@ const TYPE_CODES = {
     class: "\ueb5b",
 };
 
+const PAIRS = {
+    "(": ")",
+    "{": "}",
+    "[": "]",
+    '"': '"',
+    "'": "'",
+}
+
 class Editor extends HTMLElement {
     #completer;
     #doc;
@@ -269,21 +277,44 @@ class Editor extends HTMLElement {
 
             if (this.mutabelValue) {
                 this.mutabelValue.value = this.value;
+
             }
         };
 
         this.#textarea.onkeydown = (ev) => {
             this.#lastInputEvent = null;
 
-            if (ev.key == "Tab") {
+            if (ev.key === "Tab") {
                 ev.preventDefault();
                 this.insert("\t");
+                return;
             }
 
-            if (ev.ctrlKey && ev.key == "i") {
-                ev.preventDefault();
+            if (ev.ctrlKey && ev.key === "i") {
+                if (this.#server) {
+                    this.#server.cursorIndex = this.cursorIndex;
+                    this.#doc.showAt(
+                        this.#server.doc(),
+                        this.cursorX - 10,
+                        innerHeight - this.cursorY,
+                        "bottom",
+                    );
+                }
+                return;
+            }
 
-                // this.doc.showAt(this.cursorX, this.cursorY)
+            if (ev.key === "Backspace") {
+                const left = this.value[this.cursorIndex - 1]
+
+                if (left in PAIRS) {
+                    if (this.value[this.cursorIndex] === PAIRS[left]) {
+                        this.deleteRange(this.cursorIndex, this.cursorIndex + 1)
+                    }
+                }
+            }
+            
+            if (this.#doc.is_visible) {
+                this.#doc.hide();
             }
         };
 
@@ -343,6 +374,18 @@ class Editor extends HTMLElement {
         });
 
         this.cursorIndex = cursorIndex + text.length;
+    }
+
+    deleteRange(start, end) {
+        const left = this.value.slice(0, start);
+        const right = this.value.slice(end);
+        
+        this.#setValue(left + right, {
+            mutate: true,
+            update: true,
+        })
+
+        this.cursorIndex = start;
     }
 
     disable() {

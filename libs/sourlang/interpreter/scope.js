@@ -25,6 +25,10 @@ export class BuiltinScope {
 export class ClassScope {
 	#props = new Map()
 	#meths = new Map()
+
+	constructor(name) {
+		this.name = name
+	}
 	
 	// Properties
 	def_prop(name, def) {
@@ -43,5 +47,33 @@ export class ClassScope {
 
 	get_meth(name) {
 		return this.#meths.get(name)
+	}
+}
+
+export class InstanceScope {
+	#props = new Map();
+	#class
+
+	constructor(cls) {
+		this.#class = cls;
+	}
+
+	// Properties
+	set_prop(name, value) {
+		this.#props.set(name, value);
+	}
+
+	get_prop(name) {
+		return this.#props.get(name);
+	}
+
+	// Methods
+	get_meth(name) {
+		return this.#class.get_meth(name);
+	}
+
+	// Others
+	get_class_name() {
+		return this.#class.name;
 	}
 }

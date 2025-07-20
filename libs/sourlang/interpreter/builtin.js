@@ -1,15 +1,80 @@
-import { BuiltinScope, ClassScope } from "./scope.js"
+import { BuiltinScope, ClassScope, InstanceScope } from "./scope.js";
 
-const BUILTINS = new BuiltinScope()
-export default BUILTINS
+const BUILTINS = new BuiltinScope();
+export default BUILTINS;
 
-{
-	const char = new ClassScope()
 
-	char.def_meth('constructor', (self, args, prog) => {
-		self.value = args[0]
-		prog.resolve()
-	})
-	
-	BUILTINS.def_class('char', char)
+// Char
+const char = new ClassScope('char');
+
+char.def_meth("_add__byte", (self, args, prog) => {
+	prog.resolve(to_char(self.value + args[0].value));
+});
+
+BUILTINS.def_class("char", char);
+
+export function to_char(val) {
+	const ins = new InstanceScope(char);
+	ins.value = val;
+	return ins;
 }
+
+
+// Byte
+const byte = new ClassScope('byte');
+
+byte.def_meth("_add__byte", (self, args, prog) => {
+	prog.resolve(to_byte(self.value + args[0].value));
+});
+
+byte.def_meth("_mul__byte", (self, args, prog) => {
+	prog.resolve(to_byte(self.value * args[0].value));
+});
+
+byte.def_meth("_div__byte", (self, args, prog) => {
+	prog.resolve(to_byte(Math.floor(self.value / args[0].value)));
+});
+
+byte.def_meth("_mod__byte", (self, args, prog) => {
+	prog.resolve(to_byte(self.value % args[0].value));
+})
+
+byte.def_meth("_gt__byte", (self, args, prog) => {
+	prog.resolve(to_bool(self.value > args[0].value));
+});
+
+byte.def_meth("_lt__byte", (self, args, prog) => {
+	prog.resolve(to_bool(self.value < args[0].value));
+});
+
+BUILTINS.def_class("byte", byte);
+
+export function to_byte(val) {
+	const ins = new InstanceScope(byte);
+	ins.value = val % 256;
+	return ins;
+}
+
+
+// bool
+const bool = new ClassScope('bool')
+
+export function to_bool(val) {
+	const ins = new InstanceScope(bool);
+	ins.value = val;
+	return ins;
+}
+
+BUILTINS.def_class("bool", bool)
+
+// string
+const string = new ClassScope('bool')
+
+export function to_str(val) {
+	const ins = new InstanceScope(bool);
+	ins.value = val;
+	ins.set_prop('len', to_byte(val.length))
+	return ins;
+}
+
+BUILTINS.def_class("string", string)

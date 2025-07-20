@@ -1,5 +1,6 @@
 import Validator from "../parser/validator.js";
-import BUILTINS from "./builtin.js";
+import { InstanceScope } from "./scope.js"
+import BUILTINS, { to_byte, to_char, to_str } from "./builtin.js";
 
 export default class Interpreter {
     #validator;
@@ -26,6 +27,8 @@ export default class Interpreter {
             return;
         }
 
+        console.log(prog.ast)
+        
         this.globals.def_func("_stdout__char", (args, prog) => {
             this.#outstream.write(String.fromCharCode(args[0].value));
             prog.resolve();
@@ -38,7 +41,7 @@ export default class Interpreter {
 
         this.globals.def_func("_stdin__", (_args, prog) => {
             this.#inpstream.read()
-                .then((char) => this.char(char.charCodeAt(0), prog));
+                .then((char) => prog.resolve(to_char(char.charCodeAt(0))));
         });
 
         this.#interpreteBody(prog.ast, this.globals, {
@@ -99,7 +102,7 @@ export default class Interpreter {
             this.#interprete(expr.cond, scope, {
                 ...prog,
                 resolve: (cond) => {
-                    if (cond) {
+                    if (cond.value) {
                         this.#interpreteBody(expr.body.list, scope, prog);
                     } else if (expr.elseStmt) {
                         this.#interpreteBody(
@@ -139,20 +142,23 @@ export default class Interpreter {
 
         if (expr.type === "func-call") {
             const func = scope.get_func(expr.alias);
-
+            
             if (typeof func !== "function") {
                 prog.reject(
                     this.error(
                         `RefrenceError: Function '${expr.alias}' is not avaliable at runtime`,
                     ),
                 );
-                console.log(expr);
+                
                 return;
             }
 
+            console.log('call', expr.alias)
+            
             this.#interpreteBody(expr.args.list, scope, {
                 ...prog,
                 resolve: (args) => {
+                    console.log(args)
                     func(args, prog);
                 },
             });
@@ -167,16 +173,13 @@ export default class Interpreter {
                     this.#interprete(expr.right, scope, {
                         ...prog,
                         resolve: (right) => {
-                            if (expr.op.value == "+")
-                                prog.resolve(left + right);
-                            if (expr.op.value == "/")
-                                prog.resolve(Math.floor(left / right));
-                            if (expr.op.value == "%")
-                                prog.resolve(left % right);
-                            if (expr.op.value == "<")
-                                prog.resolve(left < right);
-                            if (expr.op.value == ">")
-                                prog.resolve(left > right);
+                            const meth = left.get_meth(expr.alias)
+
+                            if (!meth) {
+                                prog.reject(this.error(`TypeError: '${expr.alias}' is not a method of ${left.get_class_name()}`))
+                            } else {
+                                meth(left, [right], prog);
+                            }
                         },
                     });
                 },
@@ -185,56 +188,67 @@ export default class Interpreter {
             return;
         }
 
+        if (expr.type === "dot") {
+            this.#interprete(expr.left, scope, {
+                ...prog,
+                resolve: (left) => {
+                    prog.resolve(left.get_prop(expr.right.value));
+                },
+            })
+        }
+        
         if (expr.type === "unary") {
             this.#interprete(expr.expr, scope, {
                 ...prog,
                 resolve: (val) => {
-                    scope.set_var(expr.expr.value, val + 1);
-                    prog.resolve(val);
+                    val.get_meth(expr.alias)(val, [to_byte(1)], {
+                        ...prog,
+                        resolve: (new_val) => {
+                            console.log('i++', val, new_val, expr.alias)
+                            scope.set_var(expr.expr.value, new_val);
+                            prog.resolve(val);
+                        }
+                    })
                 },
             });
         }
 
         if (expr.type === "str") {
-            prog.resolve(expr.value);
+            prog.resolve(to_str(expr.value));
             return;
         }
 
         if (expr.type === "char") {
-            this.char(expr.value.charCodeAt(0), prog);
+            prog.resolve(to_char(expr.value.charCodeAt(0)));
             return;
         }
 
         if (expr.type === "ident") {
-            prog.resolve(scope.get_var(expr.value));
+            const val = scope.get_var(expr.value)
+            console.log('var', val)
+            if (!val) {
+                prog.reject(this.error(`RefrenceError: '${expr.value}' is not defined`));
+            } else {
+                prog.resolve(scope.get_var(expr.value));
+            }
+            
             return;
         }
 
         if (expr.type === "num") {
-            prog.resolve(parseInt(expr.value));
+            prog.resolve(to_byte(parseInt(expr.value)))
             return;
         }
     }
-
-    char(code, prog) {
-        const cls = this.globals.get_class("char");
-        const constructor = cls.get_meth("constructor");
-        const instance = new InstanceScope();
-
-        constructor(instance, [code], {
-            ...prog,
-            resolve: () => prog.resolve(instance),
-        });
-    }
-
+    
     forLoop(stmt, scope, prog) {
         this.#interprete(stmt.cond, scope, {
             ...prog,
             resolve: (cond) => {
-                if (cond) {
+                console.log('for cond', cond)
+                if (cond.value) {
                     this.#interpreteBody(stmt.body.list, scope, {
                         ...prog,
-
                         resolve: () => {
                             this.#interprete(stmt.inc, scope, {
                                 ...prog,
@@ -357,18 +371,5 @@ class FunctionScope {
 
     get_var(name) {
         return this.vars.get(name);
-    }
-}
-
-export class InstanceScope {
-    #props = new Map();
-
-    // Properties
-    set_prop(name, value) {
-        this.#props.set(name, value);
-    }
-
-    get_prop(name) {
-        return this.#props.get(name);
     }
 }

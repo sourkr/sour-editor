@@ -85,7 +85,7 @@ export default class Parser extends BaseParser {
         return super.file();
     }
 
-    mayop(expr) {
+    mayop(expr, is_stmt) {
         if (this.is("op")) {
             const op = this.next();
 
@@ -94,11 +94,14 @@ export default class Parser extends BaseParser {
                 return { type: "unary", expr, op: "++" };
             }
 
-            const right = this.expr();
-            return { type: "op", left: expr, right, op };
+            if (!is_stmt) {
+                const right = this.expr();
+                return { type: "op", left: expr, right, op };
+            }
         }
 
-        return expr;
+        if (!is_stmt) return expr;
+        return this.unexpected(expr);
     }
 
     maydot(access) {
@@ -112,14 +115,16 @@ export default class Parser extends BaseParser {
         return access;
     }
 
-    ident(ident, isStmt) {
+    ident(ident, is_stmt) {
         if (this.is("punc", "(")) {
             const args = this.list("(,)", this.expr);
             return { type: "func-call", name: ident, args };
         }
 
-        if (!isStmt) return this.mayop(this.maydot(ident));
-        return this.unexpected(ident);
+        // NOTE: cannot be done because of `i++` should be stmt
+        // if (!isStmt) return this.mayop(this.maydot(ident));
+        return this.mayop(this.maydot(ident), is_stmt);
+        // return this.unexpected(ident);
     }
 
     unexpected(token) {

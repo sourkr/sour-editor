@@ -39,7 +39,8 @@ export class BuiltinScope {
 
 export class ClassScope {
 	#props = new Map()
-
+	#meths = new Set()
+	
 	// Properties
 	def_prop(name, def) {
 		this.#props.set(name, def)
@@ -55,5 +56,24 @@ export class ClassScope {
 
 	get_all_props() {
 		return this.#props.values()
+	}
+
+	// Methods
+	def_meth(def) {
+		this.#meths.add(def)
+	}
+
+	has_meths(name) {
+		return this.#meths.values()
+			.some(func => func.name === name)
+	}
+
+	get_meths(name) {
+		return this.#meths.values()
+			.filter(func => func.name === name)
+	}
+
+	get_all_meths() {
+		return this.#meths.values()
 	}
 }

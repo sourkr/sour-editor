@@ -9,9 +9,9 @@ export default class DefinationParser extends BaseParser {
             const doc = this.lastComment;
             const name = this.next("ident");
             this.skip("punc", ":");
-            const type = this.type();
+            const var_type = this.type();
 
-            return { type: "var-def", kw, doc, name, type };
+            return { type: "var-def", kw, doc, name, var_type };
         }
 
         if (this.is("kw", "func")) {
