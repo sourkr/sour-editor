@@ -1,3 +1,40 @@
+export class Scope {
+	#classes = new Map()
+	#funcs = new Map()
+	#vars = new Map()
+
+	constructor(parent) {
+		this.parent = parent
+	}
+
+	// Classes
+	def_class(name, def) {
+		this.#classes.set(name, def)
+	}
+
+	get_class(name) {
+		return this.#classes.get(name) || this.parent?.get_class(name)
+	}
+
+	// Functions
+	def_func(name, def) {
+		this.#funcs.set(name, def)
+	}
+
+	get_func(name) {
+		return this.#funcs.get(name) || this.parent?.get_func(name)
+	}
+
+	// Variables
+	set_var(name, value) {
+		this.#vars.set(name, value)
+	}
+	
+	get_var(name) {
+		return this.#vars.get(name) || this.parent?.get_var(name)
+	}
+}
+
 export class BuiltinScope {
 	#classes = new Map()
 	#funcs = new Map()
@@ -19,6 +56,10 @@ export class BuiltinScope {
 
 	get_func(name) {
 		return this.#funcs.get(name)
+	}
+
+	get_all_funcs() {
+		return this.#funcs
 	}
 }
 

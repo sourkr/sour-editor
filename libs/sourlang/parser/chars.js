@@ -16,7 +16,7 @@ export class CharStream {
         const char = this.#input.charAt(this.#position.index++)
         
         if (char == '\n') {
-            this.#position.line++
+            this.#position.lineno++
             this.#position.col = 0
         }
         

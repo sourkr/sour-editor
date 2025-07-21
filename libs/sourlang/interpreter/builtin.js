@@ -68,10 +68,14 @@ export function to_bool(val) {
 BUILTINS.def_class("bool", bool)
 
 // string
-const string = new ClassScope('bool')
+const string = new ClassScope('string')
+
+string.def_meth("_get__byte", (self, args, prog) => {
+	prog.resolve(to_char(self.value.charCodeAt(args[0].value)));
+})
 
 export function to_str(val) {
-	const ins = new InstanceScope(bool);
+	const ins = new InstanceScope(string);
 	ins.value = val;
 	ins.set_prop('len', to_byte(val.length))
 	return ins;

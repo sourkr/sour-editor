@@ -8,6 +8,7 @@ const TYPE_CODES = {
     type: "\ueb62",
     var: "\uea88",
     class: "\ueb5b",
+    file: "\uea8b"
 };
 
 const PAIRS = {
@@ -65,6 +66,7 @@ class Editor extends HTMLElement {
                 .editor {
                     position: relative;
                     flex: 1;
+                    overflow-x: scroll;
                 }
                 
                 textarea, pre {
@@ -90,16 +92,20 @@ class Editor extends HTMLElement {
                     top: 0;
                     padding-left: 5px;
                     caret-color: white;
+                    white-space: nowrap;
+                    overflow-x: scroll;
                 }
                 
                 pre {
                     color: inherit;
                     background: inherit;
+                    overflow-x: scroll;
                 }
                 
                 .cur-line {
                     background: hsl(0deg, 0%, 100%, .05);
                     padding-left: 5px;
+                    width: 100%;
                 }
                 
                 .line {
@@ -165,6 +171,7 @@ class Editor extends HTMLElement {
                     text-decoration: underline;
                     text-decoration-style: wavy;
                     text-decoration-color: red;
+                    text-decoration-skip-ink: none;
                 }
                 
                 .dim {
@@ -320,6 +327,12 @@ class Editor extends HTMLElement {
 
         this.#textarea.onkeyup = this.#update.bind(this);
         this.#textarea.onclick = this.#update.bind(this);
+
+        // Horizontal Scrolling
+        this.#textarea.onscroll = () => {
+            console.log("scroll", this.#textarea.scrollLeft);
+            this.#pre.scrollLeft = this.#textarea.scrollLeft;
+        }
     }
 
     set value(val) {

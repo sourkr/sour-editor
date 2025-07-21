@@ -2,29 +2,24 @@ import { BaseParser } from "./base.js";
 
 export default class Parser extends BaseParser {
     file() {
-        if (this.is("kw", "func")) {
-            const doc = this.lastComment?.value;
-            this.lastComment = null;
+        if (this.is("kw", "export")) {
             const kw = this.next();
-            const name = this.next("ident");
-            const params = this.list("(,)", this.param);
-            const colon = this.next("punc", ":");
-            const retType = this.type();
-            const body = this.list("{}", this.stmt);
+            const def = this.def();
 
-            return {
-                type: "func-dec",
-                kw,
-                name,
-                params,
-                colon,
-                retType,
-                body,
-                doc,
-            };
+            return { type: "export", kw, def };
         }
 
-        return this.stmt(true);
+        if (this.is("kw", "import")) {
+            const kw = this.next();
+            const star = this.next("op", "*");
+            const from = this.next("kw", "from");
+            // console.log(this.peek())
+            const path = this.next("str");
+
+            return { type: "import", kw, star, from, path };
+        }
+
+        return this.def();
     }
 
     stmt() {
@@ -73,6 +68,32 @@ export default class Parser extends BaseParser {
         return this.expr(true);
     }
 
+    def() {
+        if (this.is("kw", "func")) {
+            const doc = this.lastComment?.value;
+            this.lastComment = null;
+            const kw = this.next();
+            const name = this.next("ident");
+            const params = this.list("(,)", this.param);
+            const colon = this.next("punc", ":");
+            const retType = this.type();
+            const body = this.list("{}", this.stmt);
+
+            return {
+                type: "func-dec",
+                kw,
+                name,
+                params,
+                colon,
+                retType,
+                body,
+                doc,
+            };
+        }
+
+        return this.stmt();
+    }
+
     expr(isStmt) {
         if (this.is("ident")) return this.ident(this.next(), isStmt);
 
@@ -112,7 +133,7 @@ export default class Parser extends BaseParser {
             return { type: "dot", left: access, right };
         }
 
-        return access;
+        return this.mayindex(access);
     }
 
     ident(ident, is_stmt) {
@@ -121,10 +142,19 @@ export default class Parser extends BaseParser {
             return { type: "func-call", name: ident, args };
         }
 
-        // NOTE: cannot be done because of `i++` should be stmt
-        // if (!isStmt) return this.mayop(this.maydot(ident));
         return this.mayop(this.maydot(ident), is_stmt);
-        // return this.unexpected(ident);
+    }
+
+    mayindex(access) {
+        if (this.is("punc", "[")) {
+            const startTok = this.next();
+            const expr = this.expr();
+            const endTok = this.next("punc", "]");
+
+            return { type: "index", access, expr, startTok, endTok };
+        }
+
+        return access;
     }
 
     unexpected(token) {

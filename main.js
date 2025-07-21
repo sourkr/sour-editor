@@ -44,7 +44,7 @@ class MainActivity extends Activity {
             } else {
                 this.editor.enable()
                 this.editor.enableLineNo()
-                this.editor.server = new Server()
+                this.editor.server = new Server(this.dir.child(tab.path))
                 this.editor.value = tab.content
                 this.editor.outputStream = null
                 
@@ -56,7 +56,7 @@ class MainActivity extends Activity {
                 }
                 
                 const data = JSON.parse(savefile.read())
-                data.active_file = tab.path
+                data.active_file = this.active_file = tab.path
                 savefile.write(JSON.stringify(data))
             }
         }
@@ -111,8 +111,8 @@ class MainActivity extends Activity {
     }
     
     runActiveFile() {
-        const interpreter = new Interpreter(this.editor.value, "internal.sour");
-        
+        const file = this.dir.child(this.active_file)
+        const interpreter = new Interpreter(file);
         
         if (!this.tabs.some(tab => tab.type == 'output')) {
             this.tabs.push({
@@ -191,6 +191,10 @@ class File {
         return this.#path.split('/')
             .filter(Boolean)
             .at(-1) || '/'
+    }
+
+    get base() {
+        return this.name.split('.').slice(0, -1).join('.')
     }
     
     get path() {

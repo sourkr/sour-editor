@@ -25,6 +25,8 @@ func _stdin(): char
 
 class string {
     var len: byte
+
+    func _get(n: byte): char
 }
 
 class byte {

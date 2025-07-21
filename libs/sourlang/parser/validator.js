@@ -16,9 +16,14 @@ const OP_NAMES = new Map([
 
 export default class Validator {
     globals = new GlobalScope(BUILTINS)
+
+    #exports = new BuiltinScope()
+    #file
     
-    constructor(code) {
+    constructor(code, file) {
         this.code = code;
+        this.#file = file
+        
         this.errors = [];
         this.parser = new Parser(code);
     }
@@ -31,10 +36,43 @@ export default class Validator {
             this.stmt(node, this.globals);
         }
 
-        return { ast, errors: this.errors };
+        return { ast, errors: this.errors, exports: this.#exports };
     }
 
     stmt(stmt, scope) {
+        if (stmt.type === 'export') {
+            const def = this.stmt(stmt.def, scope)
+            def.is_used = true
+            this.#exports.def_func(def)
+        }
+        
+        if (stmt.type === 'import') {
+            const path = stmt.path.value
+            
+            if (path == this.#file.base) {
+                this.error(`Cannot import itself`, stmt.path)
+                return
+            }
+                
+            const file = this.#file.parent.child(path + '.sour')
+
+            if (!file.exists()) {
+                this.error(`File ${path} does not exist`, stmt.path)
+                return
+            }
+
+            const validator = new Validator(file.read(), file)
+            const prog = validator.validate()
+
+            for (let err of prog.errors) {
+                this.errors.push(err)
+            }
+
+            prog.exports.get_all_funcs().forEach(func => {
+                this.globals.def_func(func)
+            })
+        }
+        
         if (stmt.type === 'func-dec') {
             const name = stmt.name.value
             const funcs = this.globals.get_funcs(name)
@@ -93,7 +131,7 @@ export default class Validator {
             params.forEach(param => funcScope.def_var(param.name.value, param.type))
             this.validate_body(stmt.body.list, funcScope)
             
-            return
+            return func
         }
         
         if (stmt.type === 'if') {
@@ -135,7 +173,7 @@ export default class Validator {
                 stmt.doc = type
                 type.is_var = true
                 type.var_name = stmt.name.value
-                scope.def_var(stmt.name.value, type)
+                scope?.def_var?.(stmt.name.value, type)
             }
             
             return
@@ -240,6 +278,24 @@ export default class Validator {
                 expr.alias = func.alias
                 return type
             }
+        }
+
+        if (expr.type === 'index') {
+            const access = this.expr(expr.access, scope)
+            const index = this.expr(expr.expr, scope)
+
+            if (is_error_type(access) || is_error_type(index)) {
+                return { type: 'simple', name: 'error' }
+            }
+
+            const func = get_suitable_func(access.scope.get_meths('_get'), '_get', [index])
+            
+            if (func) {
+                expr.alias = func.alias
+                return func.retType
+            }
+
+            this.error(`${type_to_str(access)}[${type_to_str(index)}] is not a valid index`, expr.startTok)
         }
         
         if (expr.type === 'char') {

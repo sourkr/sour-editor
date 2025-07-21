@@ -1,63 +1,75 @@
 import Validator from "../parser/validator.js";
-import { InstanceScope } from "./scope.js"
+import { Scope, BuiltinScope, InstanceScope } from "./scope.js"
 import BUILTINS, { to_byte, to_char, to_str } from "./builtin.js";
 
 export default class Interpreter {
     #validator;
+    #file
 
     inputStream = new Stream();
     errorStream = new Stream();
     outputStream = new Stream();
 
-    #outstream = this.inputStream;
-    #errstream = this.errorStream;
-    #inpstream = this.outputStream;
+    exports = new BuiltinScope()
 
-    globals = new GlobalScope(BUILTINS);
+    globals = new GlobalScope(BUILTINS)
 
-    constructor(input, filepath) {
-        this.#validator = new Validator(input, filepath);
+    constructor(file) {
+        this.#validator = new Validator(file.read(), file);
+        this.#file = file
     }
 
-    interprete() {
+    interprete(_prog) {
         const prog = this.#validator.validate();
 
         if (prog.errors.length) {
-            prog.errors.forEach((err) => this.#errstream.write(err.toString()));
+            prog.errors.forEach((err) => this.errorStream.write(err.toString()));
             return;
         }
 
-        console.log(prog.ast)
-        
-        this.globals.def_func("_stdout__char", (args, prog) => {
-            this.#outstream.write(String.fromCharCode(args[0].value));
+
+        this.globals.def_func('_stdout__char', (args, prog) => {
+            console.log('from', this.name)
+            this.inputStream.write(String.fromCharCode(args[0].value));
             prog.resolve();
-        });
+        })
 
         this.globals.def_func("_stderr__char", (args, prog) => {
-            this.#errstream.write(String.fromCharCode(args[0].value));
+            this.errorStream.write(String.fromCharCode(args[0].value));
             prog.resolve();
         });
 
         this.globals.def_func("_stdin__", (_args, prog) => {
-            this.#inpstream.read()
+            this.inputStream.read()
                 .then((char) => prog.resolve(to_char(char.charCodeAt(0))));
         });
 
+        // const stack = []
+        
         this.#interpreteBody(prog.ast, this.globals, {
             resolve: () => {
-                this.#inpstream.close();
-                this.#errstream.close();
-                this.#outstream.close();
+                if (!_prog) {
+                    this.outputStream.close();
+                    this.errorStream.close();
+                    this.inputStream.close();
+                }
+                
+                _prog?.resolve()
             },
 
             reject: (err) => {
-                this.#errstream.write(err.toString());
+                this.errorStream.write(err.toString());
 
-                this.#inpstream.close();
-                this.#errstream.close();
-                this.#outstream.close();
+                if (!_prog) {
+                    this.outputStream.close();
+                    this.errorStream.close();
+                    this.inputStream.close();
+                }
+
+                _prog?.reject(err)
             },
+
+            stack: []
         });
     }
 
@@ -80,21 +92,67 @@ export default class Interpreter {
         if (!expr) return;
 
         // const $this = this;
+        if (expr.type == "export") {
+            this.#interprete(expr.def, scope, {
+                ...prog,
+                resolve: ({ type, name, def }) => {
+                    if (type == "func") {
+                        this.exports.def_func(name, def);
+                    }
+                    
+                    prog.resolve()
+                }
+            });
 
+            return
+        }
+
+        if (expr.type == "import") {
+            const path = expr.path.value
+            const file = this.#file.parent.child(path + '.sour')
+            const interpreter = new Interpreter(file)
+            interpreter.name = 'module'
+            interpreter.inputStream = this.inputStream
+            interpreter.errorStream = this.errorStream
+            interpreter.outputStream = this.outputStream
+            interpreter.interprete({
+                ...prog,
+                reject: (err) => {
+                    console.warn('import failed', err)
+                },
+                resolve: () => {
+                    // console.log('import', interpreter.exports)
+                    interpreter.exports.get_all_funcs().forEach((func, name) => {
+                        this.globals.def_func(name, func)
+                    })
+                    prog.resolve()
+                }
+            })
+
+            return
+        }
+        
         if (expr.type == "func-dec") {
             scope.def_func(expr.alias, (args, prog) => {
                 const funcScope = new FunctionScope(scope);
+                
                 expr.params.list.forEach((param, i) =>
                     funcScope.def_var(param.name.value, args[i]),
                 );
 
+                // this.#stack.push(expr.name.value)
                 this.#interpreteBody(expr.body.list, funcScope, {
                     ...prog,
+                    resolve: (res) => {
+                        // this.#stack.pop()
+                        prog.resolve();
+                    },
                     return: prog.resolve,
                 });
             });
 
-            prog.resolve();
+            // console.log('def func', expr.alias, scope.get_func(expr.alias))
+            prog.resolve({ type: "func", name: expr.alias, def: scope.get_func(expr.alias) });
             return;
         }
 
@@ -142,25 +200,24 @@ export default class Interpreter {
 
         if (expr.type === "func-call") {
             const func = scope.get_func(expr.alias);
-            
+
             if (typeof func !== "function") {
-                prog.reject(
-                    this.error(
-                        `RefrenceError: Function '${expr.alias}' is not avaliable at runtime`,
-                    ),
-                );
-                
+                prog.reject(this.error(`RefrenceError: '${expr.name.value}' is not a function`, expr.name, prog));
                 return;
             }
 
-            console.log('call', expr.alias)
-            
             this.#interpreteBody(expr.args.list, scope, {
                 ...prog,
                 resolve: (args) => {
-                    console.log(args)
-                    func(args, prog);
-                },
+                    prog.stack.push({ name: expr.name.value, path: this.#file.path, token: expr.name })
+                    func(args, {
+                        ...prog,
+                        resolve: (val) => {
+                            prog.stack.pop()
+                            prog.resolve(val);
+                        }
+                    })
+                }
             });
 
             return;
@@ -195,6 +252,8 @@ export default class Interpreter {
                     prog.resolve(left.get_prop(expr.right.value));
                 },
             })
+
+            return 
         }
         
         if (expr.type === "unary") {
@@ -204,13 +263,31 @@ export default class Interpreter {
                     val.get_meth(expr.alias)(val, [to_byte(1)], {
                         ...prog,
                         resolve: (new_val) => {
-                            console.log('i++', val, new_val, expr.alias)
                             scope.set_var(expr.expr.value, new_val);
                             prog.resolve(val);
                         }
                     })
                 },
             });
+
+            return
+        }
+
+        if (expr.type === "index") {
+            this.#interprete(expr.access, scope, {
+                ...prog,
+                resolve: (access) => {
+                    this.#interprete(expr.expr, scope, {
+                        ...prog,
+                        resolve: (index) => {
+                            const meth = access.get_meth(expr.alias)
+                            meth(access, [index], prog)
+                        }
+                    })
+                }
+            })
+
+            return
         }
 
         if (expr.type === "str") {
@@ -225,11 +302,11 @@ export default class Interpreter {
 
         if (expr.type === "ident") {
             const val = scope.get_var(expr.value)
-            console.log('var', val)
+            
             if (!val) {
                 prog.reject(this.error(`RefrenceError: '${expr.value}' is not defined`));
             } else {
-                prog.resolve(scope.get_var(expr.value));
+                prog.resolve(val);
             }
             
             return;
@@ -239,13 +316,15 @@ export default class Interpreter {
             prog.resolve(to_byte(parseInt(expr.value)))
             return;
         }
+
+        console.warn(`${expr.type} is not implemented`)
+        // prog.reject(this.error(`SyntaxError: '${expr.type}' is not a valid expression`, expr, prog))
     }
     
     forLoop(stmt, scope, prog) {
         this.#interprete(stmt.cond, scope, {
             ...prog,
             resolve: (cond) => {
-                console.log('for cond', cond)
                 if (cond.value) {
                     this.#interpreteBody(stmt.body.list, scope, {
                         ...prog,
@@ -267,8 +346,15 @@ export default class Interpreter {
         });
     }
 
-    error(msg) {
-        return msg;
+    error(msg, token, prog) {
+        const path = this.#file.path.slice(1)
+        
+        const header = `${msg} at ${path}:${token.start?.lineno ?? -1}:${token.start?.col ?? -1}`
+        const stack = prog.stack.toReversed()
+            .map(({ name, path, token }) => `    at ${name} (${path.slice(1)}:${token?.start.lineno ?? -1}:${token?.start.col ?? -1})`)
+            .join('\n')
+        
+        return `${header}\n${stack}`;
     }
 }
 
@@ -314,11 +400,12 @@ class Stream {
     close() {
         this.#closed = true;
         this.#onclose?.();
+        console.log('stream is closed')
     }
 
-    [Symbol.dispose]() {
-        this.close();
-    }
+    // [Symbol.dispose]() {
+    //     this.close();
+    // }
 }
 
 class GlobalScope {

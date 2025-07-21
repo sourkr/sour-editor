@@ -1,16 +1,30 @@
 import Validator, { FunctionScope } from "./parser/validator.js";
 
-const KEWWORD_STMT = new Set(["if", "for"]);
+const KEWWORD_STMT = new Set(["if", "for", 'export', 'import']);
 const DEF_STMT = new Set(["func-dec", "var-dec"]);
 
-const GLOBAL_KEYWORDS = ["func", "if", "else", "for", "var"];
+const GLOBAL_KEYWORDS = ["func", "if", "else", "for", "var", 'export', 'import'];
+
+const PAIRS = {
+    "(": ")",
+    "{": "}",
+    "[": "]",
+    '"': '"',
+    "'": "'",
+}
 
 export default class Server {
+    #dir
+
+    constructor(dir) {
+        this.#dir = dir
+    }
+    
     // Linting
     lint(span) {
         this.span = span;
 
-        const validator = new Validator(span.text);
+        const validator = new Validator(span.text, this.#dir);
         const prog = validator.validate();
 
         this.prog = prog;
@@ -38,6 +52,15 @@ export default class Server {
             this.lint_token(expr.kw, "tok-def");
         }
 
+        if (expr.type == "export") {
+            this.lint_expr(expr.def, depth);
+        }
+
+        if (expr.type == "import") {
+            this.lint_token(expr.from, "tok-kw");
+            this.lint_expr(expr.path);
+        }
+        
         if (expr.type == "func-dec") {
             this.lint_token(
                 expr.name,
@@ -115,6 +138,13 @@ export default class Server {
             return;
         }
 
+        if (expr.type == "index") {
+            this.lint_expr(expr.access);
+            this.lint_bracket(expr, depth);
+            this.lint_expr(expr.expr);
+            return;
+        }
+
         if (expr.type == "char") {
             if (expr.unmatched) this.match("'", "'");
             this.lint_token(expr, "tok-char");
@@ -149,13 +179,15 @@ export default class Server {
     }
 
     lint_bracket(expr, depth) {
-        if (expr.endTok?.type !== "punc") {
+        if (expr.endTok?.type !== "punc" || expr.endTok.value !== PAIRS[expr.endTok.value]) {
             if (expr.startTok.value == "(") this.match("(", ")");
             if (expr.startTok.value == "{") this.match("{", "}");
-            return;
+            if (expr.startTok.value == "[") this.match("[", "]");
         }
 
-        const colors = [`tok-bracket-depth-${depth}`];
+        if (!expr.endTok) return;
+
+        const colors = [`tok-bracket-depth-${depth % 3}`];
 
         if (this.#touching(expr.startTok) || this.#touching(expr.endTok)) {
             colors.push("tok-bracket-lit");
@@ -170,7 +202,7 @@ export default class Server {
     #touching(token, end) {
         if (!token) return false;
         if (!token.start) return false;
-        
+
         if (end) {
             return this.cursorIndex === token.end.index;
         }
@@ -207,6 +239,28 @@ export default class Server {
     list(stmt, scope) {
         let list;
 
+        if (stmt.type == "export") {
+            return this.list(stmt.def, scope);
+        }
+
+        if (stmt.type == "import") {
+            if (this.#touching(stmt.from)) {
+                if('from'.startsWith(stmt.from.value)) {
+                    return [{ type: "kw", prefix: stmt.from.value, name: 'from' }]
+                }
+            }
+
+            if (this.#touching(stmt.path)) {
+                return this.#dir.list
+                    .filter(file => file.endsWith('.sour'))
+                    .map(file => file.slice(0, -5))
+                    .filter(file => file.startsWith(stmt.path.value))
+                    .map(file => {
+                        return { type: "file", prefix: stmt.path.value, name: file }
+                    })
+            }
+        }
+        
         if (stmt.type == "func-dec") {
             const funcScope = new FunctionScope(scope);
 
@@ -275,21 +329,29 @@ export default class Server {
             if (list?.length) return list;
 
             if (this.#touching(stmt.right)) {
-                list = []
-                const prefix = stmt.right.value
+                list = [];
+                const prefix = stmt.right.value;
                 // console.log(stmt.left.doc.scope.get_all_props().toArray())
-                stmt.left.doc.scope.get_all_props()
-                    .filter(prop => prop.prop_name.startsWith(prefix))
-                    .forEach(prop => list.push({
-                        type: 'var',
-                        prefix,
-                        name: prop.prop_name,
-                        doc: prop
-                    }))
-                return list
+                stmt.left.doc.scope
+                    .get_all_props()
+                    .filter((prop) => prop.prop_name.startsWith(prefix))
+                    .forEach((prop) =>
+                        list.push({
+                            type: "var",
+                            prefix,
+                            name: prop.prop_name,
+                            doc: prop,
+                        }),
+                    );
+                return list;
             }
         }
 
+        if (stmt.type == "index") {
+            return this.list(stmt.access, scope)
+                || this.list(stmt.expr, scope)
+        }
+        
         if (stmt.type == "ident") {
             if (this.#touching(stmt, true)) {
                 const prefix = stmt.value;
@@ -336,10 +398,11 @@ export default class Server {
             if (!this.#touching(type.name, true)) return;
 
             const types = [];
-            const prefix = type.name.value
+            const prefix = type.name.value;
 
-            console.log(scope)
-            scope.get_all_classes()
+            console.log(scope);
+            scope
+                .get_all_classes()
                 .filter((cls) => cls.name.startsWith(prefix))
                 .forEach((cls) =>
                     types.push({
@@ -370,35 +433,47 @@ export default class Server {
     }
 
     doc_node(node) {
-        if(!node) return;
-        
-        let doc
+        if (!node) return;
+
+        let doc;
+
+        if (node.type == "export") {
+            return this.doc_node(node.def);
+        }
         
         if (node.type == "func-dec") {
             if (this.#touching(node.name)) return node.doc;
-            
-            for(let param of node.params.list) {
+
+            for (let param of node.params.list) {
                 if (this.#touching(param.name)) return param.doc;
                 let doc = this.doc_type(param.type);
                 if (doc) return doc;
-
             }
 
             doc = this.doc_type(node.retType);
             if (doc) return doc;
 
-            return this.doc_list(node.body)
+            return this.doc_list(node.body);
         }
 
         if (node.type == "var-dec") {
             if (this.#touching(node.name)) return node.doc;
-            return this.doc_node(node.val)
+            return this.doc_node(node.val);
         }
 
         if (node.type == "if") {
-            return this.doc_node(node.cond)
+            return (
+                this.doc_node(node.cond) ||
+                this.doc_list(node.body) ||
+                this.doc_list(node.elseStmt?.body)
+            );
+        }
+
+        if (node.type == "for") {
+            return this.doc_node(node.init)
+                || this.doc_node(node.cond)
+                || this.doc_node(node.inc)
                 || this.doc_list(node.body)
-                || this.doc_list(node.elseStmt?.body)
         }
 
         if (node.type == "func-call") {
@@ -407,19 +482,21 @@ export default class Server {
         }
 
         if (node.type == "op") {
-            return this.doc_node(node.left)
-                || this.doc_node(node.right)
+            return this.doc_node(node.left) || this.doc_node(node.right);
         }
 
         if (node.type == "unary") {
-            return this.doc_node(node.expr)
+            return this.doc_node(node.expr);
         }
 
         if (node.type == "dot") {
-            return this.doc_node(node.left)
-                || this.doc_node(node.right)
+            return this.doc_node(node.left) || this.doc_node(node.right);
         }
-        
+
+        if (node.type == "index") {
+            return this.doc_node(node.access) || this.doc_node(node.expr);
+        }
+
         if (node.doc && this.#touching(node)) {
             return node.doc;
         }
@@ -427,7 +504,7 @@ export default class Server {
 
     doc_list(list) {
         if (!list) return;
-        
+
         for (let node of list.list) {
             const doc = this.doc_node(node);
             if (doc) return doc;
@@ -440,7 +517,7 @@ export default class Server {
         }
 
         if (type.type == "class") {
-            if (this.#touching(type.name)) return type.doc;;
+            if (this.#touching(type.name)) return type.doc;
         }
     }
 }

@@ -1,3 +1,74 @@
+export class Scope {
+	#vars = new Map()
+	#funcs = new Set()
+	#classes = new Map()
+	#parent
+
+
+	constructor(parent) {
+		this.#parent = parent
+	}
+		
+	// Classes
+	def_class(name, def) {
+		this.#classes.set(name, def)
+	}
+
+	has_class(name) {
+		return this.#classes.has(name) || this.#parent?.has_class(name)
+	}
+
+	get_class(name) {
+		return this.#classes.get(name) || this.#parent?.get_class(name)
+	}
+
+	*get_all_class() {
+		yield* this.#classes.values()
+		if(this.#parent) yield* this.#parent.get_all_class()
+	}
+
+
+	// Functions
+	def_func(def) {
+		this.#funcs.add(def)
+	}
+
+	has_func(name) {
+		return this.#funcs.values()
+			.some(func => func.name.value === name) || this.#parent?.has_func(name)
+	}
+
+	*get_funcs(name) {
+		yield* this.#funcs.values()
+			.filter(func => func.name.value === name)
+
+		if(this.#parent) yield* this.#parent.get_funcs(name)
+	}
+
+	*get_all_funcs() {
+		yield* this.#funcs.values()
+		if(this.#parent) yield* this.#parent.get_all_funcs()
+	}
+
+	// Variables
+	def_var(name, def) {
+		this.#vars.set(name, def)
+	}
+
+	has_var(name) {
+		return this.#vars.has(name) || this.#parent?.has_var(name)
+	}
+
+	get_var(name) {
+		return this.#vars.get(name) || this.#parent?.get_var(name)
+	}
+
+	*get_all_vars() {
+		yield* this.#vars.values()
+		if(this.#parent) yield* this.#parent.get_all_vars()
+	}
+}
+
 export class BuiltinScope {
 	#classes = new Map()
 	#funcs = new Set()

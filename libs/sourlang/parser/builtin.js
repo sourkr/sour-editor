@@ -1,8 +1,8 @@
 import DefinationParser from "./dparser.js";
-import { BuiltinScope, ClassScope } from "./scope.js";
+import { Scope, BuiltinScope, ClassScope } from "./scope.js";
 import { gen_func_alias, clone_type } from "./util.js";
 
-const BUILTINS = new BuiltinScope();
+const BUILTINS = new Scope();
 export default BUILTINS;
 
 async function main() {
@@ -33,7 +33,7 @@ async function main() {
 	ast.filter((node) => node.type === "func-def")
 		.forEach((node) => BUILTINS.def_func(func_def(node, BUILTINS)));
 
-	BUILTINS.get_all_classes().forEach((cls) => {
+	BUILTINS.get_all_class().forEach((cls) => {
 		cls.node.body.list.forEach((node) => {
 			if (node.type === "var-def") {
 				const def = clone_type(get_type(BUILTINS, node.var_type))
