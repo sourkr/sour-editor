@@ -3,139 +3,770 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sour Language - Documentation</title>
+    <title>Sour Lang - A Fresh Programming Language</title>
     <style>
-        body {
-            font-family: Arial, sans-serif;
+        * {
             margin: 0;
             padding: 0;
-            background-color: #1e1e1e;
-            color: #d4d4d4;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: flex-start; /* Align to start for better mobile scrolling */
-            min-height: 100vh;
-            padding: 20px; /* Add some padding to the body */
-            box-sizing: border-box; /* Include padding in element's total width and height */
-        }
-        .container {
-            text-align: center;
-            padding: 20px;
-            max-width: 800px;
-            width: 100%; /* Make container take full width on small screens */
-            background-color: #2d2d2d;
-            border-radius: 8px;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
             box-sizing: border-box;
         }
-        h1 {
-            color: #007acc;
-            margin-bottom: 10px;
-        }
-        h2 {
-            color: #007acc;
-            margin-top: 20px;
-            margin-bottom: 10px;
-        }
-        p {
-            margin-bottom: 20px;
+
+        body {
+            font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            color: white;
+            overflow-x: hidden;
             line-height: 1.6;
         }
-        ul {
-            list-style: disc;
-            padding-left: 20px;
-            margin-bottom: 20px;
-            text-align: left;
-        }
-        pre {
-            background-color: #3c3c3c;
-            padding: 15px;
-            border-radius: 5px;
-            overflow-x: auto;
-            margin-bottom: 20px;
-            text-align: left;
-        }
-        code {
-            font-family: "Courier New", Courier, monospace;
-            color: #e0e0e0;
-        }
-        .button {
-            display: block; /* Make buttons block-level for better stacking on mobile */
-            width: fit-content; /* Adjust width to content */
-            margin: 10px auto; /* Center buttons and add vertical spacing */
-            background-color: #007acc;
-            color: white;
-            padding: 10px 20px;
-            text-decoration: none;
-            border-radius: 5px;
-            transition: background-color 0.3s ease;
-        }
-        .button:hover {
-            background-color: #005f99;
-        }
-        footer {
-            margin-top: 40px;
-            font-size: 0.9em;
-            color: #888;
-            text-align: center;
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
         }
 
-        /* Mobile-specific adjustments */
-        @media (max-width: 600px) {
-            .button {
-                width: 90%; /* Make buttons wider on small screens */
+        /* Animated Background */
+        .bg-animation {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            overflow: hidden;
+        }
+
+        .floating-code {
+            position: absolute;
+            font-family: 'Monaco', 'Menlo', monospace;
+            font-size: 14px;
+            color: rgba(255, 255, 255, 0.1);
+            animation: float-code 20s linear infinite;
+            white-space: nowrap;
+        }
+
+        @keyframes float-code {
+            0% { transform: translateX(-100px) translateY(100vh); }
+            100% { transform: translateX(100px) translateY(-100px); }
+        }
+
+        /* Header */
+        header {
+            position: fixed;
+            top: 0;
+            width: 100%;
+            background: rgba(0, 0, 0, 0.2);
+            backdrop-filter: blur(20px);
+            z-index: 1000;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        nav {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px 20px;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 28px;
+            font-weight: 800;
+        }
+
+        .logo-icon {
+            font-size: 32px;
+            filter: drop-shadow(0 0 10px rgba(255, 255, 0, 0.5));
+        }
+
+        .logo-text {
+            background: linear-gradient(45deg, #ffd93d, #ff6b6b, #4ecdc4);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 30px;
+            list-style: none;
+        }
+
+        .nav-links a {
+            color: rgba(255, 255, 255, 0.9);
+            text-decoration: none;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+
+        .nav-links a::after {
+            content: '';
+            position: absolute;
+            bottom: -5px;
+            left: 0;
+            width: 0;
+            height: 2px;
+            background: linear-gradient(45deg, #ffd93d, #ff6b6b);
+            transition: width 0.3s ease;
+        }
+
+        .nav-links a:hover {
+            color: #ffd93d;
+        }
+
+        .nav-links a:hover::after {
+            width: 100%;
+        }
+
+        .try-button {
+            background: linear-gradient(45deg, #ffd93d, #ff6b6b);
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 25px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-block;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .try-button::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+            transition: left 0.5s ease;
+        }
+
+        .try-button:hover::before {
+            left: 100%;
+        }
+
+        .try-button:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 15px 35px rgba(255, 107, 107, 0.4);
+        }
+
+        /* Hero Section */
+        .hero {
+            padding: 140px 0 100px;
+            text-align: center;
+            position: relative;
+        }
+
+        .hero-content {
+            position: relative;
+            z-index: 1;
+        }
+
+        .hero-badge {
+            display: inline-block;
+            background: rgba(255, 217, 61, 0.2);
+            color: #ffd93d;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 20px;
+            border: 1px solid rgba(255, 217, 61, 0.3);
+        }
+
+        .hero h1 {
+            font-size: clamp(3rem, 6vw, 5rem);
+            font-weight: 900;
+            margin-bottom: 20px;
+            background: linear-gradient(45deg, #ffd93d, #ff6b6b, #4ecdc4, #45b7d1);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            background-size: 300% 300%;
+            animation: gradientShift 4s ease-in-out infinite;
+        }
+
+        @keyframes gradientShift {
+            0%, 100% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+        }
+
+        .hero-subtitle {
+            font-size: 1.4rem;
+            margin-bottom: 30px;
+            opacity: 0.9;
+            max-width: 700px;
+            margin-left: auto;
+            margin-right: auto;
+            font-weight: 300;
+        }
+
+        .hero-buttons {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin-bottom: 80px;
+        }
+
+        .primary-button {
+            background: linear-gradient(45deg, #ffd93d, #ff6b6b);
+            color: white;
+            padding: 16px 32px;
+            border: none;
+            border-radius: 30px;
+            font-weight: 700;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-block;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .secondary-button {
+            background: transparent;
+            color: white;
+            padding: 16px 32px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 30px;
+            font-weight: 600;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-block;
+            backdrop-filter: blur(10px);
+        }
+
+        .secondary-button:hover {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: #ffd93d;
+            color: #ffd93d;
+            transform: translateY(-3px);
+        }
+
+        .primary-button:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 20px 40px rgba(255, 107, 107, 0.3);
+        }
+
+        /* Code Preview */
+        .code-preview {
+            max-width: 800px;
+            margin: 0 auto;
+            background: rgba(0, 0, 0, 0.4);
+            backdrop-filter: blur(20px);
+            border-radius: 20px;
+            padding: 30px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            position: relative;
+        }
+
+        .code-window {
+            background: #1a1a1a;
+            border-radius: 15px;
+            overflow: hidden;
+        }
+
+        .code-header {
+            background: #2d2d2d;
+            padding: 12px 20px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .code-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+        }
+
+        .code-dot.red { background: #ff5f5f; }
+        .code-dot.yellow { background: #ffbd2e; }
+        .code-dot.green { background: #28ca42; }
+
+        .code-title {
+            margin-left: 10px;
+            color: #888;
+            font-size: 14px;
+        }
+
+        .code-content {
+            padding: 25px;
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            font-size: 16px;
+            line-height: 1.6;
+        }
+
+        .code-line {
+            margin: 4px 0;
+        }
+
+        /* Sour Lang Syntax Highlighting */
+        .keyword { color: #ff6b9d; font-weight: 600; }
+        .string { color: #c3e88d; }
+        .number { color: #f78c6c; }
+        .function { color: #82aaff; }
+        .comment { color: #546e7a; font-style: italic; }
+        .operator { color: #89ddff; }
+        .type { color: #ffcb6b; }
+
+        /* Features Section */
+        .features {
+            padding: 100px 0;
+            background: rgba(255, 255, 255, 0.03);
+            backdrop-filter: blur(10px);
+        }
+
+        .section-header {
+            text-align: center;
+            margin-bottom: 70px;
+        }
+
+        .section-title {
+            font-size: 3rem;
+            font-weight: 800;
+            margin-bottom: 20px;
+            background: linear-gradient(45deg, #ffd93d, #4ecdc4);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .section-subtitle {
+            font-size: 1.2rem;
+            opacity: 0.8;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 40px;
+            margin-top: 50px;
+        }
+
+        .feature-card {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(20px);
+            padding: 40px;
+            border-radius: 25px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transition: all 0.4s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .feature-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 217, 61, 0.1), transparent);
+            transition: left 0.6s ease;
+        }
+
+        .feature-card:hover::before {
+            left: 100%;
+        }
+
+        .feature-card:hover {
+            transform: translateY(-15px) scale(1.02);
+            border-color: rgba(255, 217, 61, 0.3);
+            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.2);
+        }
+
+        .feature-icon {
+            font-size: 48px;
+            margin-bottom: 20px;
+            display: block;
+        }
+
+        .feature-card h3 {
+            font-size: 1.5rem;
+            margin-bottom: 15px;
+            font-weight: 700;
+            color: #ffd93d;
+        }
+
+        .feature-card p {
+            opacity: 0.9;
+            line-height: 1.7;
+        }
+
+        /* Syntax Examples */
+        .syntax-examples {
+            padding: 100px 0;
+        }
+
+        .examples-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 40px;
+            margin-top: 50px;
+        }
+
+        .example-card {
+            background: rgba(0, 0, 0, 0.3);
+            backdrop-filter: blur(20px);
+            border-radius: 20px;
+            overflow: hidden;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transition: all 0.3s ease;
+        }
+
+        .example-card:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+        }
+
+        .example-header {
+            padding: 20px 25px;
+            background: rgba(255, 217, 61, 0.1);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .example-title {
+            font-weight: 600;
+            color: #ffd93d;
+            font-size: 1.1rem;
+        }
+
+        .example-code {
+            padding: 25px;
+            font-family: 'Monaco', 'Menlo', monospace;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+
+        /* Call to Action */
+        .cta {
+            padding: 100px 0;
+            text-align: center;
+            background: linear-gradient(45deg, rgba(255, 217, 61, 0.1), rgba(255, 107, 107, 0.1));
+            backdrop-filter: blur(10px);
+        }
+
+        .cta h2 {
+            font-size: 3rem;
+            margin-bottom: 20px;
+            font-weight: 800;
+        }
+
+        .cta p {
+            font-size: 1.2rem;
+            margin-bottom: 40px;
+            opacity: 0.9;
+        }
+
+        /* Footer */
+        footer {
+            padding: 60px 0 30px;
+            background: rgba(0, 0, 0, 0.4);
+            backdrop-filter: blur(20px);
+            text-align: center;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .footer-links {
+            display: flex;
+            justify-content: center;
+            gap: 40px;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+        }
+
+        .footer-links a {
+            color: rgba(255, 255, 255, 0.7);
+            text-decoration: none;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+
+        .footer-links a:hover {
+            color: #ffd93d;
+        }
+
+        .footer-bottom {
+            padding-top: 20px;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            color: rgba(255, 255, 255, 0.6);
+        }
+
+        /* Mobile Responsiveness */
+        @media (max-width: 768px) {
+            .nav-links {
+                display: none;
+            }
+
+            .hero-buttons {
+                flex-direction: column;
+                align-items: center;
+            }
+
+            .features-grid,
+            .examples-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .section-title {
+                font-size: 2rem;
+            }
+
+            .hero h1 {
+                font-size: 2.5rem;
+            }
+
+            .footer-links {
+                flex-direction: column;
+                gap: 20px;
             }
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <h1>Sour Language Documentation</h1>
-        <p>Sour Language is a simple, interpreted programming language designed for educational purposes and to demonstrate basic language parsing and interpretation concepts.</p>
-        
-        <h2>Core Concepts</h2>
-        <ul>
-            <li><strong>Keywords:</strong> <code>print</code></li>
-            <li><strong>Functions:</strong> See <a href="builtins.html">Built-in Functions</a> for details.</li>
-            <li><strong>Data Types:</strong> Currently supports strings and characters.</li>
-        </ul>
-        
-        <h2>Syntax</h2>
-        <h3>Printing to Console</h3>
-        <p>To print a string to the console:</p>
-        <pre><code>print "Hello, World!"</code></pre>
-        
-        <h3>Character Output</h3>
-        <p>To print a single character to standard output (e.g., for building strings character by character):</p>
-        <pre><code>_stdout('A')</code></pre>
-        
-        <h3>Function Declaration</h3>
-        <p>Functions are declared using the <code>func</code> keyword, followed by the function name, a parameter list, a return type, and a code block enclosed in curly braces.</p>
-        <pre><code>func my_function(param1: type1, param2: type2): return_type {
-    // function body
-    print "Hello from function!"
-}</code></pre>
-        <h3>Comments</h3>
-        <p>Sour Language does not currently support comments.</p>
-        
-        <h2>Error Handling</h2>
-        <p>The interpreter provides basic error messages for syntax and type errors.</p>
-        
-        <h2>Extending the Language</h2>
-        <ul>
-            <li><strong>Lexer (Tokenizer):</strong> <code>libs/sourlang/tokens.js</code> performs lexical analysis.</li>
-            <li><strong>Parser:</strong> <code>libs/sourlang/parser.js</code> builds an Abstract Syntax Tree (AST).</li>
-            <li><strong>Validator:</strong> <code>libs/sourlang/validator.js</code> performs semantic checks and type validation.</li>
-            <li><strong>Interpreter:</strong> <code>libs/sourlang/interpreter.js</code> executes the AST.</li>
-            <li><strong>Character Utilities:</strong> <code>libs/sourlang/chars.js</code> defines character-related utilities.</li>
-        </ul>
-        
-        <a href="index.html" class="button">Back to Sour Editor Landing Page</a>
+    <!-- Animated Background -->
+    <div class="bg-animation">
+        <div class="floating-code" style="top: 10%; left: 10%; animation-delay: 0s;">func main() { print("Hello Sour!") }</div>
+        <div class="floating-code" style="top: 30%; left: 80%; animation-delay: 5s;">var x = 42</div>
+        <div class="floating-code" style="top: 50%; left: 20%; animation-delay: 10s;">if (condition) { return true; }</div>
+        <div class="floating-code" style="top: 70%; left: 70%; animation-delay: 15s;">class SourClass { }</div>
     </div>
 
-    <footer>
-        <p>&copy; 2025 Sour Editor. All rights reserved.</p>
+    <!-- Header -->
+    <header>
+        <nav class="container">
+            <div class="logo">
+                <span class="logo-icon">🍋</span>
+                <span class="logo-text">Sour Lang</span>
+            </div>
+            <ul class="nav-links">
+                <li><a href="#features">Features</a></li>
+                <li><a href="#syntax">Syntax</a></li>
+                <li><a href="#examples">Examples</a></li>
+                <li><a href="builtins.html">Built-ins</a></li>
+                <li><a href="string.html">String</a></li>
+                <li><a href="#docs">Docs</a></li>
+            </ul>
+            <a href="#try" class="try-button">Try Sour Lang</a>
+        </nav>
+    </header>
+
+    <!-- Hero Section -->
+    <section class="hero">
+        <div class="container">
+            <div class="hero-content">
+                <div class="hero-badge">✨ Now Available in Sour Editor</div>
+                <h1>Sour Lang</h1>
+                <p class="hero-subtitle">A fresh, modern programming language designed for simplicity, performance, and joy. Experience the power of clean syntax with the flexibility you need.</p>
+                
+                <div class="hero-buttons">
+                    <a href="#try" class="primary-button">🚀 Start Coding</a>
+                    <a href="#examples" class="secondary-button">📖 View Examples</a>
+                </div>
+
+                <div class="code-preview">
+                    <div class="code-window">
+                        <div class="code-header">
+                            <div class="code-dot red"></div>
+                            <div class="code-dot yellow"></div>
+                            <div class="code-dot green"></div>
+                            <div class="code-title">hello_world.sour</div>
+                        </div>
+                        <div class="code-content">
+                            <div class="code-line"><span class="comment">// Welcome to Sour Lang! 🍋</span></div>
+                            <div class="code-line"></div>
+                            <div class="code-line"><span class="keyword">func</span> <span class="function">main</span>() {</div>
+                            <div class="code-line"><span class="keyword">var</span> message = <span class="string">"Hello, Sour World!"</span></div>
+                            <div class="code-line">    <span class="function">print</span>(message)</div>
+                            <div class="code-line">    </div>
+                            <div class="code-line">    <span class="keyword">var</span> numbers = [<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>, <span class="number">4</span>, <span class="number">5</span>]</div>
+                            <div class="code-line">    <span class="keyword">for</span> num <span class="operator">in</span> numbers {</div>
+                            <div class="code-line">        <span class="function">print</span>(<span class="string">"Number: "</span> <span class="operator">+</span> num)</div>
+                            <div class="code-line">    }</div>
+                            <div class="code-line">}</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Features Section -->
+    <section class="features" id="features">
+        <div class="container">
+            <div class="section-header">
+                <h2 class="section-title">Why Sour Lang?</h2>
+                <p class="section-subtitle">Built for modern developers who value clean code, performance, and developer experience</p>
+            </div>
+
+            <div class="features-grid">
+                <div class="feature-card">
+                    <span class="feature-icon">⚡</span>
+                    <h3>Lightning Fast</h3>
+                    <p>Optimized for performance with efficient compilation and runtime execution. Your code runs fast, every time.</p>
+                </div>
+
+                <div class="feature-card">
+                    <span class="feature-icon">🎯</span>
+                    <h3>Type Safe</h3>
+                    <p>Strong static typing with intelligent type inference. Catch errors at compile time, not runtime.</p>
+                </div>
+
+                <div class="feature-card">
+                    <span class="feature-icon">🧹</span>
+                    <h3>Clean Syntax</h3>
+                    <p>Intuitive, readable syntax that's easy to learn and pleasant to write. Less boilerplate, more productivity.</p>
+                </div>
+
+                <div class="feature-card">
+                    <span class="feature-icon">🔧</span>
+                    <h3>Developer First</h3>
+                    <p>Built-in tools, excellent error messages, and seamless integration with Sour Editor for the best coding experience.</p>
+                </div>
+
+                <div class="feature-card">
+                    <span class="feature-icon">📱</span>
+                    <h3>Mobile Ready</h3>
+                    <p>Designed to work perfectly on mobile devices through Sour Editor. Code anywhere, anytime.</p>
+                </div>
+
+                <div class="feature-card">
+                    <span class="feature-icon">🌟</span>
+                    <h3>Modern Features</h3>
+                    <p>Pattern matching, optional types, async/await, and more modern language features you expect.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Syntax Examples -->
+    <section class="syntax-examples" id="syntax">
+        <div class="container">
+            <div class="section-header">
+                <h2 class="section-title">Beautiful Syntax</h2>
+                <p class="section-subtitle">See how Sour Lang makes complex concepts simple and elegant</p>
+            </div>
+
+            <div class="examples-grid" id="examples">
+                <div class="example-card">
+                    <div class="example-header">
+                        <div class="example-title">🔄 Functions & Control Flow</div>
+                    </div>
+                    <div class="example-code">
+                        <div class="code-line"><span class="keyword">func</span> <span class="function">fibonacci</span>(n) {</div>
+                        <div class="code-line">    <span class="keyword">if</span> n <= <span class="number">1</span> {</div>
+                        <div class="code-line">        <span class="keyword">return</span> n</div>
+                        <div class="code-line">    }</div>
+                        <div class="code-line">    <span class="keyword">return</span> <span class="function">fibonacci</span>(n - <span class="number">1</span>) + <span class="function">fibonacci</span>(n - <span class="number">2</span>)</div>
+                        <div class="code-line">}</div>
+                        <div class="code-line"></div>
+                        <div class="code-line"><span class="function">print</span>(<span class="function">fibonacci</span>(<span class="number">10</span>)) <span class="comment">// 55</span></div>
+                    </div>
+                </div>
+
+                <div class="example-card">
+                    <div class="example-header">
+                        <div class="example-title">🏗️ Classes & Objects</div>
+                    </div>
+                    <div class="example-code">
+                        <div class="code-line"><span class="keyword">class</span> <span class="type">Person</span> {</div>
+                        <div class="code-line">    <span class="keyword">var</span> name</div>
+                        <div class="code-line">    <span class="keyword">var</span> age</div>
+                        <div class="code-line">    </div>
+                        <div class="code-line">    <span class="keyword">init</span>(name, age) {</div>
+                        <div class="code-line">        <span class="keyword">self</span>.name = name</div>
+                        <div class="code-line">        <span class="keyword">self</span>.age = age</div>
+                        <div class="code-line">    }</div>
+                        <div class="code-line">    </div>
+                        <div class="code-line">    <span class="keyword">func</span> <span class="function">greet</span>() {</div>
+                        <div class="code-line">        <span class="function">print</span>(<span class="string">"Hi, I'm "</span> + name)</div>
+                        <div class="code-line">    }</div>
+                        <div class="code-line">}</div>
+                    </div>
+                </div>
+
+                <div class="example-card">
+                    <div class="example-header">
+                        <div class="example-title">📦 Arrays & Iteration</div>
+                    </div>
+                    <div class="example-code">
+                        <div class="code-line">    <span class="keyword">let</span> fruits = [<span class="string">"apple"</span>, <span class="string">"banana"</span>, <span class="string">"orange"</span>]</div>
+                        <div class="code-line"></div>
+                        <div class="code-line"><span class="comment">// Enhanced for loop</span></div>
+                        <div class="code-line"><span class="keyword">for</span> fruit <span class="operator">in</span> fruits {</div>
+                        <div class="code-line">    <span class="function">print</span>(<span class="string">"I love "</span> + fruit)</div>
+                        <div class="code-line">}</div>
+                        <div class="code-line"></div>
+                        <div class="code-line"><span class="comment">// Functional programming</span></div>
+                        <div class="code-line"><span class="keyword">let</span> lengths = fruits.<span class="function">map</span>(fruit => fruit.length)</div>
+                        <div class="code-line"><span class="function">print</span>(lengths) <span class="comment">// [5, 6, 6]</span></div>
+                    </div>
+                </div>
+
+                <div class="example-card">
+                    <div class="example-header">
+                        <div class="example-title">✨ Optional Types & Pattern Matching</div>
+                    </div>
+                    <div class="example-code">
+                        <div class="code-line"><span class="keyword">func</span> <span class="function">findUser</span>(id) {</div>
+                        <div class="code-line">    <span class="comment">// Returns optional User</span></div>
+                        <div class="code-line">    <span class="keyword">return</span> database.<span class="function">get</span>(id)</div>
+                        <div class="code-line">}</div>
+                        <div class="code-line"></div>
+                        <div class="code-line"><span class="keyword">match</span> <span class="function">findUser</span>(<span class="number">123</span>) {</div>
+                        <div class="code-line">    <span class="keyword">case</span> <span class="keyword">some</span>(user) => {</div>
+                        <div class="code-line">        <span class="function">print</span>(<span class="string">"Found: "</span> + user.name)</div>
+                        <div class="code-line">    }</div>
+                        <div class="code-line">    <span class="keyword">case</span> <span class="keyword">none</span> => {</div>
+                        <div class="code-line">        <span class="function">print</span>(<span class="string">"User not found"</span>)</div>
+                        <div class="code-line">    }</div>
+                        <div class="code-line">}</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Call to Action -->
+    <section class="cta" id="try">
+        <div class="container">
+            <h2>Ready to Try Sour Lang?</h2>
+            <p>Start coding in your browser with Sour Editor - no installation required!</p>
+            <div class="hero-buttons">
+                <a href="../index.html" target="_blank" class="primary-button">🍋 Open Sour Editor</a>
+                <a href="#docs" class="secondary-button">📚 Read Documentation</a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer id="docs">
+        <div class="container">
+            <div class="footer-links">
+                <a href="../index.html">Editor</a>
+                <a href="#features">Features</a>
+                <a href="#syntax">Syntax</a>
+                <a href="https://github.com/sourkr">GitHub</a>
+            </div>
+            <div class="footer-bottom">
+                <p>Made with ❤️ by <strong>Sourav Kumar</strong> • © 2025 Sour Lang</p>
+                <p style="margin-top: 10px; opacity: 0.6;">A fresh take on programming</p>
+            </div>
+        </div>
     </footer>
+
 </body>
 </html>

@@ -3,136 +3,96 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sour Language Built-in Functions</title>
+    <title>Sour Lang - Built-in Types</title>
+    <link rel="stylesheet" href="style.css">
     <style>
-        body {
-            font-family: Arial, sans-serif;
-            margin: 0;
-            padding: 0;
-            background-color: #1e1e1e;
-            color: #d4d4d4;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: flex-start; /* Align to start for better mobile scrolling */
-            min-height: 100vh;
-            padding: 20px; /* Add some padding to the body */
-            box-sizing: border-box; /* Include padding in element's total width and height */
-        }
-        .container {
-            text-align: center;
-            padding: 20px;
-            max-width: 800px;
-            width: 100%; /* Make container take full width on small screens */
-            background-color: #2d2d2d;
-            border-radius: 8px;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-            box-sizing: border-box;
-        }
-        h1 {
-            color: #007acc;
-            margin-bottom: 10px;
-        }
-        h2 {
-            color: #007acc;
-            margin-top: 20px;
-            margin-bottom: 10px;
-        }
-        h3 {
-            color: #007acc;
-            margin-top: 15px;
-            margin-bottom: 5px;
-        }
-        p {
-            margin-bottom: 10px;
-            line-height: 1.6;
-            text-align: left;
-        }
-        pre {
-            background-color: #3c3c3c;
-            padding: 15px;
-            border-radius: 5px;
-            overflow-x: auto;
-            margin-bottom: 20px;
-            text-align: left;
-        }
-        code {
-            font-family: "Courier New", Courier, monospace;
-            color: #e0e0e0;
-        }
-        .function-section {
-            margin-bottom: 30px;
-            border: 1px solid #444;
-            padding: 15px;
-            border-radius: 8px;
-            background-color: #252525;
-        }
-        .button {
-            display: block; /* Make buttons block-level for better stacking on mobile */
-            width: fit-content; /* Adjust width to content */
-            margin: 10px auto; /* Center buttons and add vertical spacing */
-            background-color: #007acc;
-            color: white;
-            padding: 10px 20px;
-            text-decoration: none;
-            border-radius: 5px;
-            transition: background-color 0.3s ease;
-        }
-        .button:hover {
-            background-color: #005f99;
-        }
-        footer {
-            margin-top: 40px;
-            font-size: 0.9em;
-            color: #888;
-            text-align: center;
-        }
-
-        /* Mobile-specific adjustments */
-        @media (max-width: 600px) {
-            .button {
-                width: 90%; /* Make buttons wider on small screens */
-            }
-        }
+        /* Sour Lang Syntax Highlighting */
+        .keyword { color: #ff6b9d; font-weight: 600; }
+        .string { color: #c3e88d; }
+        .number { color: #f78c6c; }
+        .function { color: #82aaff; }
+        .comment { color: #546e7a; font-style: italic; }
+        .operator { color: #89ddff; }
+        .type { color: #ffcb6b; }
     </style>
 </head>
 <body>
-    <div class="container">
-        <h1>Sour Language Built-in Functions</h1>
-        <p>Sour Language provides a set of essential built-in functions to interact with the environment, such as standard input/output operations.</p>
-
-        <div class="function-section">
-            <h2><code>_stdout(ch: char): void</code></h2>
-            <p>Writes a single character to the standard output stream. This function is primarily used for low-level character output, allowing programs to build strings character by character or to output individual characters directly.</p>
-            <h3>Parameters:</h3>
-            <ul>
-                <li><code>ch</code>: The character to write to stdout.</li>
+    <header>
+        <nav class="container">
+            <div class="logo">
+                <span class="logo-icon">🍋</span>
+                <a href="index.html" class="logo-text">Sour Editor</a>
+            </div>
+            <ul class="nav-links">
+                <li><a href="index.html#features">Features</a></li>
+                <li><a href="sour-lang.html">Sour Lang</a></li>
+                <li><a href="builtins.html">Built-ins</a></li>
             </ul>
-        </div>
+            <a href="../index.html" class="try-button">Try Sour Lang</a>
+        </nav>
+    </header>
 
-        <div class="function-section">
-            <h2><code>_stderr(ch: char): void</code></h2>
-            <p>Writes a single character to the standard error stream. This function is used for outputting error messages or diagnostic information separately from regular program output.</p>
-            <h3>Parameters:</h3>
-            <ul>
-                <li><code>ch</code>: The character to write to stderr.</li>
-            </ul>
-        </div>
+    <main class="container">
+        <section id="data-types">
+            <h1>Built-in Data Types</h1>
+            <p>Sour Lang provides a set of built-in data types. Here are the fundamental types currently available:</p>
 
-        <div class="function-section">
-            <h2><code>_stdin(): char</code></h2>
-            <p>Reads a single character from the standard input stream. This function allows programs to receive character input from the user or another input source, useful for interactive applications.</p>
-            <h3>Returns:</h3>
+            <div class="type-definition">
+                <h2>char</h2>
+                <p>The <code>char</code> type represents a single Unicode character. Character literals are specified with a single quote.</p>
+                <div class="code-example">
+                    <pre><code><span class="keyword">var</span> my_char = <span class="string">'a'</span></code></pre>
+                </div>
+            </div>
+
+            <div class="type-definition">
+                <h2>byte</h2>
+                <p>The <code>byte</code> type represents an 8-bit unsigned integer (0 to 255). Byte literals are specified with a 'b' prefix.</p>
+                <div class="code-example">
+                    <pre><code><span class="keyword">var</span> my_byte = <span class="number">255</span></code></pre>
+                </div>
+            </div>
+
+            <div class="type-definition">
+                <h2>int</h2>
+                <p>The <code>int</code> type represents a signed integer. This type is <strong>not yet implemented</strong>.</p>
+            </div>
+
+            <div class="type-definition">
+                <h2>string</h2>
+                <p>The <code>string</code> type represents a sequence of characters. String literals can be created with double quotes.</p>
+                <div class="code-example">
+                    <pre><code><span class="keyword">var</span> my_string = <span class="string">"Hello, World!"</span></code></pre>
+                </div>
+            </div>
+
+            <div class="type-definition">
+                <h2>bool</h2>
+                <p>The <code>bool</code> type represents a boolean value, which can be either <code>true</code> or <code>false</code>.</p>
+                <div class="code-example">
+                    <pre><code><span class="keyword">var</span> my_bool = <span class="keyword">true</span></code></pre>
+                </div>
+            </div>
+
+            <h2>Future Data Types</h2>
+            <p>The following data types are planned for future releases:</p>
             <ul>
-                <li>The character read from stdin.</li>
+                <li><strong>array:</strong> A collection of elements of the same type.</li>
             </ul>
-        </div>
-        
-        <a href="sour-lang.html" class="button">Back to Sour Language Documentation</a>
-    </div>
+        </section>
+    </main>
 
     <footer>
-        <p>&copy; 2025 Sour Editor. All rights reserved.</p>
+        <div class="container">
+            <div class="footer-links">
+                <a href="../index.html">Editor</a>
+                <a href="sour-lang.html">Sour Lang</a>
+                <a href="https://github.com/sourkr">GitHub</a>
+            </div>
+            <div class="footer-bottom">
+                <p>Made with ❤️ by <strong>Sourav Kumar</strong> • © 2025 Sour Lang</p>
+            </div>
+        </div>
     </footer>
 </body>
 </html>

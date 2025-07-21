@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sour Lang - String Type</title>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        /* Sour Lang Syntax Highlighting */
+        .keyword { color: #ff6b9d; font-weight: 600; }
+        .string { color: #c3e88d; }
+        .number { color: #f78c6c; }
+        .function { color: #82aaff; }
+        .comment { color: #546e7a; font-style: italic; }
+        .operator { color: #89ddff; }
+        .type { color: #ffcb6b; }
+    </style>
+</head>
+<body>
+    <header>
+        <nav class="container">
+            <div class="logo">
+                <span class="logo-icon">🍋</span>
+                <a href="index.html" class="logo-text">Sour Editor</a>
+            </div>
+            <ul class="nav-links">
+                <li><a href="index.html#features">Features</a></li>
+                <li><a href="sour-lang.html">Sour Lang</a></li>
+                <li><a href="builtins.html">Built-ins</a></li>
+                <li><a href="string.html">String</a></li>
+            </ul>
+            <a href="../index.html" class="try-button">Try Sour Lang</a>
+        </nav>
+    </header>
+
+    <main class="container">
+        <section id="string-type">
+            <h1>String Type</h1>
+            <p>The <code>string</code> type in Sour Lang represents a sequence of Unicode characters. String literals are enclosed in double quotes.</p>
+            <p><strong>Note:</strong> Sour Lang currently supports strings with a maximum length of 255 characters.</p>
+
+            <h2>Properties</h2>
+            <div class="property-definition">
+                <h3><code>string.len</code></h3>
+                <p>Returns the length of the string as a <code>byte</code> type.</p>
+                <div class="code-example">
+                    <pre><code><span class="keyword">var</span> my_string = <span class="string">"Hello"</span>
+<span class="keyword">var</span> length = my_string.<span class="function">len</span> <span class="comment">// length will be 5 (byte type)</span></code></pre>
+                </div>
+            </div>
+
+            <h2>Character Access</h2>
+            <p>Individual characters within a string can be accessed using square bracket notation (indexing). The index must be a <code>byte</code> value. This operation returns a <code>char</code> type.</p>
+            <div class="code-example">
+                <pre><code><span class="keyword">var</span> my_string = <span class="string">"Sour"</span>
+<span class="keyword">var</span> first_char = my_string[<span class="number">0</span>] <span class="comment">// first_char will be 'S' (char type)</span>
+<span class="keyword">var</span> second_char = my_string[<span class="number">1</span>] <span class="comment">// second_char will be 'o' (char type)</span></code></pre>
+            </div>
+        </section>
+    </main>
+
+    <footer>
+        <div class="container">
+            <div class="footer-links">
+                <a href="../index.html">Editor</a>
+                <a href="sour-lang.html">Sour Lang</a>
+                <a href="builtins.html">Built-ins</a>
+                <a href="https://github.com/sourkr">GitHub</a>
+            </div>
+            <div class="footer-bottom">
+                <p>Made with ❤️ by <strong>Sourav Kumar</strong> • © 2025 Sour Lang</p>
+            </div>
+        </div>
+    </footer>
+</body>
+</html>
