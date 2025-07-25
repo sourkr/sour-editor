@@ -10,6 +10,7 @@ const KEYWORDS = new Set([
     "export",
     "import",
     "from",
+    "new"
 ]);
 
 export class TokenStream {

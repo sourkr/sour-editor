@@ -1,0 +1,1 @@
+export func register_theme(name: string, color: Map<string, string>): void

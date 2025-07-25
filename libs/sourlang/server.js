@@ -1,9 +1,19 @@
 import Validator, { FunctionScope } from "./parser/validator.js";
+import { Scope } from "./parser/scope.js";
 
-const KEWWORD_STMT = new Set(["if", "for", 'export', 'import']);
+const KEWWORD_STMT = new Set(["if", "for", "export", "import", "new"]);
 const DEF_STMT = new Set(["func-dec", "var-dec"]);
 
-const GLOBAL_KEYWORDS = ["func", "if", "else", "for", "var", 'export', 'import'];
+const GLOBAL_KEYWORDS = [
+    "func",
+    "if",
+    "else",
+    "for",
+    "var",
+    "export",
+    "import",
+    "new",
+];
 
 const PAIRS = {
     "(": ")",
@@ -11,15 +21,16 @@ const PAIRS = {
     "[": "]",
     '"': '"',
     "'": "'",
-}
+    "<": ">",
+};
 
 export default class Server {
-    #dir
+    #dir;
 
     constructor(dir) {
-        this.#dir = dir
+        this.#dir = dir;
     }
-    
+
     // Linting
     lint(span) {
         this.span = span;
@@ -28,12 +39,12 @@ export default class Server {
         const prog = validator.validate();
 
         this.prog = prog;
-        this.globals = validator.globals;
+        this.globals = new Scope(validator.globals);
 
         prog.ast.forEach((stmt) => this.lint_expr(stmt, 0));
 
         prog.errors.forEach((err) => {
-            span.error(err.start.index, err.end.index);
+            span.error(err.start?.index, err.end?.index);
         });
     }
 
@@ -60,7 +71,7 @@ export default class Server {
             this.lint_token(expr.from, "tok-kw");
             this.lint_expr(expr.path);
         }
-        
+
         if (expr.type == "func-dec") {
             this.lint_token(
                 expr.name,
@@ -111,14 +122,32 @@ export default class Server {
                 expr.name,
                 expr.doc?.is_used ? "tok-var" : "tok-var dim",
             );
-            this.lint_expr(expr.val);
+            this.lint_expr(expr.val, depth);
         }
 
         if (expr.type == "func-call") {
-            this.lint_token(expr.name, "tok-func-call");
+            if (expr.access.type == 'ident') {
+                this.lint_token(expr.access, "tok-func-call");
+            } else if (expr.access.type == 'dot') {
+                this.lint_expr(expr.access.left)
+                this.lint_token(expr.access.right, "tok-func-call")
+            }
+            
             this.lint_bracket(expr.args, depth);
             this.lint_list(expr.args, depth + 1);
             return;
+        }
+
+        if (expr.type == "new") {
+            this.lint_token(expr.name, "tok-type");
+
+            if (expr.generic) {
+                this.lint_bracket(expr.generic, depth, "op");
+                expr.generic.list.forEach((type) => this.lint_type(type));
+            }
+
+            this.lint_bracket(expr.args, depth);
+            this.lint_list(expr.args, depth + 1);
         }
 
         if (expr.type == "op") {
@@ -178,11 +207,15 @@ export default class Server {
         this.span.color(token.start.index, token.end.index, color);
     }
 
-    lint_bracket(expr, depth) {
-        if (expr.endTok?.type !== "punc" || expr.endTok.value !== PAIRS[expr.endTok.value]) {
+    lint_bracket(expr, depth, tokType = "punc") {
+        if (
+            expr.endTok?.type !== tokType ||
+            expr.endTok.value !== PAIRS[expr.endTok.value]
+        ) {
             if (expr.startTok.value == "(") this.match("(", ")");
             if (expr.startTok.value == "{") this.match("{", "}");
             if (expr.startTok.value == "[") this.match("[", "]");
+            if (expr.startTok.value == "<") this.match("<", ">");
         }
 
         if (!expr.endTok) return;
@@ -226,17 +259,17 @@ export default class Server {
 
     // Code Completions
     completions() {
-        return this.list_body(this.prog.ast, this.globals);
+        return this.list_body(this.prog.ast, this.globals, GLOBAL_KEYWORDS);
     }
 
-    list_body(body, scope) {
+    list_body(body, scope, keywords) {
         for (let stmt of body) {
-            const list = this.list(stmt, scope);
+            const list = this.list(stmt, scope, keywords);
             if (list?.length) return list;
         }
     }
 
-    list(stmt, scope) {
+    list(stmt, scope, keywords = []) {
         let list;
 
         if (stmt.type == "export") {
@@ -245,24 +278,30 @@ export default class Server {
 
         if (stmt.type == "import") {
             if (this.#touching(stmt.from)) {
-                if('from'.startsWith(stmt.from.value)) {
-                    return [{ type: "kw", prefix: stmt.from.value, name: 'from' }]
+                if ("from".startsWith(stmt.from.value)) {
+                    return [
+                        { type: "kw", prefix: stmt.from.value, name: "from" },
+                    ];
                 }
             }
 
             if (this.#touching(stmt.path)) {
                 return this.#dir.list
-                    .filter(file => file.endsWith('.sour'))
-                    .map(file => file.slice(0, -5))
-                    .filter(file => file.startsWith(stmt.path.value))
-                    .map(file => {
-                        return { type: "file", prefix: stmt.path.value, name: file }
-                    })
+                    .filter((file) => file.endsWith(".sour"))
+                    .map((file) => file.slice(0, -5))
+                    .filter((file) => file.startsWith(stmt.path.value))
+                    .map((file) => {
+                        return {
+                            type: "file",
+                            prefix: stmt.path.value,
+                            name: file,
+                        };
+                    });
             }
         }
-        
+
         if (stmt.type == "func-dec") {
-            const funcScope = new FunctionScope(scope);
+            const funcScope = new Scope(scope);
 
             for (let param of stmt.params.list) {
                 const list = this.list_type(param?.type, scope);
@@ -305,15 +344,26 @@ export default class Server {
         }
 
         if (stmt.type === "var-dec") {
+            console.log(scope);
             scope.def_var(stmt.name.value, stmt.doc);
-
-            list = this.list(stmt.val, scope);
-            if (list?.length) return list;
+            return this.list(stmt.val, scope, ["new"]);
         }
 
         if (stmt.type == "func-call") {
             list = this.list_body(stmt.args.list, scope);
             if (list?.length) return list;
+        }
+
+        if (stmt.type == "new") {
+            list = this.list(stmt.name, scope);
+            if (list?.length) return list;
+
+            if (stmt.generic) {
+                for (let typeName of stmt.generic.list) {
+                    list = this.list_type(typeName, scope);
+                    if (list?.length) return list;
+                }
+            }
         }
 
         if (stmt.type == "op") {
@@ -325,14 +375,16 @@ export default class Server {
         }
 
         if (stmt.type == "dot") {
-            this.list(stmt.left, scope);
+            list = this.list(stmt.left, scope);
             if (list?.length) return list;
 
             if (this.#touching(stmt.right)) {
                 list = [];
                 const prefix = stmt.right.value;
-                // console.log(stmt.left.doc.scope.get_all_props().toArray())
-                stmt.left.doc.scope
+
+                // console.log(stmt.left.doc.cls.scope.get_all_props().toArray)
+
+                stmt.left.doc.cls.scope
                     .get_all_props()
                     .filter((prop) => prop.prop_name.startsWith(prefix))
                     .forEach((prop) =>
@@ -343,25 +395,53 @@ export default class Server {
                             doc: prop,
                         }),
                     );
+
+                stmt.left.doc.cls.scope
+                    .get_all_meths()
+                    .filter((meth) => meth.name.startsWith(prefix))
+                    .map(meth => {
+                        if (stmt.left.doc.generic) {
+                            return {
+                                ...meth,
+                                params: meth.params.map((param, i) => {
+                                    return {
+                                        ...param,
+                                        type: stmt.left.doc.generic[i]
+                                    }
+                                })
+                            }
+                        } else {
+                            return meth
+                        }
+                    })
+                    .forEach((meth) =>
+                        list.push({
+                            type: "func",
+                            prefix,
+                            name: meth.name,
+                            doc: meth,
+                        }),
+                    );
+
                 return list;
             }
         }
 
         if (stmt.type == "index") {
-            return this.list(stmt.access, scope)
-                || this.list(stmt.expr, scope)
+            return this.list(stmt.access, scope) || this.list(stmt.expr, scope);
         }
-        
+
         if (stmt.type == "ident") {
             if (this.#touching(stmt, true)) {
                 const prefix = stmt.value;
 
-                const keywords = GLOBAL_KEYWORDS.filter((kw) =>
-                    kw.startsWith(prefix),
-                ).map((kw) => {
-                    return { type: "kw", prefix, name: kw };
-                });
+                const kws = keywords
+                    .filter((kw) => kw.startsWith(prefix))
+                    .map((kw) => {
+                        return { type: "kw", prefix, name: kw };
+                    });
 
+                console.log(scope.get_all_vars().toArray());
                 const vars = scope
                     .get_all_vars()
                     .filter((e) => e.name.startsWith(prefix))
@@ -373,8 +453,6 @@ export default class Server {
                             doc: v.type,
                         };
                     });
-
-                console.log(scope.get_all_funcs().toArray());
 
                 const funcs = scope
                     .get_all_funcs()
@@ -388,7 +466,22 @@ export default class Server {
                         };
                     });
 
-                return [...keywords, ...vars, ...funcs];
+                // console.log(scope.get_all_class().toArray())
+
+                const classes = scope
+                    .get_all_class()
+                    .filter((cls) => !cls.is_type)
+                    .filter((cls) => cls.name.startsWith(prefix))
+                    .map((cls) => {
+                        return {
+                            type: "class",
+                            prefix,
+                            name: cls.name,
+                            doc: cls,
+                        };
+                    });
+
+                return [...kws, ...vars, ...funcs, ...classes];
             }
         }
     }
@@ -400,9 +493,8 @@ export default class Server {
             const types = [];
             const prefix = type.name.value;
 
-            console.log(scope);
             scope
-                .get_all_classes()
+                .get_all_class()
                 .filter((cls) => cls.name.startsWith(prefix))
                 .forEach((cls) =>
                     types.push({
@@ -440,7 +532,7 @@ export default class Server {
         if (node.type == "export") {
             return this.doc_node(node.def);
         }
-        
+
         if (node.type == "func-dec") {
             if (this.#touching(node.name)) return node.doc;
 
@@ -470,15 +562,28 @@ export default class Server {
         }
 
         if (node.type == "for") {
-            return this.doc_node(node.init)
-                || this.doc_node(node.cond)
-                || this.doc_node(node.inc)
-                || this.doc_list(node.body)
+            return (
+                this.doc_node(node.init) ||
+                this.doc_node(node.cond) ||
+                this.doc_node(node.inc) ||
+                this.doc_list(node.body)
+            );
         }
 
         if (node.type == "func-call") {
             if (this.#touching(node.name)) return node.doc;
             return this.doc_list(node.args);
+        }
+
+        if (node.type == "new") {
+            if (this.#touching(node.name)) return node.doc;
+
+            if (node.generic) {
+                for (let type of node.generic.list) {
+                    let doc = this.doc_type(type);
+                    if (doc) return doc;
+                }
+            }
         }
 
         if (node.type == "op") {
@@ -513,10 +618,6 @@ export default class Server {
 
     doc_type(type) {
         if (type.type == "simple") {
-            if (this.#touching(type.name)) return type.doc;
-        }
-
-        if (type.type == "class") {
             if (this.#touching(type.name)) return type.doc;
         }
     }

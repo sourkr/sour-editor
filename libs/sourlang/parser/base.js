@@ -31,7 +31,7 @@ export class BaseParser {
     
     parse() {
         const ast = []
-        while (this.#tokens.has) ast.push(this.scope(this.file))
+        while (this.has) ast.push(this.scope(this.file))
         return { ast, errors: this.#errors }
     }
     

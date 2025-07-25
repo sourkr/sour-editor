@@ -101,7 +101,7 @@ export default class SpannableText {
     
     toString() {
         return this.#spans.map(span => {
-            const text = this.#input.slice(span.start, span.end) || ' '
+            const text = html_encode(this.#input.slice(span.start, span.end) || ' ')
             const classes = []
             
             if (span.color) classes.push(span.color)
@@ -111,4 +111,9 @@ export default class SpannableText {
             return text
         }).join('')
     }
+}
+
+function html_encode(text) {
+    return text.replaceAll('<', '&lt;')
+        .replaceAll('>', '&gt;')
 }

@@ -42,3 +42,7 @@ class bool {}
 class char {
     func _add(n: byte): char
 }
+
+class Map<K,T> {
+    func set(key: K, value: T): void
+}

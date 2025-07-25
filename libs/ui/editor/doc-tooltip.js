@@ -102,6 +102,8 @@ export default class DocToolTipManager {
 }
 
 function type_to_doc_html(type) {
+	// console.log(type)
+	
 	if (type.type === "func") {
 		const kw = span("tok-kw", "func");
 		const name = span("tok-func-call", type.name);
@@ -134,17 +136,42 @@ function type_to_doc_html(type) {
 			return `${span('dim', '(type)')} ${span("tok-type", type.name)}`;
 		}
 		
-		return `${span("tok-def", "class")} ${span("tok-type", type.name)}`;
+		return `${span("tok-def", "class")} ${type_to_html(type)}`;
+	}
+
+	
+	if (type.type == "ins") {
+		if (type.is_var) {
+			return `${span('tok-def', 'var')} ${span("tok-var", type.var_name)}: ${type_to_html(type)}`
+		}
+		
+		return `${span("tok-def", "class")} ${span("tok-type", type.cls.name)}<${type.generic.map(type_to_html).join(', ')}>`
 	}
 }
 
 function type_to_html(type) {
 	if (!type) return;
 
-	if (type.type === "class" || type.type === "simple") {
+	if (type.type === "simple") {
 		return span("tok-type", type.name);
 	}
 
+	if (type.type === "class") {
+		if (type.generic) {
+			return `${span("tok-type", type.name)}<${type.generic.map(type_to_html).join(', ')}>`
+		}
+		
+		return span("tok-type", type.name);
+	}
+	
+	if (type.type == "ins") {
+		return `${span("tok-type", type.cls.name)}<${type.generic.map(type_to_html).join(', ')}>`
+	}
+
+	if (typeof type == 'string') {
+		return span("tok-type", type);
+	}
+	
 	return span("dim", "(error)");
 }
 

@@ -3,13 +3,14 @@ import "ui/editor/editor.js"
 
 import Interpreter from "sour-lang/interpreter/interpreter.js";
 import Server from "sour-lang/server.js"
-
+import DefinationValidator from "sour-lang/parser/dvalidator.js"
 
 class MainActivity extends Activity {
     tabs = []
     
     dir = new File('/')
-    
+
+    /** @override */
     onCreate() {
         this.content = R.layout.main
         
@@ -76,11 +77,28 @@ class MainActivity extends Activity {
                 this.openFile(data.active_file)
             }
         }
+
+        this.loadDefination()
     }
-    
+
+    /** @override */
     onCreateOptionMenu(menu) {
         menu.addItem("save", "Save", "icon/save.svg");
         menu.addItem("run", "Run", "icon/play-arrow.svg");
+    }
+
+    async loadDefination() {
+        const code = await (await fetch("./sour-lang/app.sour")).text()
+        const validator = new DefinationValidator(code)
+        validator.validate()
+
+        if (validator.errors.length) {
+            console.error(validator.errors)
+            return
+        }
+
+        console.log(validator.exports.toString())
+        return validator.exports
     }
     
     openFile(path) {

@@ -10,6 +10,7 @@ function gen_type_alias(type) {
 	}
 }
 
+/** @deprecated */
 export function node_to_type(scope, node) {
 	if (!node) return;
 
@@ -35,6 +36,14 @@ export function clone_type(type) {
 			name: type.name,
 			scope: type.scope,
 			is_type: type.is_type,
+		};
+	}
+
+	if (type.type === "ins") {
+		return {
+			type: "ins",
+			cls: type.cls,
+			generic: type.generic,
 		};
 	}
 }

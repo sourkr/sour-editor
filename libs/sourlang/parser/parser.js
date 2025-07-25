@@ -95,9 +95,26 @@ export default class Parser extends BaseParser {
     }
 
     expr(isStmt) {
-        if (this.is("ident")) return this.ident(this.next(), isStmt);
+        if (this.is("ident")) {
+            return this.access(this.maydot(this.next()), isStmt);
+        }
 
         if (!isStmt) {
+            if (this.is("kw", "new")) {
+                const kw = this.next();
+                const name = this.next("ident");
+
+                let generic
+                
+                if (this.is('op', '<')) {
+                    generic = this.list('<,>', this.type, "op")
+                }
+
+                const args = this.list("(,)", this.expr)
+
+                return { type: 'new', kw, name, generic, args }
+            }
+            
             if (this.is("num") || this.is("str") || this.is("char")) {
                 return this.mayop(this.next());
             }
@@ -136,13 +153,13 @@ export default class Parser extends BaseParser {
         return this.mayindex(access);
     }
 
-    ident(ident, is_stmt) {
+    access(access, is_stmt) {
         if (this.is("punc", "(")) {
             const args = this.list("(,)", this.expr);
-            return { type: "func-call", name: ident, args };
+            return { type: "func-call", access, args };
         }
 
-        return this.mayop(this.maydot(ident), is_stmt);
+        return this.mayop(access, is_stmt);
     }
 
     mayindex(access) {
@@ -175,16 +192,16 @@ export default class Parser extends BaseParser {
         return { type: "simple", name };
     }
 
-    list(cond, parse) {
+    list(cond, parse, tokType = "punc") {
         if (cond.length == 3) {
             const list = [];
             const sep = [];
 
-            const startTok = this.next("punc", cond[0]);
+            const startTok = this.next(tokType, cond[0]);
 
             if (this.hasError()) return { startTok, list, sep };
 
-            if (this.is("punc", cond[2])) {
+            if (this.is(tokType, cond[2])) {
                 const endTok = this.next();
                 return { startTok, list, sep, endTok };
             }
@@ -192,7 +209,7 @@ export default class Parser extends BaseParser {
             while (this.has) {
                 list.push(parse.call(this));
 
-                if (this.is("punc", cond[2])) {
+                if (this.is(tokType, cond[2])) {
                     const endTok = this.next();
                     return { startTok, list, sep, endTok };
                 }

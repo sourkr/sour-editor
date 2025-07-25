@@ -34,6 +34,24 @@ async function main() {
 		.forEach((node) => BUILTINS.def_func(func_def(node, BUILTINS)));
 
 	BUILTINS.get_all_class().forEach((cls) => {
+		const clsBodyScope = new Scope(BUILTINS);
+
+		if (cls.node.generic) {
+			cls.node.generic.list.forEach((node) => {
+				const def = {
+					type: "class",
+					name: node.value,
+					scope: new ClassScope(),
+					is_type: true,
+					node,
+				}
+
+				clsBodyScope.def_class(node.value, def)
+			})
+
+			cls.generic = cls.node.generic.list.map((node) => node.value)
+		}
+		
 		cls.node.body.list.forEach((node) => {
 			if (node.type === "var-def") {
 				const def = clone_type(get_type(BUILTINS, node.var_type))
@@ -45,7 +63,7 @@ async function main() {
 			}
 
 			if (node.type === "func-def") {
-				cls.scope.def_meth(func_def(node, BUILTINS))
+				cls.scope.def_meth(func_def(node, clsBodyScope))
 			}
 		});
 	});

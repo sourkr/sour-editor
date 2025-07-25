@@ -545,9 +545,9 @@ class Editor extends HTMLElement {
             .slice(currentLineNo)
             .map((line) => `<div class="line">${line || " "}</div>`);
 
-        this.#pre.innerHTML = [...linesTop, currentLine, ...linesBottom].join(
-            "",
-        );
+        this.#pre.innerHTML = [...linesTop, currentLine, ...linesBottom]
+            .join("")
+            // .replaceAll("<", "&lt;");
 
         this.#lineno.innerText = lines.map((_, i) => i + 1).join("\n");
 

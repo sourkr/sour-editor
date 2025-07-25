@@ -199,26 +199,54 @@ export default class Interpreter {
         }
 
         if (expr.type === "func-call") {
-            const func = scope.get_func(expr.alias);
+            if (expr.access.type === 'ident') {
+                const func = scope.get_func(expr.alias);
 
-            if (typeof func !== "function") {
-                prog.reject(this.error(`RefrenceError: '${expr.name.value}' is not a function`, expr.name, prog));
-                return;
-            }
-
-            this.#interpreteBody(expr.args.list, scope, {
-                ...prog,
-                resolve: (args) => {
-                    prog.stack.push({ name: expr.name.value, path: this.#file.path, token: expr.name })
-                    func(args, {
-                        ...prog,
-                        resolve: (val) => {
-                            prog.stack.pop()
-                            prog.resolve(val);
-                        }
-                    })
+                if (typeof func !== "function") {
+                    prog.reject(this.error(`RefrenceError: '${expr.access.value}' is not a function`, expr.access, prog));
+                    return;
                 }
-            });
+
+                this.#interpreteBody(expr.args.list, scope, {
+                    ...prog,
+                    resolve: (args) => {
+                        prog.stack.push({ name: expr.access.value, path: this.#file.path, token: expr.access })
+                        func(args, {
+                            ...prog,
+                            resolve: (val) => {
+                                prog.stack.pop()
+                                prog.resolve(val);
+                            }
+                        })
+                    }
+                })
+            } else if (expr.access.type === 'dot') {
+                this.#interprete(expr.access.left, scope, {
+                    ...prog,
+                    resolve: (left) => {
+                        const meth = left.get_meth(expr.alias)
+
+                        if (!meth) {
+                            prog.reject(this.error(`TypeError: '${expr.access.right.value}' is not a method of ${left.get_class_name()}`, expr.access.right, prog))
+                            return
+                        }
+
+                        this.#interpreteBody(expr.args.list, scope, {
+                            ...prog,
+                            resolve: (args) => {
+                                prog.stack.push({ name: expr.access.right.value, path: this.#file.path, token: expr.access.right })
+                                meth(left, args, {
+                                    ...prog,
+                                    resolve: (val) => {
+                                        prog.stack.pop()
+                                        prog.resolve(val);
+                                    }
+                                })
+                            }
+                        })
+                    }
+                })
+            }
 
             return;
         }

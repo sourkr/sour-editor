@@ -2,6 +2,7 @@ import { ErrorData } from "./base.js"
 import Parser from './parser.js';
 import BUILTINS from "./builtin.js"
 import { node_to_type, clone_type, gen_func_alias } from "./util.js"
+import { Scope } from "./scope.js"
 
 const OP_NAMES = new Map([
     ['+', '_add'],
@@ -15,7 +16,7 @@ const OP_NAMES = new Map([
 ])
 
 export default class Validator {
-    globals = new GlobalScope(BUILTINS)
+    globals = new Scope(BUILTINS)
 
     #exports = new BuiltinScope()
     #file
@@ -79,22 +80,24 @@ export default class Validator {
             
             const params = stmt.params.list
                 .map(param => {
-                    const type = clone_type(node_to_type(scope, param.type))
+                    const type = clone_type(this.node_to_type(scope, param.type))
                     param.doc = type
                     type.is_param = true
                     type.param_name = param.name.value
                     
                     return { name: param.name, type }
                 })
+
+            // console.log(params);
             
             for (let func of funcs) {
                 if (func.params.length !== params.length) continue
-                if (!func.params.every((param, i) => equalType(params[i].type, param.type))) continue
+                if (!func.params.every((param, i) => equal_type(params[i].type, param.type))) continue
                 
                 
                 const paramStr = params
                     .map(p => p.type)
-                    .map(typeToStr)
+                    .map(type_to_str)
                     .join(',')
                 
                 this.error(`Function ${name}(${paramStr}) is already defined`, stmt.name)
@@ -118,7 +121,7 @@ export default class Validator {
                 type: 'func',
                 name,
                 params: params.map(p => { return { type: p.type, name: p.name.value } }),
-                retType: node_to_type(scope, stmt.retType),
+                retType: this.node_to_type(scope, stmt.retType),
                 doc: stmt.doc
             }
             
@@ -127,7 +130,7 @@ export default class Validator {
             
             stmt.alias = stmt.doc.alias = gen_func_alias(func)
             
-            const funcScope = new FunctionScope(scope)
+            const funcScope = new Scope(scope)
             params.forEach(param => funcScope.def_var(param.name.value, param.type))
             this.validate_body(stmt.body.list, funcScope)
             
@@ -168,6 +171,8 @@ export default class Validator {
         
         if (stmt.type === 'var-dec') {
             const type = clone_type(this.expr(stmt.val, scope))
+
+            // console.log(stmt.val, type)
             
             if (type) {
                 stmt.doc = type
@@ -192,20 +197,43 @@ export default class Validator {
         if (!expr) return
         
         if (expr.type === 'func-call') {
-            const name = expr.name.value
+            const args = expr.args.list.map(arg => this.expr(arg, scope))
+            const errors = []
 
-            if (!this.globals.has_func(name)) {
-                this.error(`'${name}' is not a function`, expr.name)
-                return
+            let access
+            let func
+            
+            if (expr.access.type === 'ident') {
+                const name = access = expr.access.value
+
+                if (!scope.has_func(name)) {
+                    this.error(`'${name}' is not a function`, expr.access)
+                    return
+                }
+
+                func = get_suitable_func(scope.get_funcs(name), access, args, errors)
+            } else if (expr.access.type === 'dot') {
+                const left = this.expr(expr.access.left, scope)
+                const name = expr.access.right.value
+
+                if (is_error_type(left)) {
+                    return { type: 'simple', name: 'error' }
+                }
+
+                access = `${type_to_str(left)}.${name}`
+
+                if (!left.cls.scope.has_meths(name)) {
+                    this.error(`'${name}' is not a method of ${type_to_str(left)}`, expr.access.right)
+                    return { type: 'simple', name: 'error' }
+                }
+
+                func = get_suitable_func(left.cls.scope.get_meths(name), access, args, errors)
             }
             
-            const args = expr.args.list.map(arg => this.expr(arg, scope))
-            const errors = []            
-            const func = get_suitable_func(scope.get_funcs(name), name, args, errors)
-            
             if (!func) {
-                const argsStr = args.map(arg => arg?.name).join(',')
-                this.error(`Cannot find suitable function call for ${name}(${argsStr})\n\n${errors.join('\n\n')}`, expr.name)
+                // console.log(errors)
+                const argsStr = args.map(type_to_str).join(',')
+                this.error(`Cannot find suitable function call for ${access}(${argsStr})\n\n${errors.join('\n\n')}`, expr.access)
                 return { type: 'simple', name: 'error' }
             }
             
@@ -214,6 +242,35 @@ export default class Validator {
             expr.doc = func
             
             return func.retType
+        }
+
+        if (expr.type === 'new') {
+            const name = expr.name.value
+
+            if (!scope.has_class(name)) {
+                this.error(`'${name}' is not a class`, expr.name)
+                return { type: 'simple', name: 'error' }
+            }
+
+            const cls = expr.doc = scope.get_class(name)
+
+            if (cls.generic) {
+                if (!expr.generic) {
+                    this.error(`'${name}' is a generic class`, expr.name)
+                    return { type: 'simple', name: 'error' }
+                }
+
+                if (cls.generic.length !== expr.generic.list.length) {
+                    this.error(`'${name}' expects ${cls.generic.length} generic arguments`, expr.name)
+                    return { type: 'simple', name: 'error' }
+                }
+
+                const generic = expr.generic.list.map((type) => this.node_to_type(scope, type))
+
+                return { type: 'ins', cls, generic }
+            }
+
+            return cls
         }
         
         if (expr.type === 'op') {
@@ -243,13 +300,14 @@ export default class Validator {
             }
 
             const name = expr.right.value
-            
-            if (!left.scope.has_prop(name)) {
+
+            // console
+            if (!left.cls.scope.has_prop(name)) {
                 this.error(`'${name}' is not a property of ${type_to_str(left)}`, expr.right)
                 return { type: 'simple', name: 'error' }
             }
 
-            return expr.right.doc = left.scope.get_prop(name)
+            return expr.right.doc = left.cls.scope.get_prop(name)
         }
 
         if (expr.type === 'unary') {
@@ -288,7 +346,7 @@ export default class Validator {
                 return { type: 'simple', name: 'error' }
             }
 
-            const func = get_suitable_func(access.scope.get_meths('_get'), '_get', [index])
+            const func = get_suitable_func(access.cls.scope.get_meths('_get'), '_get', [index])
             
             if (func) {
                 expr.alias = func.alias
@@ -303,7 +361,8 @@ export default class Validator {
         }
 
         if (expr.type === 'str') {
-            return scope.get_class('string')
+            const cls = scope.get_class('string')
+            return { type: 'ins', cls }
         }
 
         if (expr.type === 'num') {
@@ -331,6 +390,27 @@ export default class Validator {
         this.errors.push(new ErrorData(`CompileError: ${msg}`, token, this.code, this.filepath))
     }
     
+    node_to_type(scope, node) {
+        if (!node) return
+
+        if (node.type === 'simple') {
+            if (node.name.value === 'void') {
+                return node.doc = { type: 'simple', name: 'void' }
+            }
+
+            if (!scope.has_class(node.name.value)) {
+                this.error(`Type ${node.name.value} is not defined`, node.name)
+                return { type: 'simple', name: 'error' }
+            }
+
+            const cls = scope.get_class(node.name.value)
+            return node.doc = { type: 'ins', cls }
+        }
+
+        return { type: 'simple', name: 'error' }
+    }
+    
+    /** @deprecated */
     toType(type) {
         if (type.type === 'simple') {
             return { type: 'simple', name: type.name.value }
@@ -355,8 +435,8 @@ function get_suitable_func(funcs, name, args, errors = []) {
         }
 
         if (!found) {
-            const paramsStr = func.params.map(p => p.type.name).join(',')
-            const argsStr = args.map(arg => arg?.name).join(',')
+            const paramsStr = func.params.map(p => type_to_str(p.type)).join(',')
+            const argsStr = args.map(type_to_str).join(',')
             
             errors.push(`${name}(${argsStr}) is not applicable for ${name}(${paramsStr})`)
         } else {
@@ -373,6 +453,10 @@ function type_to_str(type) {
     if (type.type === 'class') {
         return type.name
     }
+
+    if (type.type === 'ins') {
+        return type.cls.name
+    }
 }
 
 function equal_type(a, b) {
@@ -384,6 +468,10 @@ function equal_type(a, b) {
 
     if (a.type === 'class') {
         return a.name === b.name
+    }
+
+    if (a.type === 'ins') {
+        return a.cls.name === b.cls.name
     }
 }
 
