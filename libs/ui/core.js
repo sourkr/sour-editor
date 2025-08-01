@@ -416,9 +416,9 @@ export class Activity {
     
     onCreateOptionMenu(menu) {}
     
-    static start(activityConstructor) {
+    static async start(activityConstructor) {
         const activity = new activityConstructor()
-        activity.onCreate()
+        await activity.onCreate()
         
         const menu = new Menu()
         activity.onCreateOptionMenu(menu)

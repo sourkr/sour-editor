@@ -25,17 +25,22 @@ const PAIRS = {
 };
 
 export default class Server {
-    #dir;
-
-    constructor(dir) {
-        this.#dir = dir;
+    #modules = new Map()
+    
+    #file
+    
+    constructor(file) {
+        this.#file = file;
     }
 
     // Linting
     lint(span) {
         this.span = span;
 
-        const validator = new Validator(span.text, this.#dir);
+        const validator = new Validator(span.text, this.#file.parent);
+        
+        this.#modules.forEach((def, name) => validator.add_module(name, def))
+        
         const prog = validator.validate();
 
         this.prog = prog;
@@ -286,17 +291,21 @@ export default class Server {
             }
 
             if (this.#touching(stmt.path)) {
-                return this.#dir.list
+                const prefix = stmt.path.value
+                const list = []
+                
+                const files = this.#file.parent.list
                     .filter((file) => file.endsWith(".sour"))
+                    .filter(file => file != this.#file.name)
                     .map((file) => file.slice(0, -5))
-                    .filter((file) => file.startsWith(stmt.path.value))
-                    .map((file) => {
-                        return {
-                            type: "file",
-                            prefix: stmt.path.value,
-                            name: file,
-                        };
-                    });
+                    .filter((file) => file.startsWith(prefix))
+                    .forEach((file) => list.push({ type: "file", prefix, name: file }));
+                    
+                const modules = this.#modules.keys()
+                    .filter(name => name.startsWith(prefix))
+                    .forEach(name => list.push({ type: 'file', prefix, name }))
+                
+                return list
             }
         }
 
@@ -620,6 +629,11 @@ export default class Server {
         if (type.type == "simple") {
             if (this.#touching(type.name)) return type.doc;
         }
+    }
+    
+    // Utils
+    add_module(name, def) {
+        this.#modules.set(name, def)
     }
 }
 

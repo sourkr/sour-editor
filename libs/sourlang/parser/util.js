@@ -10,17 +10,46 @@ function gen_type_alias(type) {
 	}
 }
 
-/** @deprecated */
 export function node_to_type(scope, node) {
 	if (!node) return;
 
 	if (node.type === "simple") {
-		if (node.name.value === "void") {
-			return (node.doc = { type: "simple", name: "void" });
+        const name = node.name.value
+        
+		if (name === "void") {
+			return [node.doc = { type: "simple", name: "void" }];
 		}
-
-		return (node.doc = scope.get_class(node.name.value));
+        
+        if (!scope.has_class(name)) {
+            return [null, { msg: `${name} is not a type.`, tok: node }]
+        }
+        
+        const cls = scope.get_class(name)
+        
+		return [node.doc = { type: 'ins', cls }];
 	}
+    
+    if (node.type === 'generic') {
+        const [ ins, err ] = node_to_type(scope, { type: 'simple', name: node.name })
+        
+        if (err) {
+            return [null, err]
+        }
+        
+        ins.generic = []
+        
+        for(let typeNode of node.generic.list) {
+            const [type, err] = node_to_type(scope, typeNode)
+            
+            if (err) {
+                return [TYPE_ERR, err]
+            }
+            
+            ins.generic.push(type)
+        }
+        
+        return [ins]
+    }
 }
 
 export function clone_type(type) {
@@ -47,3 +76,5 @@ export function clone_type(type) {
 		};
 	}
 }
+
+export const TYPE_ERR = { type: 'simple', name: 'error' }

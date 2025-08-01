@@ -165,7 +165,11 @@ function type_to_html(type) {
 	}
 	
 	if (type.type == "ins") {
-		return `${span("tok-type", type.cls.name)}<${type.generic.map(type_to_html).join(', ')}>`
+        if (type.generic) {
+            return `${span("tok-type", type.cls.name)}<${type.generic.map(type_to_html).join(', ')}>`
+        }
+        
+            return span("tok-type", type.cls.name)
 	}
 
 	if (typeof type == 'string') {

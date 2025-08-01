@@ -1,6 +1,7 @@
 import DefinationParser from "./dparser.js";
 import { Scope } from "./scope.js";
 import BUILTINS from "./builtin.js";
+import { gen_func_alias, node_to_type } from "./util.js"
 
 export default class DefinationValidator {
 	#parser;
@@ -8,7 +9,7 @@ export default class DefinationValidator {
 
 	constructor(input, scope = BUILTINS) {
 		this.#parser = new DefinationParser(input);
-		this.global = new Scope(scope)
+		this.globals = new Scope(scope)
 		this.exports = new Scope()
 	}
 
@@ -22,29 +23,33 @@ export default class DefinationValidator {
 
 		prog.ast.forEach((node) => this.stmt(node))
 	}
-
+    
 	stmt(node) {
 		if (node.type === "export") {
-			const def = this.def(node.def)
-			this.exports.def(def.name, def)
+			const def = this.stmt(node.def)
+			this.exports.def_func(def)
 		}
 
 		if (node.type === "func-def") {
-			this.func_def(node, this.global)
+		    return this.func_def(node, this.globals)
 		}
 	}
 
 	func_def(node, scope) {
 		const name = node.name.value;
 
-		const params = node.params.list.map((param) => {
-			return {
-				name: param.name.value,
-				type: get_type(scope, param.type),
-			};
-		});
+		const params = node.params.list.map(param => {
+            const name = param.name.value
+            const [ type, err ] = node_to_type(scope, param.type)
+            
+            if (err) {
+                this.error(err.msg, err.tok)
+            }
+            
+			return { name, type }
+		})
 
-		const retType = get_type(scope, node.retType);
+		const retType = get_type(scope, node.retType)
 
 		const def = {
 			type: "func",
@@ -56,21 +61,30 @@ export default class DefinationValidator {
 		};
 
 		def.alias = gen_func_alias(def);
-
+        this.globals.def_func(def)
+        
 		return def
-	}
-
-	get_type(scope, type) {
-		if (type.type === "simple") {
-			if (type.name.value === "void") {
-				return { type: "simple", name: "void" };
-			} else {
-				return scope.get_class(type.name.value);
-			}
-		}
 	}
 	
 	error(msg, tok) {
 		this.errors.push({ msg, tok });
 	}
+}
+
+function get_type(scope, type) {
+	if (type.type === "simple") {
+		if (type.name.value === "void") {
+			return { type: "simple", name: "void" };
+		} else {
+			const cls = scope.get_class(type.name.value);
+            return { type: "ins", cls }
+		}
+	}
+    
+    if (type.type === 'generic') {
+        const cls = scope.get_class(type.name.value)
+        const generic = type.generic.map(get_type)
+        
+        return { type: 'ins', cls, generic }
+    }
 }

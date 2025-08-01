@@ -4,7 +4,7 @@ const TYPES = new Set(["char", "byte", "bool", "string"]);
 
 export default class DefinationParser extends BaseParser {
     file() {
-        console.log(this.peek())
+        // console.log(this.peek())
         if (this.is("kw", "export")) {
             const exportTok = this.next();
             const def = this.def();

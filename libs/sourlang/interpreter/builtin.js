@@ -82,3 +82,24 @@ export function to_str(val) {
 }
 
 BUILTINS.def_class("string", string)
+
+
+// Map
+const SourMap = new ClassScope("Map")
+
+SourMap.def_meth("set__K__V", (self, args, prog) => {
+    self.value.set(...args)
+    prog.resolve()
+})
+
+
+export function SourLang_Map() {
+    const ins = new InstanceScope(SourMap);
+    ins.value = new Map();
+    
+    ins.forEach = callback => {
+        ins.value.forEach((value, key) => callback(key.value, value.value))
+    }
+    
+	return ins;
+}

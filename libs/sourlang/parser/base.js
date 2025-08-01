@@ -31,7 +31,7 @@ export class BaseParser {
     
     parse() {
         const ast = []
-        while (this.has) ast.push(this.scope(this.file))
+        while (this.more()) ast.push(this.scope(this.file))
         return { ast, errors: this.#errors }
     }
     
@@ -47,6 +47,19 @@ export class BaseParser {
         const token = this.next()
         this.error(`ParseError: Unexpected token '${token.value}'`, token)
         return token
+    }
+    
+    more() {
+        if (this.peek().type === 'eof') {
+            return false
+        }
+        
+        if (this.peek().type === 'space') {
+            this.#tokens.next()
+            return this.more()
+        }
+        
+        return this.#tokens.has
     }
     
     get has() {

@@ -17,8 +17,10 @@ const OP_NAMES = new Map([
 
 export default class Validator {
     globals = new Scope(BUILTINS)
-
+    
     #exports = new BuiltinScope()
+    #modules = new Map()
+    
     #file
     
     constructor(code, file) {
@@ -54,24 +56,30 @@ export default class Validator {
                 this.error(`Cannot import itself`, stmt.path)
                 return
             }
+            
+            let exports
+            
+            if (this.#modules.has(path)) {
+                exports = this.#modules.get(path)
+            } else {
+                const file = this.#file.parent.child(path + '.sour')
+
+                if (!file.exists()) {
+                    this.error(`File ${path} does not exist`, stmt.path)
+                    return // early
+                }
+
+                const validator = new Validator(file.read(), file)
+                const prog = validator.validate()
+
+                for (let err of prog.errors) {
+                    this.errors.push(err)
+                }
                 
-            const file = this.#file.parent.child(path + '.sour')
-
-            if (!file.exists()) {
-                this.error(`File ${path} does not exist`, stmt.path)
-                return
+                exports = prog.exports
             }
 
-            const validator = new Validator(file.read(), file)
-            const prog = validator.validate()
-
-            for (let err of prog.errors) {
-                this.errors.push(err)
-            }
-
-            prog.exports.get_all_funcs().forEach(func => {
-                this.globals.def_func(func)
-            })
+            exports.get_all_funcs().forEach(func => this.globals.def_func(func))
         }
         
         if (stmt.type === 'func-dec') {
@@ -415,6 +423,10 @@ export default class Validator {
         if (type.type === 'simple') {
             return { type: 'simple', name: type.name.value }
         }
+    }
+    
+    add_module(name, def) {
+        this.#modules.set(name, def)
     }
 }
 

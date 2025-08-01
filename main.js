@@ -11,7 +11,9 @@ class MainActivity extends Activity {
     dir = new File('/')
 
     /** @override */
-    onCreate() {
+    async onCreate() {
+        this.def = await this.load_def()
+
         this.content = R.layout.main
         
         this.actionBar.onmenuitemclicked = ev => {
@@ -43,9 +45,12 @@ class MainActivity extends Activity {
                 console.dir(this.editor)
                 console.log(tab.outputStream)
             } else {
+                const server = new Server(this.dir.child(tab.path))
+                server.add_module('app', this.def)
+                
                 this.editor.enable()
                 this.editor.enableLineNo()
-                this.editor.server = new Server(this.dir.child(tab.path))
+                this.editor.server = server
                 this.editor.value = tab.content
                 this.editor.outputStream = null
                 
@@ -77,8 +82,6 @@ class MainActivity extends Activity {
                 this.openFile(data.active_file)
             }
         }
-
-        this.loadDefination()
     }
 
     /** @override */
@@ -87,7 +90,7 @@ class MainActivity extends Activity {
         menu.addItem("run", "Run", "icon/play-arrow.svg");
     }
 
-    async loadDefination() {
+    async load_def() {
         const code = await (await fetch("./sour-lang/app.sour")).text()
         const validator = new DefinationValidator(code)
         validator.validate()
@@ -97,7 +100,6 @@ class MainActivity extends Activity {
             return
         }
 
-        console.log(validator.exports.toString())
         return validator.exports
     }
     
