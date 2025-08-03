@@ -8,6 +8,17 @@ function gen_type_alias(type) {
 	if (type.type === "class") {
 		return type.name;
 	}
+
+	if (type.type === 'ins') {
+		if (!type.generic) {
+			return type.cls.name
+		}
+
+		const generic = type.generic.map(gen_type_alias)
+			.join('_')
+
+		return `${type.cls.name}_${generic}`
+	}
 }
 
 export function node_to_type(scope, node) {

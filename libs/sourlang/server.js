@@ -1,18 +1,18 @@
 import Validator, { FunctionScope } from "./parser/validator.js";
 import { Scope } from "./parser/scope.js";
+import DefinationParser from "./parser/dparser.js";
+import File  from "../../file.js";
 
-const KEWWORD_STMT = new Set(["if", "for", "export", "import", "new"]);
-const DEF_STMT = new Set(["func-dec", "var-dec"]);
+const KEWWORD_STMT = new Set([
+    "import", "export",
+    "if", "for", "new"
+]);
+
+const DEF_STMT = new Set(["class-dec", "func-dec", "var-dec", "var-def"]);
 
 const GLOBAL_KEYWORDS = [
-    "func",
-    "if",
-    "else",
-    "for",
-    "var",
-    "export",
-    "import",
-    "new",
+    "func",   "if",     "else", "for", "var",
+    "export", "import", "new",  "class"
 ];
 
 const PAIRS = {
@@ -68,6 +68,7 @@ export default class Server {
             this.lint_token(expr.kw, "tok-def");
         }
 
+        // File
         if (expr.type == "export") {
             this.lint_expr(expr.def, depth);
         }
@@ -77,6 +78,14 @@ export default class Server {
             this.lint_expr(expr.path);
         }
 
+        if (expr.type == "class-dec") {
+            this.lint_token(expr.name, "tok-type")
+            this.lint_bracket(expr.body, depth)
+            this.lint_list(expr.body, depth + 1)
+        }
+
+        
+        // Def
         if (expr.type == "func-dec") {
             this.lint_token(
                 expr.name,
@@ -88,7 +97,7 @@ export default class Server {
             expr.params.list.forEach((param) => {
                 this.lint_token(
                     param.name,
-                    param.doc.is_used ? "tok-var" : "tok-var dim",
+                    param.doc?.is_used ? "tok-var" : "tok-var dim",
                 );
                 this.lint_type(param.type);
             });
@@ -122,6 +131,15 @@ export default class Server {
             this.lint_list(expr.body, depth + 1);
         }
 
+        if (expr.type == "var-def") {
+            this.lint_token(
+                expr.name,
+                expr.doc?.is_used ? "tok-var" : "tok-var dim",
+            )
+            
+            this.lint_type(expr.var_type)
+        }
+
         if (expr.type === "var-dec") {
             this.lint_token(
                 expr.name,
@@ -153,6 +171,11 @@ export default class Server {
 
             this.lint_bracket(expr.args, depth);
             this.lint_list(expr.args, depth + 1);
+        }
+
+        if (expr.type == "assign") {
+            this.lint_expr(expr.access)
+            this.lint_expr(expr.value)
         }
 
         if (expr.type == "op") {
@@ -277,6 +300,9 @@ export default class Server {
     list(stmt, scope, keywords = []) {
         let list;
 
+        if (!stmt) return []
+
+        // File
         if (stmt.type == "export") {
             return this.list(stmt.def, scope);
         }
@@ -293,22 +319,33 @@ export default class Server {
             if (this.#touching(stmt.path)) {
                 const prefix = stmt.path.value
                 const list = []
+
+                new File("/libs/").list
+                    .filter(name => name.startsWith(prefix))
+                    .map(name => name.slice(0, -5))
+                    .forEach(name => list.push({ type: 'file', prefix, name }))
                 
-                const files = this.#file.parent.list
+                this.#file.parent.list
                     .filter((file) => file.endsWith(".sour"))
                     .filter(file => file != this.#file.name)
                     .map((file) => file.slice(0, -5))
                     .filter((file) => file.startsWith(prefix))
                     .forEach((file) => list.push({ type: "file", prefix, name: file }));
                     
-                const modules = this.#modules.keys()
+                this.#modules.keys()
                     .filter(name => name.startsWith(prefix))
                     .forEach(name => list.push({ type: 'file', prefix, name }))
                 
                 return list
             }
         }
+        
+        if (stmt.type === "class-dec") {
+            scope.def_class(stmt.name.value, stmt.doc)
+            return this.list_body(stmt.body.list, scope, ["func"])
+        }
 
+        // Def
         if (stmt.type == "func-dec") {
             const funcScope = new Scope(scope);
 
@@ -321,7 +358,7 @@ export default class Server {
             let list = this.list_type(stmt.retType, scope, true);
             if (list?.length) return list;
 
-            list = this.list_body(stmt.body.list, funcScope);
+            list = this.list_body(stmt.body.list, funcScope, ["for"]);
             if (list?.length) return list;
         }
 
@@ -353,7 +390,6 @@ export default class Server {
         }
 
         if (stmt.type === "var-dec") {
-            console.log(scope);
             scope.def_var(stmt.name.value, stmt.doc);
             return this.list(stmt.val, scope, ["new"]);
         }

@@ -1,0 +1,9 @@
+export func print(ch: char): void {
+	_stdout(ch)
+}
+
+export func print(str: string): void {
+	for (var i = 0; i < str.len; i++) {
+		_stdout(str[i])
+	}
+}

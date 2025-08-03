@@ -31,7 +31,11 @@ export class BaseParser {
     
     parse() {
         const ast = []
-        while (this.more()) ast.push(this.scope(this.file))
+
+        while (this.more())
+            if (!this.is("eof"))
+                ast.push(this.scope(this.file))
+
         return { ast, errors: this.#errors }
     }
     
@@ -152,9 +156,13 @@ export class ErrorData {
     }
     
     toString() {
-        const lineno = this.start.lineno.toString()
-        const line1 = ` ${lineno} | ${this.#code.split('\n')[this.start.lineno - 1]}`
-        const line2 = ` ${repeat(' ', lineno.length)}   ${repeat(' ', this.start.col-1)}${repeat('^', Math.max(1, this.end.col - this.start.col))}`
+        const lineno = this.start?.lineno || 1
+        const colStart = this.start?.col || 1
+        const colEnd = this.end?.col || 1
+
+        const linenoStr = lineno + ""
+        const line1 = ` ${lineno} | ${this.#code.split('\n')[lineno - 1]}`
+        const line2 = ` ${repeat(' ', linenoStr.length)}   ${repeat(' ', colStart-1)}${repeat('^', Math.max(1, colEnd - colStart))}`
         const end = `in ${this.filepath} at ${this.start}`
         
         return `${this.message}\n${line1}\n${line2}\n${end}`

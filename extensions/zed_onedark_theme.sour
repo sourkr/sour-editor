@@ -1,0 +1,45 @@
+import * from "app"
+
+var theme = new Map<string, string>()
+
+theme.set("topbar-background", "#21252B")
+theme.set("topbar-border", "#181A1F")
+theme.set("topbar-foreground", "#ABB2BF")
+
+theme.set("tabbar-background", "#21252B")
+theme.set("tabbar-border", "#181A1F")
+theme.set("tab-active-foreground", "#FFFFFF")
+
+theme.set("editor-background", "#282C34")
+theme.set("editor-foreground", "#ABB2BF")
+theme.set("editor-lineno-background", "#21252B")
+theme.set("editor-lineno-foreground", "#5C6370")
+
+theme.set("autocomplete-background", "#21252B")
+theme.set("autocomplete-border", "#3A3F4B")
+theme.set("autocomplete-foreground", "#ABB2BF")
+theme.set("autocomplete-selected-background", "#2C313C")
+theme.set("autocomplete-selected-foreground", "#FFFFFF")
+
+theme.set("tooltip-background", "#21252B")
+theme.set("tooltip-foreground", "#ABB2BF")
+theme.set("tooltip-border", "#3A3F4B")
+
+theme.set("nav-background", "#21252B")
+theme.set("nav-foreground", "#ABB2BF")
+theme.set("nav-border", "#181A1F")
+
+theme.set("icon-color", "#ABB2BF")
+
+theme.set("keyword-control", "#C678DD")
+theme.set("keyword-storage", "#61AFEF")
+
+theme.set("string", "#98C379")
+theme.set("number", "#D19A66")
+theme.set("char", "#98C379")
+theme.set("comment", "#5C6370")
+theme.set("function-call", "#61AFEF")
+theme.set("class-name", "#E5C07B")
+theme.set("variable", "#E06C75")
+
+register_theme("Zed OneDark", theme)

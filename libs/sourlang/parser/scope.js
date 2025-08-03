@@ -81,6 +81,22 @@ export class Scope {
 	}
 }
 
+class InstanceScope {
+	constructor(cls, generic) {
+		this.cls = cls
+		this.genrics = genrics
+	}
+
+	has_meth(name) {
+		return this.cls.has_meth(name)
+	}
+
+	get_meths(name) {
+		return this.cls.get
+	}
+}
+
+/** @description */
 export class BuiltinScope {
 	#classes = new Map();
 	#funcs = new Set();

@@ -1,22 +1,30 @@
 import Validator from "../parser/validator.js";
-import { Scope, BuiltinScope, InstanceScope } from "./scope.js"
-import BUILTINS, { to_byte, to_char, to_str } from "./builtin.js";
+import { Scope, BuiltinScope, InstanceScope, ClassScope } from "./scope.js"
+import BUILTINS, { to_byte, to_char, to_str } from "./builtin.js"
+import File from "../../../file.js"
 
 export default class Interpreter {
-    #validator;
+    #modules = new Map()
+
+    #validator
     #file
 
     inputStream = new Stream();
     errorStream = new Stream();
     outputStream = new Stream();
 
-    exports = new BuiltinScope()
+    exports = new Scope()
 
-    globals = new GlobalScope(BUILTINS)
+    globals = new Scope(BUILTINS)
 
     constructor(file) {
         this.#validator = new Validator(file.read(), file);
         this.#file = file
+    }
+
+    add_module(name, def, scope) {
+        this.#validator.add_module(name, def)
+        this.#modules.set(name, scope)
     }
 
     interprete(_prog) {
@@ -24,6 +32,7 @@ export default class Interpreter {
 
         if (prog.errors.length) {
             prog.errors.forEach((err) => this.errorStream.write(err.toString()));
+            _prog.reject(prog.errors[0].toString())
             return;
         }
 
@@ -91,7 +100,7 @@ export default class Interpreter {
     #interprete(expr, scope, prog) {
         if (!expr) return;
 
-        // const $this = this;
+        // File
         if (expr.type == "export") {
             this.#interprete(expr.def, scope, {
                 ...prog,
@@ -109,30 +118,107 @@ export default class Interpreter {
 
         if (expr.type == "import") {
             const path = expr.path.value
-            const file = this.#file.parent.child(path + '.sour')
-            const interpreter = new Interpreter(file)
-            interpreter.name = 'module'
-            interpreter.inputStream = this.inputStream
-            interpreter.errorStream = this.errorStream
-            interpreter.outputStream = this.outputStream
-            interpreter.interprete({
-                ...prog,
-                reject: (err) => {
-                    console.warn('import failed', err)
-                },
-                resolve: () => {
-                    // console.log('import', interpreter.exports)
-                    interpreter.exports.get_all_funcs().forEach((func, name) => {
-                        this.globals.def_func(name, func)
-                    })
-                    prog.resolve()
-                }
-            })
+
+            if (this.#modules.has(path)) {
+                const module = this.#modules.get(path)
+
+                module.get_all_funcs()
+                    .forEach(entry  => this.globals.def_func(entry.name, entry.value))
+
+                module.get_all_classes()
+                    .forEach(cls  => this.globals.def_class(cls.name, cls))
+
+                console.log(module,  this.globals)
+
+                prog.resolve()
+            } else if (new File(`/libs/${path}.sour`).exists()) {
+                const file = new File(`/libs/${path}.sour`)
+                const interpreter = new Interpreter(file)
+
+                interpreter.name = 'module'
+                interpreter.inputStream = this.inputStream
+                interpreter.errorStream = this.errorStream
+                interpreter.outputStream = this.outputStream
+
+                interpreter.interprete({
+                    ...prog,
+                    reject: (err) => {
+                        console.warn('import failed', err)
+                    },
+                    resolve: () => {
+                        // console.log('import', interpreter.exports.get_all_funcs().toArray())
+                        interpreter.exports.get_all_funcs()
+                            .forEach(e => {
+                                this.globals.def_func(e.name, e.value)
+                            })
+
+                        prog.resolve()
+                    }
+                })
+
+            } else {
+                const file = this.#file.parent.child(path + '.sour')
+                const interpreter = new Interpreter(file)
+
+                interpreter.name = 'module'
+                interpreter.inputStream = this.inputStream
+                interpreter.errorStream = this.errorStream
+                interpreter.outputStream = this.outputStream
+
+                interpreter.interprete({
+                    ...prog,
+                    reject: (err) => {
+                        console.warn('import failed', err)
+                    },
+                    resolve: () => {
+                        console.log('import', interpreter.exports)
+                        interpreter.exports.get_all_funcs().forEach((func, name) => {
+                            this.globals.def_func(name, func)
+                        })
+                        prog.resolve()
+                    }
+                })
+            }
 
             return
         }
-        
+
+        if (expr.type === "class-dec") {
+            const name = expr.name.value
+            const cls = new ClassScope()
+
+            expr.body.list.forEach(node => {
+                if (node.type === 'func-dec') {
+                    const func = (self, args, prog) => {
+                        const funcScope = new FunctionScope(scope)
+
+                        node.params.list.forEach((param, i) =>
+                            funcScope.def_var(param.name.value, args[i]))
+
+                        funcScope.def_var("this", self)
+
+                        this.#interpreteBody(node.body.list, funcScope, {
+                            ...prog,
+                            resolve: (res) => {
+                                prog.resolve();
+                            },
+                            return: prog.resolve,
+                        })
+                    }
+
+                    cls.def_meth(node.alias, func)
+                }
+            })
+
+            scope.def_class(name, cls)
+            prog.resolve()
+            return
+        }
+
+
+        // Def
         if (expr.type == "func-dec") {
+            console.log(expr, scope, this.#file)
             scope.def_func(expr.alias, (args, prog) => {
                 const funcScope = new FunctionScope(scope);
                 
@@ -190,7 +276,7 @@ export default class Interpreter {
             this.#interprete(expr.val, scope, {
                 ...prog,
                 resolve: (val) => {
-                    scope.def_var(expr.name.value, val);
+                    scope.set_var(expr.name.value, val);
                     prog.resolve();
                 },
             });
@@ -203,6 +289,7 @@ export default class Interpreter {
                 const func = scope.get_func(expr.alias);
 
                 if (typeof func !== "function") {
+                    console.log(expr.alias)
                     prog.reject(this.error(`RefrenceError: '${expr.access.value}' is not a function`, expr.access, prog));
                     return;
                 }
@@ -227,7 +314,7 @@ export default class Interpreter {
                         const meth = left.get_meth(expr.alias)
 
                         if (!meth) {
-                            prog.reject(this.error(`TypeError: '${expr.access.right.value}' is not a method of ${left.get_class_name()}`, expr.access.right, prog))
+                            prog.reject(this.error(`RefrenceError: '${expr.access.right.value}' is not a method of ${left.get_class_name()}`, expr.access.right, prog))
                             return
                         }
 
@@ -249,6 +336,44 @@ export default class Interpreter {
             }
 
             return;
+        }
+
+        if (expr.type === 'new') {
+            const name = expr.name.value
+            const cls = scope.get_class(name)
+            const ins = new InstanceScope(cls)
+            const func = cls.get_meth(expr.alias)
+
+            this.#interpreteBody(expr.args.list, scope, {
+                ...prog,
+                resolve: args => {
+                    func(ins, args, {
+                        ...prog,
+                        resolve: () => {
+                            prog.resolve(ins)
+                        }
+                    })
+                }
+            })
+
+            return
+        }
+
+        if (expr.type === "assign") {
+            this.#interprete(expr.access.left, scope, {
+                ...prog,
+                resolve: left => {
+                    this.#interprete(expr.value, scope, {
+                        ...prog,
+                        resolve: value => {
+                            left.set_prop(expr.access.right.value, value)
+                            prog.resolve(value)
+                        }
+                    })
+                }
+            })
+
+            return
         }
 
         if (expr.type === "op") {
@@ -332,7 +457,7 @@ export default class Interpreter {
             const val = scope.get_var(expr.value)
             
             if (!val) {
-                prog.reject(this.error(`RefrenceError: '${expr.value}' is not defined`));
+                prog.reject(this.error(`RefrenceError: '${expr.value}' is not defined`, expr, prog));
             } else {
                 prog.resolve(val);
             }

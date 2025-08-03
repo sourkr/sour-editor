@@ -1,6 +1,7 @@
 import SpannableText from "../../spannable-text.js";
 import { Mutable } from "../core.js";
 import DocToolTipManager from "./doc-tooltip.js";
+import styles from "./style.css" with { type: "css" }
 
 const TYPE_CODES = {
     func: "\uea8c",
@@ -31,205 +32,14 @@ class Editor extends HTMLElement {
     #server;
     #lastInputEvent;
 
+    #paired = false
+
     constructor() {
         super();
 
         this.attachShadow({ mode: "open" });
 
         this.shadowRoot.innerHTML = `
-            <style>
-                :host {
-                    font-family: inherit;
-                    width: fit-content;
-                    height: fit-content;
-                    background: inherit;
-                    color: inherit;
-                    padding: 10px 10px 10px 0;
-                    font-size: 16px;
-                    border-color: inherit;
-                }
-                
-                .wrapper {
-                    width: 100%;
-                    height: 100%;
-                    display: flex;
-                }
-                
-                .lineno {
-                    padding-inline: 10px 10px;
-                    font-size: inherit;
-                    color: grey;
-                    text-align: end;
-                    line-height: 1.5;
-                }
-                
-                .editor {
-                    position: relative;
-                    flex: 1;
-                    overflow-x: scroll;
-                }
-                
-                textarea, pre {
-                    padding: 0;
-                    margin: 0;
-                    font-family: inherit;
-                    outline: none;
-                    border: none;
-                    font-size: inherit;
-                    width: 100%;
-                    height: 100%;
-                    line-height: 1.5;
-                    font-weight: normal;
-                    box-sizing: border-box;
-                    tab-size: 4;
-                }
-                
-                textarea {
-                    position: absolute;
-                    resize: none;
-                    color: transparent;
-                    background: transparent;
-                    top: 0;
-                    padding-left: 5px;
-                    caret-color: white;
-                    white-space: nowrap;
-                    overflow-x: scroll;
-                }
-                
-                pre {
-                    color: inherit;
-                    background: inherit;
-                    overflow-x: scroll;
-                }
-                
-                .cur-line {
-                    background: hsl(0deg, 0%, 100%, .05);
-                    padding-left: 5px;
-                    width: 100%;
-                }
-                
-                .line {
-                    padding-left: 5px;
-                }
-                
-                .tok-kw {
-                    color: #C586C0;
-                }
-                
-                .tok-def {
-                    color: #569CD6;
-                }
-                
-                .tok-type {
-                    color: #4EC9B0;
-                }
-                
-                .tok-num {
-                    color: #B5CEA8;
-                }
-                
-                .tok-var {
-                    color: #9CDCFE;
-                }
-                
-                .tok-func-call {
-                    color: #DCDCAA;
-                }
-                
-                .tok-bracket-depth-0 {
-                    color: #FFD700; /* Gold */
-                }
-
-                .tok-bracket-depth-1 {
-                    color: #FF69B4; /* HotPink */
-                }
-
-                .tok-bracket-depth-2 {
-                    color: #6fabdc; /* LightSkyBlue */
-                }
-
-                .tok-bracket-depth-3 {
-                    color: #ADFF2F; /* GreenYellow */
-                }
-                
-                .tok-str {
-                    color: #CE9178;
-                }
-
-                .tok-char {
-                    color: #98C379;
-                }
-                
-                .tok-bracket-lit {
-                    background-color: hsl(0deg, 0%, 100%, .2);
-                    border-radius: 3px;
-                    box-sizing: border-box;
-                }
-                
-                .tok-err {
-                    display: inline-block;
-                    text-decoration: underline;
-                    text-decoration-style: wavy;
-                    text-decoration-color: red;
-                    text-decoration-skip-ink: none;
-                }
-                
-                .dim {
-                    filter: brightness(60%);
-                }
-                
-                .tab {
-                    border-left: 1px solid grey;
-                }
-                
-                .error-tooltip {
-                    position: absolute;
-                    background: var(--tooltip-background);
-                    height: fit-content;
-                    border: 1px solid red;
-                    padding: 5px;
-                    margin: 10px;
-                    display: none;
-                    pointer-events: none;
-                }
-                
-                .completion {
-                    position: absolute;
-                    background: var(--tooltip-background);
-                    border: 1px solid grey;
-                    margin: 10px;
-                    display: none;
-                    flex-direction: column;
-                    
-                    & div {
-                        padding-inline: 5px;
-                    }
-                }
-                
-                .doc-tooltip {
-                    position: absolute;
-                    background: var(--tooltip-background);
-                    border: 1px solid;
-                    border-color: grey;
-                    margin-inline: 10px;
-                    display: none;
-                    right: 0;
-                    
-                    .symbol {
-                        padding: 5px;
-                    }
-                    
-                    .doc {
-                        padding: 5px;
-                        border-top: 1px solid grey;
-                    }
-                }
-                
-                .prefix {
-                    font-weight: bold;
-                }
-            </style>
-            
             <div class="wrapper">
                 <div class="lineno"></div>
                 
@@ -246,7 +56,9 @@ class Editor extends HTMLElement {
                     <div class="doc"></div>
                 </div>
             </div>
-        `;
+        `
+
+        this.shadowRoot.adoptedStyleSheets.push(styles)
 
         this.#lineno = this.shadowRoot.querySelector(".lineno");
         this.#textarea = this.shadowRoot.querySelector("textarea");
@@ -261,7 +73,7 @@ class Editor extends HTMLElement {
             this.shadowRoot.querySelector(".doc-tooltip"),
         );
 
-        this.valueListener = (val) => this.#setValue(val, { update: true });
+        this.valueListener = (val) => this.#setValue(val, { update: { } })
     }
 
     connectedCallback() {
@@ -282,9 +94,13 @@ class Editor extends HTMLElement {
                 return;
             }
 
+            if (ev.data === ')' && this.value[this.cursorIndex] === ')') {
+                this.deleteRange(this.cursorIndex, this.cursorIndex + 1)
+                this.cursorIndex++
+            }
+
             if (this.mutabelValue) {
                 this.mutabelValue.value = this.value;
-
             }
         };
 
@@ -319,22 +135,56 @@ class Editor extends HTMLElement {
                     }
                 }
             }
+
+            // console.log(ev)
+
             
             if (this.#doc.is_visible) {
                 this.#doc.hide();
             }
         };
 
-        this.#textarea.onkeyup = this.#update.bind(this);
-        this.#textarea.onclick = this.#update.bind(this);
+        this.#textarea.onkeyup = ev => {
+            if (!this.#handle_keyup(ev))
+                this.#update.bind(this, { server: true });
+        }
+        this.#textarea.onclick = this.#update.bind(this, { server: true });
 
         // Horizontal Scrolling
         this.#textarea.onscroll = () => {
-            console.log("scroll", this.#textarea.scrollLeft);
-            this.#pre.scrollLeft = this.#textarea.scrollLeft;
+            this.#pre.scrollLeft = this.#textarea.scrollLeft
+            this.#pre.scrollTop = this.#textarea.scrollTop
+
+            this.#lineno.scrollTop = this.#textarea.scrollTop
         }
     }
 
+    #handle_keyup(ev) {
+        if (ev.key === "Enter") {
+            const left = this.value[this.cursorIndex - 2]
+            const right = this.value[this.cursorIndex]
+            
+            const tab = this.#get_line(this.cursorLine - 1)
+                .match(/^\s*/)[0]
+
+            if (right && PAIRS[left] === right) {
+                this.insert(`\t${tab}\n${tab}`)
+                this.cursorIndex -= tab.length + 1
+                return false
+            }
+
+            // console.log(JSON.stringify(this.#get_line(this.cursorLine - 1)))
+            // console.log(JSON.stringify(tab))
+            if (tab) this.insert(tab)
+            // if (tab) this.insert(tab.slice(0, tab.length / 2))
+            return false
+        }
+    }
+
+    #get_line(lineno) {
+        return this.value.split("\n").at(lineno - 1)
+    }
+    
     set value(val) {
         if (this.mutableValue) {
             this.mutabelValue.unsubscribe(this.valueListener);
@@ -364,7 +214,7 @@ class Editor extends HTMLElement {
         this.cursorIndex = cursorIndex;
 
         if (option.update) {
-            this.#update();
+            this.#update(option.update);
         }
     }
 
@@ -383,7 +233,7 @@ class Editor extends HTMLElement {
 
         this.#setValue(left + text + right, {
             mutate: true,
-            update: true,
+            update: { },
         });
 
         this.cursorIndex = cursorIndex + text.length;
@@ -425,22 +275,26 @@ class Editor extends HTMLElement {
         if (!server) return;
 
         server.match = (start, end) => {
-            if (
-                this.#lastInputEvent?.inputType != "insertText" ||
-                this.#lastInputEvent.data != start
-            )
+            if (this.#paired) return
+
+            if (this.#lastInputEvent?.inputType != "insertText" ||
+                this.#lastInputEvent.data != start)
                 return;
+
             if (this.value[this.cursorIndex] === end) return;
 
-            this.addEventListener(
-                "updated",
-                () => {
-                    this.insert(end);
-                    this.cursorIndex--;
-                },
-                { once: true },
-            );
+            this.#paired = true
+            this.addEventListener("updated", () => {
+                // this.#lastInputEvent = null
+                this.insert(end);
+                this.cursorIndex--;
+            }, { once: true })
         };
+    }
+
+    get cursorLine() {
+        const left = this.value.slice(0, this.cursorIndex)
+        return left.split("\n").length
     }
 
     get cursorY() {
@@ -510,13 +364,15 @@ class Editor extends HTMLElement {
         return rect.left;
     }
 
-    #update(ev) {
+    #update(options) {
         const code = this.#textarea.value;
         const lines = code.split("\n");
 
         const span = new SpannableText(code);
 
-        if (this.#server) {
+        this.#paired = false
+
+        if (this.#server && (!("server" in options) || options.server)) {
             this.#server.cursorIndex = this.cursorIndex;
             this.#server.lint(span, this);
 
@@ -527,11 +383,13 @@ class Editor extends HTMLElement {
             } else {
                 this.#hideError();
             }
-
-            if (ev?.key === "Unidentified") {
+          
+            if (options.ev?.key && (options.ev.key === "Unidentified" || /^[a-zA-Z0-9_.]$/.test(ev.key))) {
                 this.#completer.show(this.#server.completions());
             }
         }
+
+        // let tab = ''
 
         const hlLines = span.toString().split("\n");
 
@@ -539,11 +397,27 @@ class Editor extends HTMLElement {
 
         const linesTop = hlLines
             .slice(0, currentLineNo - 1)
-            .map((line) => `<div class="line">${line || " "}</div>`);
-        const currentLine = `<div class="cur-line">${hlLines[currentLineNo - 1] || " "}</div>`;
+            .map(line => `<div class="line">${tab_line(line) || " "}</div>`);
+
+        const currentLine = `<div class="cur-line">${tab_line(hlLines[currentLineNo - 1]) || " "}</div>`;
+        
         const linesBottom = hlLines
             .slice(currentLineNo)
-            .map((line) => `<div class="line">${line || " "}</div>`);
+            .map((line) => `<div class="line">${tab_line(line) || " "}</div>`);
+
+        function tab_line(line) {
+            // if (line.endsWith('{')) {
+            //     tab = line.match(/^\s*/)[0]
+            //     return
+            // }
+            
+            return line.replace(/^\s*/, tabs => {
+                return tabs.replaceAll('\t', '<span class="tab">\t</span>')
+            })
+        }
+        // const html_lines = [...linesTop, currentLine, ...linesBottom]
+
+        
 
         this.#pre.innerHTML = [...linesTop, currentLine, ...linesBottom]
             .join("")
@@ -632,8 +506,7 @@ class AutoCompletionManager {
 
                 this.itemList.forEach((item, i) => {
                     if (i === this.selected) {
-                        item.layout.style.background =
-                            "hsla(200deg, 100%, 50%, .5)";
+                        item.layout.style.background = "var(--autocompletion-selected-background)";
                         this.doc.showAnchor(item.doc, this.completion);
                     } else {
                         item.layout.style.background = "transparent";
@@ -654,8 +527,7 @@ class AutoCompletionManager {
 
                 this.itemList.forEach((item, i) => {
                     if (i === this.selected) {
-                        item.layout.style.background =
-                            "hsla(200deg, 100%, 50%, .5)";
+                        item.layout.style.background = "var(--autocompletion-selected-background)";
                         this.doc.showAnchor(item.doc, this.completion);
                     } else {
                         item.layout.style.background = "transparent";
@@ -693,7 +565,7 @@ class AutoCompletionManager {
             this.completion.append(layout);
 
             if (i == 0) {
-                layout.style.background = "hsla(200deg, 100%, 50%, .5)";
+                layout.style.background = "var(--autocompletion-selected-background)";
                 this.doc.showAnchor(item.doc, this.completion);
             }
 

@@ -1,0 +1,250 @@
+:host {
+    font-family: inherit;
+    width: fit-content;
+    height: fit-content;
+    padding: 10px 10px 10px 0;
+    font-size: 16px;
+    border-color: inherit;
+
+    background: inherit;
+    color: inherit;
+
+    --lineno-background: inherit;
+    --lineno-foreground: inherit;
+
+    --token-keyword-control: inherit;
+    --token-keyword-storage: inherit;
+    --token-string: inherit;
+    --token-number: inherit;
+    --token-char: inherit;
+    --token-comment: inherit;
+    --token-function-name: inherit;
+    --token-class-name: inherit;
+    --token-variable: inherit;
+
+    --autocompletion-background: inherit;
+    --autocompletion-border: inherit;
+    --autocompletion-foreground: inherit;
+    --autocompletion-selected-background: inherit;
+    --autocompletion-selected-foreground: inherit;
+
+    --widget-tooltip-background: inherit;
+    --widget-tooltip-border: inherit;
+    --widget-tooltip-foreground: inherit;
+}
+
+.wrapper {
+    width: 100%;
+    height: 100%;
+    display: flex;
+}
+
+.lineno {
+    padding-inline: 10px 10px;
+    font-size: inherit;
+    text-align: end;
+    line-height: 1.5;
+    overflow-y: scroll;
+
+    background: var(--lineno-background);
+    color: var(--lineno-foreground);
+}
+
+.editor {
+    position: relative;
+    flex: 1;
+    overflow-x: scroll;
+}
+
+textarea,
+pre {
+    padding: 0;
+    margin: 0;
+    font-family: inherit;
+    outline: none;
+    border: none;
+    font-size: inherit;
+    width: 100%;
+    height: 100%;
+    line-height: 1.5;
+    font-weight: normal;
+    box-sizing: border-box;
+    tab-size: 4;
+}
+
+textarea {
+    position: absolute;
+    resize: none;
+    color: transparent;
+    background: transparent;
+    top: 0;
+    padding-left: 5px;
+    caret-color: white;
+    white-space: nowrap;
+    overflow-x: scroll;
+}
+
+pre {
+    color: inherit;
+    background: inherit;
+    overflow-x: scroll;
+}
+
+.cur-line {
+    background: hsl(0deg, 0%, 100%, .05);
+    padding-left: 5px;
+    width: 100%;
+}
+
+.line {
+    /* padding: 0; */
+    /* margin: 0; */
+    padding-left: 5px;
+    /* background: green; */
+}
+
+.tok-kw {
+    color: var(--token-keyword-control);
+}
+
+.tok-def {
+    color: var(--token-keyword-control);
+}
+
+.tok-type {
+    color: var(--token-class-name);
+}
+
+.tok-num {
+    color: var(--token-number);
+}
+
+.tok-var {
+    /* color: #9CDCFE; */
+    color: var(--token-variable);
+}
+
+.tok-func-call {
+    color: var(--token-function-name);
+}
+
+.tok-bracket-depth-0 {
+    color: #FFD700;
+    /* Gold */
+}
+
+.tok-bracket-depth-1 {
+    color: #FF69B4;
+    /* HotPink */
+}
+
+.tok-bracket-depth-2 {
+    color: #6fabdc;
+    /* LightSkyBlue */
+}
+
+.tok-bracket-depth-3 {
+    color: #ADFF2F;
+    /* GreenYellow */
+}
+
+.tok-str {
+    /* color: #CE9178; */
+    color: var(--token-string);
+}
+
+.tok-char {
+    color: var(--token-char);
+}
+
+.tok-cmt {
+    color: var(--token-comment)
+}
+
+.tok-bracket-lit {
+    background-color: hsl(0deg, 0%, 100%, .2);
+    border-radius: 3px;
+    box-sizing: border-box;
+}
+
+.tok-err {
+    display: inline-block;
+    text-decoration: underline;
+    text-decoration-style: wavy;
+    text-decoration-color: red;
+    text-decoration-skip-ink: none;
+}
+
+.dim {
+    filter: brightness(60%);
+}
+
+.tab {
+    display: inline-block;
+    position: relative;
+
+    &::after {
+        display: block;
+        content: "";
+        position: absolute;
+        top: 0;
+        left: calc(.25em - .5px);
+        background: grey;
+        width: 1px;
+        height: 100%;
+    }
+}
+
+.error-tooltip {
+    position: absolute;
+    border: 1px solid red;
+    padding: 5px;
+    margin: 10px;
+    display: none;
+    pointer-events: none;
+    height: fit-content;
+
+    background: var(--widget-tooltip-background);
+    color: var(--widget-tooltip-foreground);
+}
+
+.completion {
+    position: absolute;
+    margin: 10px;
+    display: none;
+    flex-direction: column;
+
+    background: var(--autocompletion-background);
+    border: 1px solid var(--autocompletion-border);
+    color: var(--autocompletion-foreground);
+
+    & div {
+        padding-inline: 5px;
+    }
+}
+
+.doc-tooltip {
+    position: absolute;
+    border: 1px solid;
+    margin-inline: 10px;
+    display: none;
+    right: 0;
+
+    background: var(--widget-tooltip-background);
+    color: var(--widget-tooltip-foreground);
+    border-color: var(--widget-tooltip-border);
+
+    .symbol {
+        padding: 5px;
+    }
+
+    .doc {
+        padding: 5px;
+        border-top: 1px solid var(--widget-tooltip-border);
+    }
+}
+
+.prefix {
+    /* font-weight: bold; */
+    color: var(--autocompletion-selected-foreground);
+}

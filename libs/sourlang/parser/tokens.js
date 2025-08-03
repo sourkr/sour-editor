@@ -10,7 +10,8 @@ const KEYWORDS = new Set([
     "export",
     "import",
     "from",
-    "new"
+    "new",
+    "return"
 ]);
 
 export class TokenStream {
@@ -100,7 +101,11 @@ export class TokenStream {
             this.#chars.next();
             charValue = this.#chars.next();
 
-            if (charValue == "'") {
+            if (charValue === "\\") {
+                charValue += this.#chars.next()
+            }
+            
+            if (charValue.at(-1) == "'") {
                 const token = this.#tok("char", "");
 
                 token.err = {
@@ -111,6 +116,7 @@ export class TokenStream {
 
                 return token;
             }
+
 
             if (this.#chars.peek() === "'") {
                 this.#chars.next(); // Consume the closing quote

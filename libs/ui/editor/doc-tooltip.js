@@ -144,8 +144,12 @@ function type_to_doc_html(type) {
 		if (type.is_var) {
 			return `${span('tok-def', 'var')} ${span("tok-var", type.var_name)}: ${type_to_html(type)}`
 		}
+
+		if (type.generic) {
+			return `${span("tok-def", "class")} ${span("tok-type", type.cls.name)}<${type.generic.map(type_to_html).join(', ')}>`
+		}
 		
-		return `${span("tok-def", "class")} ${span("tok-type", type.cls.name)}<${type.generic.map(type_to_html).join(', ')}>`
+		return `${span("tok-def", "class")} ${span("tok-type", type.cls.name)}`
 	}
 }
 

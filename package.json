@@ -2,15 +2,28 @@
   "name": "sour-lang",
   "version": "1.0.0",
   "description": "Sour Editor is a lightweight, mobile-first JavaScript IDE that runs directly in your browser. It's designed for quick coding sessions, experimentation, and learning on the go. All files are stored locally in your browser's localStorage.",
+  "keywords": [
+    "language"
+  ],
+  "homepage": "https://github.com/sourkr/sour-editor#readme",
+  "bugs": {
+    "url": "https://github.com/sourkr/sour-editor/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/sourkr/sour-editor.git"
+  },
+  "license": "ISC",
+  "author": "sourkr",
+  "type": "module",
   "main": "main.js",
   "directories": {
-    "doc": "doc"
+    "doc": "doc",
+    "test": "test"
   },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "author": "",
-  "license": "ISC",
   "dependencies": {
     "http-server": "^14.1.1",
     "live-server": "^1.2.0",

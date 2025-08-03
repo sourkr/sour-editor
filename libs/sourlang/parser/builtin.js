@@ -18,6 +18,8 @@ async function main() {
 		throw new Error("Failed to parse buildin.sour");
 	}
 
+	console.log(ast)
+
 	ast.filter((node) => node.type === "class-def").forEach((node) => {
 		const def = {
 			type: "class",

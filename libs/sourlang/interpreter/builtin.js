@@ -87,14 +87,20 @@ BUILTINS.def_class("string", string)
 // Map
 const SourMap = new ClassScope("Map")
 
+SourMap.def_meth("constructor__", (self, _args, prog) => {
+	SourLang_Map(self)
+	prog.resolve()
+})
+
 SourMap.def_meth("set__K__V", (self, args, prog) => {
     self.value.set(...args)
     prog.resolve()
 })
 
+BUILTINS.def_class('Map', SourMap)
 
-export function SourLang_Map() {
-    const ins = new InstanceScope(SourMap);
+export function SourLang_Map(_ins) {
+    const ins = _ins || new InstanceScope(SourMap);
     ins.value = new Map();
     
     ins.forEach = callback => {

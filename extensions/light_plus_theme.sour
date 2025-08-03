@@ -1,0 +1,45 @@
+import * from "app"
+
+var theme = new Map<string, string>()
+
+theme.set("topbar-background", "#F3F3F3")
+theme.set("topbar-border", "#E0E0E0")
+theme.set("topbar-foreground", "#333333")
+
+theme.set("tabbar-background", "#F3F3F3")
+theme.set("tabbar-border", "#E0E0E0")
+theme.set("tab-active-foreground", "#000000")
+
+theme.set("editor-background", "#FFFFFF")
+theme.set("editor-foreground", "#1E1E1E")
+theme.set("editor-lineno-background", "#F3F3F3")
+theme.set("editor-lineno-foreground", "#999999")
+
+theme.set("autocomplete-background", "#FFFFFF")
+theme.set("autocomplete-border", "#CCCCCC")
+theme.set("autocomplete-foreground", "#333333")
+theme.set("autocomplete-selected-background", "#CDE6F7")
+theme.set("autocomplete-selected-foreground", "#000000")
+
+theme.set("tooltip-background", "#FFFFE1")
+theme.set("tooltip-foreground", "#000000")
+theme.set("tooltip-border", "#CFCFCF")
+
+theme.set("nav-background", "#F3F3F3")
+theme.set("nav-foreground", "#333333")
+theme.set("nav-border", "#E0E0E0")
+
+theme.set("icon-color", "#333333")
+
+theme.set("keyword-control", "#AF00DB")
+theme.set("keyword-storage", "#0000FF")
+
+theme.set("string", "#A31515")
+theme.set("number", "#098658")
+theme.set("char", "#A31515")
+theme.set("comment", "#008000")
+theme.set("function-call", "#795E26")
+theme.set("class-name", "#267F99")
+theme.set("variable", "#001080")
+
+register_theme("VS Code Light+", theme)

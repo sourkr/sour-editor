@@ -1,9 +1,15 @@
-import { Activity, R, Mutable } from "ui/core.js";
+import { Activity, R, Mutable, Intent } from "ui/core.js";
+
 import "ui/editor/editor.js"
 
 import Interpreter from "sour-lang/interpreter/interpreter.js";
 import Server from "sour-lang/server.js"
 import DefinationValidator from "sour-lang/parser/dvalidator.js"
+import DEF_APP from "./sour-lang/app.js";
+import Extension from "./extension.js";
+import File from "./file.js"
+import SettingsActivity from "./setting.js";
+import Theme from "./theme.js";
 
 class MainActivity extends Activity {
     tabs = []
@@ -12,7 +18,10 @@ class MainActivity extends Activity {
 
     /** @override */
     async onCreate() {
+        super.onCreate()
+
         this.def = await this.load_def()
+        this.load_setting()
 
         this.content = R.layout.main
         
@@ -20,6 +29,7 @@ class MainActivity extends Activity {
             switch(ev.detail) {
                 case 'save': return this.saveActiveFile()
                 case 'run': return this.runActiveFile()
+                case 'settings': return this.openSettings()
             }
         }
         
@@ -42,11 +52,9 @@ class MainActivity extends Activity {
                 this.editor.server = null
                 this.editor.value = tab.content
                 this.editor.outputStream = tab.outputStream
-                console.dir(this.editor)
-                console.log(tab.outputStream)
             } else {
                 const server = new Server(this.dir.child(tab.path))
-                server.add_module('app', this.def)
+                server.add_module('app', Extension.def)
                 
                 this.editor.enable()
                 this.editor.enableLineNo()
@@ -74,12 +82,13 @@ class MainActivity extends Activity {
         this.editor.disableLineNo()
         
         const savefile = new File('.sourcode')
+        // console.log({ savefile })
         
         if (savefile.exists()) {
             const data = JSON.parse(savefile.read())
             
             if (data.active_file) {
-                this.openFile(data.active_file)
+                this.openFile(new File(data.active_file))
             }
         }
     }
@@ -88,34 +97,49 @@ class MainActivity extends Activity {
     onCreateOptionMenu(menu) {
         menu.addItem("save", "Save", "icon/save.svg");
         menu.addItem("run", "Run", "icon/play-arrow.svg");
+        menu.addItem("settings", "Settings", "icon/settings.svg");
+    }
+
+    load_setting() {
+        const file = new File('.settings')
+
+        if (!file.exists()) return
+
+        const settings = JSON.parse(file.read())
+
+        if (settings.theme) {
+            Theme.set(settings.theme)
+        }
+    }
+
+    openSettings() {
+        const intent = new Intent(this, SettingsActivity)
+        intent.extras.set("name", "main")
+        this.startActivity(intent)
     }
 
     async load_def() {
-        const code = await (await fetch("./sour-lang/app.sour")).text()
-        const validator = new DefinationValidator(code)
-        validator.validate()
-
-        if (validator.errors.length) {
-            console.error(validator.errors)
-            return
+        try {
+            await Extension.init()
+            await Extension.load_all()
+        } catch (err) {
+            console.error(err)
         }
-
-        return validator.exports
     }
     
-    openFile(path) {
-        if (this.tabs.some(tab => tab.path === path)) return
+    openFile(file) {
+        if (this.tabs.some(tab => tab.path === file.path)) return
         
-        const content = new Mutable(new File(path).read())
+        const content = new Mutable(file.read())
         
         this.tabs.push({
             type: 'file',
-            path, content
+            path: file.path, content
         })
         
-        content.subscribe(data => new File(path).write(data))
+        content.subscribe(data => file.write(data))
         
-        this.tabbar.addTab(path)
+        this.tabbar.addTab(file.name)
     }
     
     
@@ -133,6 +157,7 @@ class MainActivity extends Activity {
     runActiveFile() {
         const file = this.dir.child(this.active_file)
         const interpreter = new Interpreter(file);
+        interpreter.add_module('app', this.def, DEF_APP)
         
         if (!this.tabs.some(tab => tab.type == 'output')) {
             this.tabs.push({
@@ -164,75 +189,6 @@ class MainActivity extends Activity {
             }
         })();
     }
-}
-
-class File {
-    
-    #path
-    
-    constructor(path) {
-        this.#path = path
-    }
-    
-    exists() {
-        return this.name in JSON.parse(localStorage.getItem(this.parent.path))
-    }
-    
-    create() {
-        try {
-            const data = JSON.parse(localStorage.getItem(this.parent.path))
-            data[this.name] = 'file'
-            localStorage.setItem(this.path, '')
-            localStorage.setItem(this.parent.path, JSON.stringify(data))
-            
-            return true
-        } catch {
-            return false
-        }
-    }
-    
-    read() {
-        return localStorage.getItem(this.path)
-    }
-    
-    write(data) {
-        localStorage.setItem(this.path, data)
-    }
-    
-    child(path) {
-        return new File(this.path + '/' + path)
-    }
-    
-    get list() {
-        return Object.keys(JSON.parse(localStorage.getItem(this.parent.path)))
-    }
-    
-    get name() {
-        return this.#path.split('/')
-            .filter(Boolean)
-            .at(-1) || '/'
-    }
-
-    get base() {
-        return this.name.split('.').slice(0, -1).join('.')
-    }
-    
-    get path() {
-        return '/' + this.#path.split('/')
-            .filter(Boolean)
-            .join('/')
-    }
-    
-    get parent() {
-        return new File('/' + this.#path.split('/')
-            .filter(Boolean)
-            .slice(0, -1)
-            .join('/'))
-    }
-}
-
-if (!localStorage.getItem('/')) {
-    localStorage.setItem('/', '{}')
 }
 
 Activity.start(MainActivity)

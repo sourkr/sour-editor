@@ -1,0 +1,14 @@
+{
+    "theme": {
+        "title": "Theme",
+        "type": "picker",
+        "values": {
+            "type": "js",
+            "script": "Theme.list()"
+        },
+        "onchange": {
+            "type": "js",
+            "script": "Theme.set(value)"
+        }
+    }
+}

@@ -46,10 +46,13 @@ export class ActionBar extends HTMLElement {
                     font-family: inherit;
                     padding: 15px 15px;
                     font-size: 1.1rem;
-                    border-bottom: 1px solid lightgrey;
+                    border-bottom: 1px solid;
                     gap: 10px;
+                    
                     background: inherit;
                     color: inherit;
+                    border-color: inherit;
+                    fill: inherit;
                 }
                 
                 .title {
@@ -59,6 +62,12 @@ export class ActionBar extends HTMLElement {
                 .icons {
                     display: flex;
                     gap: 10px;
+                }
+
+                i svg  {
+                    width: 24px;
+                    height: 24px;
+                    fill: inherit;
                 }
             </style>
             
@@ -84,7 +93,7 @@ export class ActionBar extends HTMLElement {
     
     set navigationIconSrc(src) {
         if (!this.#navicon) {
-            this.#navicon = new Image(24, 24)
+            this.#navicon = document.createElement('i')
             this.shadowRoot.querySelector(".title").before(this.#navicon)
             
             this.#navicon.onclick = () => {
@@ -93,16 +102,19 @@ export class ActionBar extends HTMLElement {
                 this.onnavigation?.(event)
             }
         }
-        
-        this.#navicon.src = src
+
+        // console.dir(this.#navicon)
+        // this.#navicon.src = src
+        loadSvg(this.#navicon, src)
     }
     
     set menu(menu) {
         const icons = this.shadowRoot.querySelector('.icons')
         
         menu._items.forEach(item => {
-            const icon = new Image(24, 24)
-            icon.src = item.iconSrc
+            const icon = document.createElement("i")
+            loadSvg(icon, item.iconSrc)
+            
             icons.append(icon)
             icon.onclick = () => {
                 const event = new CustomEvent('menuitemclicked', { detail: item.itemId })
@@ -119,10 +131,19 @@ export class Coordinator extends HTMLElement {
     constructor() {
         super()
         
-        this.style.display = 'flex'
         this.style.flexDirection = 'column'
         this.style.position = 'relative'
         this.style.height = '100dvh'
+
+        this.hide()
+    }
+
+    show() {
+        this.style.display = 'flex'
+    }
+
+    hide() {
+        this.style.display = 'none'
     }
     
     connectedCallback() {        
@@ -130,7 +151,7 @@ export class Coordinator extends HTMLElement {
         
         let index = 1
         
-        if (this.children[index].localName == 'tab-bar') {
+        if (this.children[index]?.localName == 'tab-bar') {
             index++
         }
         
@@ -247,13 +268,17 @@ export class FileTree extends HTMLElement {
     }
     
     setFolder(dir, context) {
+        this.dir = dir
+        this.context = context
+        
         const rootDir = document.createElement('div')
-        const icon = new Image(24, 24)
+        const icon = new Svg(24, 24)
         const title = document.createElement('span')
         
         this.wrapper.innerHTML = ''
         rootDir.classList.add('dir')
         icon.src = R.drawable.ic_folder
+        // icon.style.mask = `url(${R.drawable.ic_folder})`
         title.innerText = dir.name
         
         rootDir.append(icon, title)
@@ -261,24 +286,7 @@ export class FileTree extends HTMLElement {
         
         rootDir.oncontextmenu = ev => {
             ev.preventDefault()
-            
-            const sheet = new BottomSheet()
-            const menu = new Menu()
-            
-            menu.addItem('new-file', 'Create File')
-            sheet.menu = menu
-            
-            sheet.onmenuitemclicked = ev => {
-                switch(ev.detail) {
-                    case 'new-file': {
-                        dir.child(prompt('Enter File Name:')).create()
-                        this.setFolder(dir, context)
-                        break
-                    }
-                }
-            }
-            
-            sheet.open(context.content)
+            this.#showBottomSheet(context, dir)
         }
         
         let layout;
@@ -299,26 +307,64 @@ export class FileTree extends HTMLElement {
         
         dir.list.forEach(name => {
             const layout = document.createElement('div')
-            const icon = new Image(24, 24)
+            const icon = new Svg(24, 24)
             const title = document.createElement('span')
+            const file = dir.child(name)
             
             layout.classList.add('dir')
             layout.style.marginLeft = `${24 * tab}px`
-            icon.src = R.drawable.ic_file
+            icon.src = file.is_file ? R.drawable.ic_file : R.drawable.ic_folder
             title.innerText = name
-            
             
             layout.append(icon, title)
             root.append(layout)
             
             layout.onclick = () => {
-                const event = new CustomEvent('itemclick', { detail: `${name}` })
-                this.onitemclick?.(event)
+                if (file.is_file) {
+                    const event = new CustomEvent('itemclick', { detail: file })
+                    this.onitemclick?.(event)
+                } else {
+                    this.#listFolder(layout, file, tab + 1)
+                    icon.src = R.drawable.ic_folder_open
+                }
+            }
+
+            if (file.is_dir) {
+                layout.oncontextmenu = () => {
+                    this.#showBottomSheet(this.context, file)
+                }
             }
         })
         
         dirItem.after(root)
         return root
+    }
+
+    #showBottomSheet(context, file) {
+        const sheet = new BottomSheet()
+        const menu = new Menu()
+
+        if (file.is_dir) {
+            menu.addItem('new-file', 'Create File')
+        }
+
+        sheet.menu = menu
+
+        sheet.onmenuitemclicked = ev => {
+            switch(ev.detail) {
+                case 'new-file': {
+                    file.child(prompt('Enter File Name:')).create()
+                    this.full_refresh()
+                    break
+                }
+            }
+        }
+
+        sheet.open(context.content)
+    }
+
+    full_refresh() {
+        this.setFolder(this.dir)
     }
 }
 
@@ -334,8 +380,6 @@ export class BottomSheet extends HTMLElement {
                     --border-radius: 30px;
                     
                     display: block;
-                    background: white;
-                    color: inherit;
                     position: absoulte;
                     bottom: 0;
                     box-shadow: 0 0 5px 0px lightgrey;
@@ -343,6 +387,10 @@ export class BottomSheet extends HTMLElement {
                     border-top-right-radius: var(--border-radius);
                     padding: 30px;
                     z-index: 1;
+
+                    fill: inherit;
+                    background: inherit;
+                    color: inherit;
                 }
                 
                 .item {
@@ -410,25 +458,57 @@ export class Menu {
 }
 
 export class Activity {
+    static #activities = []
     #content
+
+    startActivity(intent) {
+        const activity = new intent.Activity()
+        intent.context?.onPause()
+        activity.intent = intent
+        activity.#start()
+    }
     
-    onCreate() {}
+    async onCreate() {
+        history.pushState(null, null, location.href);
+        Activity.#activities.push(this)
+    }
+
+    onBackPressed() {
+        this.onDestroy()
+    }
+
+    onPause() {
+        this.#content.hide()
+    }
+
+    onResume() {
+        history.pushState(null, null, location.href);
+        this.#content.show()
+    }
+
+    onDestroy() {
+        this.onPause()
+        
+        Activity.#activities.pop()
+        Activity.#activities.at(-1)?.onResume()
+    }
     
-    onCreateOptionMenu(menu) {}
+    onCreateOptionMenu(_menu) {}
     
     static async start(activityConstructor) {
-        const activity = new activityConstructor()
-        await activity.onCreate()
+        window.addEventListener('popstate', () => {
+            this.#activities.at(-1)?.onBackPressed()
+        });
         
-        const menu = new Menu()
-        activity.onCreateOptionMenu(menu)
-        activity.actionBar.menu = menu
+        const activity = new activityConstructor()
+        await activity.#start()        
     }
     
     set content(content) {
         if (content instanceof HTMLElement) {
             content.display = 'flex'
             this.#content = content
+            this.#content.show()
         }
         
         this.actionBar = this.querySelector('action-bar')
@@ -440,6 +520,25 @@ export class Activity {
     
     querySelector(id) {
         return this.#content.querySelector(id)
+    }
+
+    async #start() {
+        await this.onCreate()
+
+        if (this.actionBar) {
+            const menu = new Menu()
+            this.onCreateOptionMenu(menu)
+            this.actionBar.menu = menu
+        }
+    }
+}
+
+export class Intent {
+    extras = new Map()
+    
+    constructor(context, Activity) {
+        this.context = context
+        this.Activity = Activity
     }
 }
 
@@ -457,6 +556,9 @@ class TabBar extends HTMLElement {
                     display: flex;
                     border-bottom: 1px solid;
                     font-size: .9rem;
+
+                    background: inherit;
+                    color: inherit;
                 }
                 
                 .tab, div {
@@ -516,11 +618,55 @@ export class Mutable {
     }
 }
 
+export class Row extends HTMLElement {
+    constructor() {
+        super()
+        this.style.display = 'flex'
+    }
+}
+
+export class Svg extends HTMLElement {
+    constructor(width, height) {
+        super()
+
+        this.style.background = 'var(--icon-color)'
+        this.style.width = `${width}px`
+        this.style.height = `${height}px`
+    }
+
+    static get observedAttributes() {
+        return ['src']
+    }
+    
+
+    set src(value) {
+        this.setAttribute('src', value)
+    }
+
+    get src() {
+        return this.getAttribute('src')
+    }
+
+
+    attributeChangedCallback(name, _old, value) {
+        if (name === 'src') {
+            this.style.mask = `url(${value})`
+            return
+        }
+    }
+}
+
+export async function loadSvg(html, src) {
+    html.innerHTML = await (await fetch(src)).text()
+}
+
 customElements.define("action-bar", ActionBar)
 customElements.define("coordinator-layout", Coordinator)
 customElements.define("nav-drawer", Drawer)
 customElements.define("file-tree", FileTree)
 customElements.define("bottom-sheet", BottomSheet)
 customElements.define("tab-bar", TabBar)
+customElements.define("row-layout", Row)
+customElements.define("svg-img", Svg)
 
 // cubic-bezier(0.68, -0.55, 0.27, 1.55)

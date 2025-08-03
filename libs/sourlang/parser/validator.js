@@ -1,8 +1,11 @@
 import { ErrorData } from "./base.js"
 import Parser from './parser.js';
 import BUILTINS from "./builtin.js"
-import { node_to_type, clone_type, gen_func_alias } from "./util.js"
-import { Scope } from "./scope.js"
+import { clone_type, gen_func_alias } from "./util.js"
+import { ClassScope, Scope } from "./scope.js"
+import File from "../../../file.js"
+
+import "../libs.js"
 
 const OP_NAMES = new Map([
     ['+', '_add'],
@@ -43,6 +46,7 @@ export default class Validator {
     }
 
     stmt(stmt, scope) {
+        // File
         if (stmt.type === 'export') {
             const def = this.stmt(stmt.def, scope)
             def.is_used = true
@@ -59,7 +63,17 @@ export default class Validator {
             
             let exports
             
-            if (this.#modules.has(path)) {
+            if (new File(`/libs/${path}.sour`).exists()) {
+                const file = new File(`/libs/${path}.sour`)
+                const validator = new Validator(file.read(), file)
+                const prog = validator.validate()
+
+                for (let err of prog.errors) {
+                    this.errors.push(err)
+                }
+                
+                exports = prog.exports
+            } else if (this.#modules.has(path)) {
                 exports = this.#modules.get(path)
             } else {
                 const file = this.#file.parent.child(path + '.sour')
@@ -79,70 +93,84 @@ export default class Validator {
                 exports = prog.exports
             }
 
-            exports.get_all_funcs().forEach(func => this.globals.def_func(func))
+            exports?.get_all_funcs().forEach(func => this.globals.def_func(func))
+        }
+
+        if (stmt.type === "class-dec") {
+            const name = stmt.name.value
+            const clsBodyScope = new Scope(scope);
+            const clsScope = new ClassScope()
+
+    		// if (cls.node.generic) {
+    		// 	cls.node.generic.list.forEach((node) => {
+    		// 		const def = {
+    		// 			type: "class",
+    		// 			name: node.value,
+    		// 			scope: new ClassScope(),
+    		// 			is_type: true,
+    		// 			node,
+    		// 		}
+
+    		// 		clsBodyScope.def_class(node.value, def)
+    		// 	})
+
+    		// 	cls.generic = cls.node.generic.list.map((node) => node.value)
+    		// }
+    		const cls = stmt.doc = {
+                type: "class",
+                name,
+                scope: clsScope
+            }
+
+            clsBodyScope.def_var("this", { type: "ins", cls })
+		
+		    stmt.body.list.forEach((node) => {
+                if (node.type === "var-def") {
+                    const def = clone_type(this.node_to_type(scope, node.var_type))
+
+                    def.is_prop = true
+                    def.prop_name = node.name.value
+                    def.class_name = cls.name
+
+                    node.doc = def
+
+                    clsScope.def_prop(node.name.value, def)
+                }
+
+                if (node.type === "var-dec") {
+                    const type = clone_type(this.expr(node.val, scope))
+
+                    type.is_prop = true
+                    type.prop_name = node.name.value
+                    type.class_name = cls.name
+
+                    node.doc = type
+
+                    clsScope.def_prop(node.name.value, type)
+                }
+
+    			if (node.type === "func-dec") {
+    			    const def = this.func_dec(node, clsBodyScope)
+
+    			    if (def.name === 'constructor') {
+    			        def.is_used = true
+    			    }
+
+    				clsScope.def_meth(def)
+    			}
+    		});
+
+
+            scope.def_class(name, cls)
+            return cls
         }
         
+        
+        // Def
         if (stmt.type === 'func-dec') {
-            const name = stmt.name.value
-            const funcs = this.globals.get_funcs(name)
-            
-            const params = stmt.params.list
-                .map(param => {
-                    const type = clone_type(this.node_to_type(scope, param.type))
-                    param.doc = type
-                    type.is_param = true
-                    type.param_name = param.name.value
-                    
-                    return { name: param.name, type }
-                })
-
-            // console.log(params);
-            
-            for (let func of funcs) {
-                if (func.params.length !== params.length) continue
-                if (!func.params.every((param, i) => equal_type(params[i].type, param.type))) continue
-                
-                
-                const paramStr = params
-                    .map(p => p.type)
-                    .map(type_to_str)
-                    .join(',')
-                
-                this.error(`Function ${name}(${paramStr}) is already defined`, stmt.name)
-                return
-            }
-            
-            const names = new Set()
-            
-            for(let param of params) {
-                const name = param.name.value
-                
-                if (names.has(name)) {
-                    this.error(`Parameter ${name} is already defined`, param.name)
-                    return
-                }
-                
-                names.add(name)
-            }
-            
-            const func = {
-                type: 'func',
-                name,
-                params: params.map(p => { return { type: p.type, name: p.name.value } }),
-                retType: this.node_to_type(scope, stmt.retType),
-                doc: stmt.doc
-            }
-            
-            this.globals.def_func(func)
-            stmt.doc = func
-            
-            stmt.alias = stmt.doc.alias = gen_func_alias(func)
-            
-            const funcScope = new Scope(scope)
-            params.forEach(param => funcScope.def_var(param.name.value, param.type))
-            this.validate_body(stmt.body.list, funcScope)
-            
-            return func
+            const func_def = this.func_dec(stmt, scope)
+            scope.def_func(func_def)
+            return func_def
         }
         
         if (stmt.type === 'if') {
@@ -194,6 +222,67 @@ export default class Validator {
         
         this.expr(stmt, scope)
     }
+
+    func_dec(node, scope) {
+        const name = node.name.value
+        const funcs = this.globals.get_funcs(name)
+
+        const params = node.params.list
+            .map(param => {
+                const type = clone_type(this.node_to_type(scope, param.type))
+                param.doc = type
+                type.is_param = true
+                type.param_name = param.name.value
+
+                return { name: param.name, type }
+            })
+
+        for (let func of funcs) {
+            if (func.params.length !== params.length) continue
+            if (!func.params.every((param, i) => equal_type(params[i].type, param.type))) continue
+
+
+            const paramStr = params
+                .map(p => p.type)
+                .map(type_to_str)
+                .join(',')
+
+            this.error(`Function ${name}(${paramStr}) is already defined`, node.name)
+            return
+        }
+
+        const names = new Set()
+
+        for (let param of params) {
+            const name = param.name.value
+
+            if (names.has(name)) {
+                this.error(`Parameter ${name} is already defined`, param.name)
+                return
+            }
+
+            names.add(name)
+        }
+
+        const func = {
+            type: 'func',
+            name,
+            params: params.map(p => { return { type: p.type, name: p.name.value } }),
+            retType: this.node_to_type(scope, node.retType),
+            doc: node.doc
+        }
+
+        // this.globals.def_func(func)
+        node.doc = func
+
+        node.alias = node.doc.alias = gen_func_alias(func)
+
+        const funcScope = new Scope(scope)
+        params.forEach(param => funcScope.def_var(param.name.value, param.type))
+        this.validate_body(node.body.list, funcScope)
+
+        return func        
+    }
     
     validate_body(body, scope) {
         for (const node of body) {
@@ -235,13 +324,18 @@ export default class Validator {
                     return { type: 'simple', name: 'error' }
                 }
 
-                func = get_suitable_func(left.cls.scope.get_meths(name), access, args, errors)
+                const generics = new Map()
+
+                left.cls.generic?.forEach((name, index) => {
+                    generics.set(name, left.generic[index])
+                })
+                
+                func = get_suitable_method(left.cls.scope.get_meths(name), access, args, generics, errors)
             }
             
             if (!func) {
-                // console.log(errors)
                 const argsStr = args.map(type_to_str).join(',')
-                this.error(`Cannot find suitable function call for ${access}(${argsStr})\n\n${errors.join('\n\n')}`, expr.access)
+                this.error(`Cannot find suitable method call for ${access}(${argsStr})\n\n${errors.join('\n\n')}`, expr.access.right || expr.access)
                 return { type: 'simple', name: 'error' }
             }
             
@@ -261,6 +355,7 @@ export default class Validator {
             }
 
             const cls = expr.doc = scope.get_class(name)
+            let generic
 
             if (cls.generic) {
                 if (!expr.generic) {
@@ -273,12 +368,41 @@ export default class Validator {
                     return { type: 'simple', name: 'error' }
                 }
 
-                const generic = expr.generic.list.map((type) => this.node_to_type(scope, type))
+                generic = expr.generic.list.map((type) => this.node_to_type(scope, type))
 
-                return { type: 'ins', cls, generic }
+                // return { type: 'ins', cls, generic }
             }
 
-            return cls
+            const args = expr.args.list.map(arg => this.expr(arg, scope))
+            const errors = []
+
+            if (!cls.scope.has_meths('constructor')) {
+                this.error(`${name}() is not a valid constructor`, expr.name)
+                return
+            }
+
+            const constr = get_suitable_func(cls.scope.get_meths('constructor'), 'constrctor', args, errors)
+
+            if (!constr) {
+                const argsStr = args.map(type_to_str).join(',')
+                this.error(`Cannot find suitable constrctor for ${name}(${argsStr})\n\n${errors.join('\n\n')}`, expr.name)
+                return { type: 'simple', name: 'error' }
+            }
+
+            expr.alias = gen_func_alias(constr)
+
+            return { type: 'ins', cls, generic }
+        }
+
+        if (expr.type === "assign") {
+            const left = this.expr(expr.access, scope)
+            const right = this.expr(expr.value, scope)
+
+            if (!equal_type(left, right)) {
+                this.error(`${type_to_str(right)} is not assignable to ${type_to_str(left)}`, expr.value)
+            }
+
+            return left
         }
         
         if (expr.type === 'op') {
@@ -300,6 +424,25 @@ export default class Validator {
             this.error(`${type_to_str(left)} ${expr.op.value} ${type_to_str(right)} is not a valid opeator`, expr.op)
         }
     
+        if (expr.type === 'op2') {
+            const left = this.expr(expr.left, scope)
+            const right = this.expr(expr.right, scope)
+            const name = OP_NAMES.get(expr.op)
+
+            if (is_error_type(left) || is_error_type(right)) {
+                return { type: 'simple', name: 'error' }
+            }
+            
+            const func = get_suitable_func(left.scope.get_meths(name), name, [right])
+            
+            if (func) {
+                expr.alias = func.alias
+                return func.retType
+            }
+
+            this.error(`${type_to_str(left)} ${expr.op} ${type_to_str(right)} is not a valid opeator`, expr)
+        }
+        
         if (expr.type === 'dot') {
             const left = this.expr(expr.left, scope)
 
@@ -314,6 +457,9 @@ export default class Validator {
                 this.error(`'${name}' is not a property of ${type_to_str(left)}`, expr.right)
                 return { type: 'simple', name: 'error' }
             }
+
+            const type = left.cls.scope.get_prop(name)
+            type.is_used = true
 
             return expr.right.doc = left.cls.scope.get_prop(name)
         }
@@ -382,6 +528,7 @@ export default class Validator {
             
             if (scope.has_var(name)) {
                 const type = scope.get_var(name)
+                // console.log(name, scope, type)
                 expr.doc = type
                 type.is_used = true
                 return type
@@ -457,6 +604,42 @@ function get_suitable_func(funcs, name, args, errors = []) {
     }
 }
 
+function get_suitable_method(meths, name, args, generics, errors = []) {
+    for (let meth of meths) {
+        const params = meth.params.map(({ name, type }) => {
+            if (type.type == 'class') {
+                if (generics.has(type.name)) {
+                    return generics.get(type.name)
+                }
+            }
+            
+            return type
+        })
+                
+        let index = 0
+        let found = true
+
+        while (params.length) {
+            if (!equal_type(params[0], args[index])) {
+                found = false
+                break
+            }
+
+            params.shift()
+            index++
+        }
+
+        if (!found) {
+            const paramsStr = meth.params.map(p => type_to_str(p.type)).join(',')
+            const argsStr = args.map(type_to_str).join(',')
+
+            errors.push(`${name}(${argsStr}) is not applicable for ${name}(${paramsStr})`)
+        } else {
+            return meth
+        }
+    }
+}
+
 function type_to_str(type) {
     if (type.type === 'simple') {
         return type.name
@@ -490,28 +673,6 @@ function equal_type(a, b) {
 function is_error_type(type) {
     if (!type) return true
     return type.name === 'error'
-}
-
-/** @deprecated */
-function typeToStr(type, alias) {
-    if (type?.type == 'simple') {
-        return type.name
-    }
-}
-
-/** @deprecated */
-function equalType(a, b) {
-    if (a?.type !== b?.type) return false
-    
-    if (a.type === 'simple') {
-        return a.name === b.name
-    }
-
-    if (a.type === 'class') {
-        return a.name === b.name
-    }
-    
-    return false
 }
 
 export class GlobalScope {

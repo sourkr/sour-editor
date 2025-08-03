@@ -41,8 +41,10 @@ class bool {}
 
 class char {
     func _add(n: byte): char
+	func _eq(n: char): bool
 }
 
-class Map<K,T> {
-    func set(key: K, value: T): void
+class Map<K,V> {
+	func constructor(): void
+    func set(key: K, value: V): void
 }
