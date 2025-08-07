@@ -1,8 +1,10 @@
-import { Activity, R, Row } from "./libs/ui/core.js";
+import { Activity, R, Row, Text } from "./libs/ui/core.js";
 import Theme from "./theme.js"
 import File from "./file.js"
 
 export default class SettingsActivity extends Activity {
+    isFirst = true
+    
     /** @override */
     async onCreate() {
         super.onCreate()
@@ -19,49 +21,90 @@ export default class SettingsActivity extends Activity {
         })
     }
 
+    onDestroy() {
+        
+    }
+
     add_setting(name, data) {
         const layout = new Row()
-        const title = document.createElement('span')
+        const title = new Text(data.title)
 
         if (data.type !== 'group') {
-            const right = this.create_right(data, value => {
+            const selected = Settings.get(name)
+            const right = this.create_right(data, selected, value => {
                 if (data.onchange.type === 'js') {
                     eval(data.onchange.script)
                 }   
                 
-                const file = new File('.settings')
-
-                if (!file.exists()) {
-                    file.create()
-                    file.write('{}')
-                }
-
-                const settings = JSON.parse(file.read())
-                settings[name] = value
-                file.write(JSON.stringify(settings))
+                Settings.set(name, value)
             })
 
             layout.append(title, right)
         }
 
-        title.innerText = data.title
+        layout.style.padding = "10px"
+
+        if (!this.isFirst) {
+            // layout.style.borderTop = `1px solid var(--border)`
+        }
+
+        title.style.cssText = `
+            flex: 1;
+        `
+
+        this.isFirst = false
 
         this.content.append(layout)
     }
 
-    create_right(data, callback) {
+    create_right(data, selected, callback) {
         if (data.type === 'picker') {
             const select = document.createElement('select')
 
-            if (data.values.type === 'js') {
-                eval(data.values.script).forEach((option, i) => {
-                    select.append(new Option(option, option));
-                })
+            let values = []
+            
+            if (Array.isArray(data.values)) {
+                values = data.values
             }
+            
+            if (data.values.type === 'js') {
+                values = eval(data.values.script)
+            }
+            
+            values.forEach(option => {
+                select.append(new Option(option, option, false, selected === option));
+            })
 
-            select.onchange = ev => callback(select.value)
+            select.onchange = () => callback(select.value)
 
             return select
         }
+    }
+}
+
+export class Settings {
+    static #file = new File(".settings")
+    static #settings
+
+    static {
+        if (!this.#file.exists()) {
+            this.#file.create()
+            this.#file.write("{}")
+        }
+
+        this.#settings = JSON.parse(this.#file.read())
+    }
+
+    static has(name) {
+        return name in this.#settings
+    }
+
+    static get(name) {
+        return this.#settings[name]
+    }
+
+    static set(name, value) {
+        this.#settings[name] = value
+        this.#file.write(JSON.stringify(this.#settings))
     }
 }

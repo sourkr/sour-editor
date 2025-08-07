@@ -2,6 +2,10 @@ import * from "app"
 
 var theme = new Map<string, string>()
 
+theme.set("background", "#21252B")
+theme.set("border", "#181A1F")
+theme.set("foreground", "#ABB2BF")
+
 theme.set("topbar-background", "#21252B")
 theme.set("topbar-border", "#181A1F")
 theme.set("topbar-foreground", "#ABB2BF")

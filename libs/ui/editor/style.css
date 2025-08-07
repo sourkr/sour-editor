@@ -1,11 +1,12 @@
 :host {
-    font-family: inherit;
-    width: fit-content;
-    height: fit-content;
-    padding: 10px 10px 10px 0;
+    /* width: fit-content; */
+    height: 100%;
+    /* flex: 1; */
+    /* padding: 10px 10px 10px 0; */
     font-size: 16px;
     border-color: inherit;
 
+    font-family: inherit;
     background: inherit;
     color: inherit;
 
@@ -34,26 +35,59 @@
 }
 
 .wrapper {
+    position: relative;
     width: 100%;
     height: 100%;
     display: flex;
+    overflow-y: scroll;
 }
 
 .lineno {
-    padding-inline: 10px 10px;
-    font-size: inherit;
+    display: none;
+    padding-top: 10px;
+    font-family: inherit;
     text-align: end;
     line-height: 1.5;
-    overflow-y: scroll;
+    font-weight: normal;
+    box-sizing: border-box;
+    min-height: 100%;
+    height: fit-content;
 
+    font-size: inherit;
     background: var(--lineno-background);
     color: var(--lineno-foreground);
+
+    .line {
+        padding-inline: 10px 10px;
+    }
+
+    .cur-line {
+        padding-inline: 10px 10px;
+        color: white;
+        background: hsl(0deg, 0%, 100%, .05);
+    }
 }
 
 .editor {
+    padding-top: 10px;
     position: relative;
     flex: 1;
-    overflow-x: scroll;
+    overflow: hidden;
+    min-height: 100%;
+    height: fit-content;
+    /* padding-left: 5px; */
+
+    background: inherit;
+
+    .cur-line {
+        background: hsl(0deg, 0%, 100%, .05);
+        padding-left: 5px;
+        width: 100%;
+    }
+
+    .line {
+        padding-left: 5px;
+    }
 }
 
 textarea,
@@ -65,7 +99,7 @@ pre {
     border: none;
     font-size: inherit;
     width: 100%;
-    height: 100%;
+    /* min-height: 100%; */
     line-height: 1.5;
     font-weight: normal;
     box-sizing: border-box;
@@ -75,33 +109,21 @@ pre {
 textarea {
     position: absolute;
     resize: none;
-    color: transparent;
+    color: inherit;
     background: transparent;
-    top: 0;
-    padding-left: 5px;
+    top: 10px;
     caret-color: white;
     white-space: nowrap;
-    overflow-x: scroll;
+    padding-left: 5px;
 }
 
 pre {
+    display: none;
     color: inherit;
-    background: inherit;
-    overflow-x: scroll;
+    background: transparent;
+    overflow-x: hidden;
 }
 
-.cur-line {
-    background: hsl(0deg, 0%, 100%, .05);
-    padding-left: 5px;
-    width: 100%;
-}
-
-.line {
-    /* padding: 0; */
-    /* margin: 0; */
-    padding-left: 5px;
-    /* background: green; */
-}
 
 .tok-kw {
     color: var(--token-keyword-control);

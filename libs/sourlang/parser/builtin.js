@@ -18,8 +18,6 @@ async function main() {
 		throw new Error("Failed to parse buildin.sour");
 	}
 
-	console.log(ast)
-
 	ast.filter((node) => node.type === "class-def").forEach((node) => {
 		const def = {
 			type: "class",
@@ -61,7 +59,6 @@ async function main() {
 				def.prop_name = node.name.value
 				def.class_name = cls.name
 				cls.scope.def_prop(node.name.value, def);
-				// console.log(cls.scope)
 			}
 
 			if (node.type === "func-def") {

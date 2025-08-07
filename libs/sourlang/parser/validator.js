@@ -208,8 +208,6 @@ export default class Validator {
         if (stmt.type === 'var-dec') {
             const type = clone_type(this.expr(stmt.val, scope))
 
-            // console.log(stmt.val, type)
-            
             if (type) {
                 stmt.doc = type
                 type.is_var = true
@@ -528,7 +526,6 @@ export default class Validator {
             
             if (scope.has_var(name)) {
                 const type = scope.get_var(name)
-                // console.log(name, scope, type)
                 expr.doc = type
                 type.is_used = true
                 return type

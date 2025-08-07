@@ -1,23 +1,22 @@
 :root {
-    --tooltip-background: green;
-    
-    --zed-button-background: #0e639c;
-    --zed-button-hover-background: #1177bb;
-    --zed-output-background: #2d2d2d;
-    --zed-font: 'Zed Mono Extended', 'JetBrains Mono', 'Source Code Pro', 'Menlo', 'Consolas', 'DejaVu Sans Mono', monospace;
-    --zed-action-bar-background: #2c2c2d;
-    /* Slightly different from editor for visual separation */
-    --zed-action-button-background: #3e3e42;
-    --zed-action-button-hover-background: #505054;
+    --zed-font: 'Zed Mono Extended';
 }
 
 body {
     font-family: var(--zed-font);
-    color: var(--color-on-background);
-    background: var(--color-background);
-    
+    color: var(--foreground);
+    background: var(--background);
+
     margin: 0;
     padding: 0;
+
+    overflow: hidden;
+    height: 100mvh;
+    /* background: red; */
+}
+
+coordinator-layout {
+    /* height: 100vh; */
 }
 
 action-bar {
@@ -44,20 +43,21 @@ bottom-sheet {
     flex-direction: column;
     overflow: hidden;
     flex: 1;
+    height: 100%;
 }
 
 code-editor {
     width: 100%;
     height: 100%;
     font-size: 10px;
-    
+
     background: var(--editor-background);
     color: var(--editor-foreground);
     border-color: var(--color-border);
-    
+
     --lineno-background: var(--editor-lineno-background);
     --lineno-foreground: var(--editor-lineno-foreground);
-    
+
     --token-keyword-control: var(--keyword-control);
     --token-keyword-storage: var(--keyword-storage);
     --token-string: var(--string);
@@ -67,13 +67,13 @@ code-editor {
     --token-function-name: var(--function-call);
     --token-class-name: var(--class-name);
     --token-variable: var(--variable);
-    
+
     --autocompletion-background: var(--autocomplete-background);
     --autocompletion-border: var(--autocomplete-border);
     --autocompletion-foreground: var(--autocomplete-foreground);
     --autocompletion-selected-background: var(--autocomplete-selected-background);
     --autocompletion-selected-foreground: var(--autocomplete-selected-foreground);
-    
+
     --widget-tooltip-background: var(--tooltip-background);
     --widget-tooltip-border: var(--tooltip-border);
     --widget-tooltip-foreground: var(--tooltip-foreground);

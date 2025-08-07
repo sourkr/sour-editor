@@ -1,10 +1,9 @@
 import { Activity, R, Mutable, Intent } from "ui/core.js";
-
-import "ui/editor/editor.js"
+import Editor from "ui/editor/editor.js"
 
 import Interpreter from "sour-lang/interpreter/interpreter.js";
 import Server from "sour-lang/server.js"
-import DefinationValidator from "sour-lang/parser/dvalidator.js"
+
 import DEF_APP from "./sour-lang/app.js";
 import Extension from "./extension.js";
 import File from "./file.js"
@@ -47,19 +46,18 @@ class MainActivity extends Activity {
             const tab = this.tabs[index]
             
             if (tab?.type == 'output') {
-                // this.editor.disable()
-                this.editor.disableLineNo()
+                this.editor.disableFeature(Editor.FEATURE.LINE_NUMBER)
                 this.editor.server = null
-                this.editor.value = tab.content
+                this.editor.text = tab.content
                 this.editor.outputStream = tab.outputStream
             } else {
                 const server = new Server(this.dir.child(tab.path))
                 server.add_module('app', Extension.def)
                 
                 this.editor.enable()
-                this.editor.enableLineNo()
+                this.editor.enableFeature(Editor.FEATURE.LINE_NUMBER)
                 this.editor.server = server
-                this.editor.value = tab.content
+                this.editor.text = tab.content
                 this.editor.outputStream = null
                 
                 const savefile = new File('.sourcode')
@@ -79,8 +77,8 @@ class MainActivity extends Activity {
         // Initilize Editor
         this.editor.server = null
         this.editor.disable()
-        this.editor.disableLineNo()
-        
+        this.editor.disableFeature(Editor.FEATURE.LINE_NUMBER)
+       
         const savefile = new File('.sourcode')
         // console.log({ savefile })
         
@@ -114,7 +112,10 @@ class MainActivity extends Activity {
 
     openSettings() {
         const intent = new Intent(this, SettingsActivity)
+        
         intent.extras.set("name", "main")
+        intent.extras.set("editor", this.editor)
+        
         this.startActivity(intent)
     }
 
@@ -192,3 +193,11 @@ class MainActivity extends Activity {
 }
 
 Activity.start(MainActivity)
+
+// navigator.virtualKeyboard.overlaysContent = true;
+
+// navigator.virtualKeyboard.addEventListener("geometrychange", (event) => {
+//     const { x, y, width, height } = event.target.boundingRect;
+
+//     document.body.style.height = `calc(100dvh - ${height}px)`
+// });

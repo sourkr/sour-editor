@@ -134,6 +134,7 @@ export class Coordinator extends HTMLElement {
         this.style.flexDirection = 'column'
         this.style.position = 'relative'
         this.style.height = '100dvh'
+        this.style.overflow = "hidden"
 
         this.hide()
     }
@@ -660,6 +661,15 @@ export async function loadSvg(html, src) {
     html.innerHTML = await (await fetch(src)).text()
 }
 
+
+export class Text extends HTMLElement {
+    constructor(text) {
+        super()
+
+        this.innerText = text
+    }
+}
+
 customElements.define("action-bar", ActionBar)
 customElements.define("coordinator-layout", Coordinator)
 customElements.define("nav-drawer", Drawer)
@@ -668,5 +678,5 @@ customElements.define("bottom-sheet", BottomSheet)
 customElements.define("tab-bar", TabBar)
 customElements.define("row-layout", Row)
 customElements.define("svg-img", Svg)
-
+customElements.define("text-span", Text)
 // cubic-bezier(0.68, -0.55, 0.27, 1.55)

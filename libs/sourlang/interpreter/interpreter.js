@@ -38,7 +38,6 @@ export default class Interpreter {
 
 
         this.globals.def_func('_stdout__char', (args, prog) => {
-            console.log('from', this.name)
             this.inputStream.write(String.fromCharCode(args[0].value));
             prog.resolve();
         })
@@ -128,8 +127,6 @@ export default class Interpreter {
                 module.get_all_classes()
                     .forEach(cls  => this.globals.def_class(cls.name, cls))
 
-                console.log(module,  this.globals)
-
                 prog.resolve()
             } else if (new File(`/libs/${path}.sour`).exists()) {
                 const file = new File(`/libs/${path}.sour`)
@@ -146,7 +143,6 @@ export default class Interpreter {
                         console.warn('import failed', err)
                     },
                     resolve: () => {
-                        // console.log('import', interpreter.exports.get_all_funcs().toArray())
                         interpreter.exports.get_all_funcs()
                             .forEach(e => {
                                 this.globals.def_func(e.name, e.value)
@@ -171,7 +167,6 @@ export default class Interpreter {
                         console.warn('import failed', err)
                     },
                     resolve: () => {
-                        console.log('import', interpreter.exports)
                         interpreter.exports.get_all_funcs().forEach((func, name) => {
                             this.globals.def_func(name, func)
                         })
@@ -218,7 +213,6 @@ export default class Interpreter {
 
         // Def
         if (expr.type == "func-dec") {
-            console.log(expr, scope, this.#file)
             scope.def_func(expr.alias, (args, prog) => {
                 const funcScope = new FunctionScope(scope);
                 
@@ -237,7 +231,6 @@ export default class Interpreter {
                 });
             });
 
-            // console.log('def func', expr.alias, scope.get_func(expr.alias))
             prog.resolve({ type: "func", name: expr.alias, def: scope.get_func(expr.alias) });
             return;
         }
@@ -508,6 +501,10 @@ export default class Interpreter {
             .join('\n')
         
         return `${header}\n${stack}`;
+    }
+
+    promiseExpr(expr, scope, prog) {
+        
     }
 }
 

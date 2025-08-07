@@ -26,7 +26,7 @@ export default class Extension {
             const file = new File(`/extensions/${path}`)
 
             if(!file.create()) {
-                console.log(`Failed to create file ${file}`)
+                console.warn(`Failed to create file ${file}`)
             }
             file.write(code)
         }
@@ -42,7 +42,6 @@ export default class Extension {
         await this.#load_default_extensions()
 
         for(let file of dir.files) {
-            console.log(file)
             await this.load_extension(file)
         }
     }

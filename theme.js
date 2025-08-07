@@ -17,7 +17,6 @@ export default class Theme {
     }
 
     static list() {
-        console.log(this.#themes)
         return this.#themes.keys()
     }
 

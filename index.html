@@ -1,13 +1,23 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, interactive-widget=resizes-content">
+
     <title>Sour Editor</title>
-    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet" />
-    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Source+Code+Pro:wght@400;500;700&display=swap" rel="stylesheet">
+
+    <link
+        href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200"
+        rel="stylesheet" />
+
+    <link
+        href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Source+Code+Pro:wght@400;500;700&display=swap"
+        rel="stylesheet">
+
     <link rel="stylesheet" href="style.css">
-    
+
     <script type="importmap">{
         "imports": {
             "ui/": "./libs/ui/",
@@ -20,23 +30,24 @@
     <coordinator-layout id='main'>
         <action-bar></action-bar>
         <tab-bar></tab-bar>
-        
+
         <div id="main">
             <code-editor></code-editor>
         </div>
-        
+
         <nav-drawer>
             <file-tree></file-tree>
         </nav-drawer>
-        
+
     </coordinator-layout>
-    
+
     <coordinator-layout id='settings'>
-        <action-bar></action-bar>        
+        <action-bar></action-bar>
     </coordinator-layout>
 
     <script src="https://cdn.jsdelivr.net/npm/eruda"></script>
     <script>eruda.init();</script>
     <script type="module" src="main.js"></script>
 </body>
+
 </html>

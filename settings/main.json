@@ -10,5 +10,19 @@
             "type": "js",
             "script": "Theme.set(value)"
         }
+    },
+    "font-size": {
+        "title": "Font Size",
+        "type": "picker",
+        "values": [
+            "10",
+            "12",
+            "14",
+            "16"
+        ],
+        "onchange": {
+            "type": "js",
+            "script": "this.intent.extras.get('editor').style.fontSize = value + 'px'"
+        }
     }
 }
