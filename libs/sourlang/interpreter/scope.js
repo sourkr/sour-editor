@@ -16,6 +16,7 @@ export class Scope {
         return this.#classes.get(name) || this.parent?.get_class(name)
     }
 
+
     *get_all_classes() {
 		yield* this.#classes.values()
 		if (this.parent) yield* this.parent.get_all_classes()

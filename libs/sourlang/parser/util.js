@@ -88,4 +88,16 @@ export function clone_type(type) {
 	}
 }
 
+export function node_to_str(node) {
+	// console.log(node)
+
+	if (node.type === "dot") {
+		return `${node_to_str(node.left)}.${node_to_str(node.right)}`
+	}
+
+	if (node.type === "ident") {
+		return node.value
+	}
+}
+
 export const TYPE_ERR = { type: 'simple', name: 'error' }

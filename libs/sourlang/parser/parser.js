@@ -1,8 +1,8 @@
 import { BaseParser } from "./base.js";
 
 export default class Parser extends BaseParser {
-    node(node_type) {
-        if (node_type === "file") {
+    node(...types) {
+        if (types.includes("file")) {
             if (this.is("kw", "import")) {
                 const kw = this.next();
                 const star = this.next("op", "*");
@@ -13,49 +13,32 @@ export default class Parser extends BaseParser {
             }
 
             if (this.is("kw", "export")) {
-                const kw = this.next();
-                const def = this.def();
+                const kw = this.next()
+                const def = this.node("def")
 
-                return { type: "export", kw, def };
+                return { type: "export", kw, def }
             }
 
+            if (this.is("kw", "while")) {
+                const kw = this.next()
+                const startTok = this.next("punc", "(")
+                const cond = this.expr()
+                const endTok = this.next("punc", ")")
+                const body = this.list("{}", this.stmt)
 
+                return { type: "while", kw, startTok, cond, endTok, body }
+            }
+        }
+
+        if (types.includes("def")) {
             if (this.is("kw", "class")) {
                 const kw = this.next()
                 const name = this.next("ident")
-                const body = this.list("{}", this.def)
+                const body = this.list("{}", () => this.node("def"))
 
                 return { type: "class-dec", kw, name, body }
             }
-
-            return this.node("def")
-        }
-
-        if (node_type === "def") {
-            return this.def()
-        }
-
-        if (node_type === "stmt") {
-            return this.stmt()
-        }
-
-        if (node_type === "expr") {
-            return this.expr()
-        }
-    }
-    
-    file() {
-        return this.node("file")
-    }
-
-    def(node_type = "def") {
-        // if (node_type == "file") {}
-
-        // if (node_type == "def") {}
-
-        // if (node_type == "stmt") {}
-
-        if (node_type !== "stmt") {
+            
             if (this.is("kw", "func")) {
                 const doc = this.lastComment?.value;
                 this.lastComment = null;
@@ -64,13 +47,31 @@ export default class Parser extends BaseParser {
                 const params = this.list("(,)", this.param);
                 const colon = this.next("punc", ":");
                 const retType = this.type();
-                const body = this.list("{}", this.stmt);
+                const body = this.list("{}", () => this.scope(this.stmt))
 
                 return { type: "func-dec", kw, name, params, colon, retType, body, doc }
             }
+
+            if (this.is("kw", "var")) return this.var()
         }
 
-        return this.stmt(node_type);
+        if (types.includes("stmt")) {
+            return this.stmt()
+        }
+
+        if (types.includes("expr")) {
+            return this.expr()
+        }
+
+        return super.file()
+    }
+    
+    file() {
+        return this.node("file", "def", "stmt")
+    }
+
+    def(node_type = "def") {
+        return this.node(node_type)
     }
 
     var() {
@@ -127,6 +128,7 @@ export default class Parser extends BaseParser {
 
                 return { type: "for", kw, startTok, init, cond, inc, endTok, body };
             }
+
 
             if (this.is("kw", "return")) {
                 const kw = this.next()
@@ -284,6 +286,11 @@ export default class Parser extends BaseParser {
 
         if (cond.length == 2) {
             const list = [];
+
+            if (!this.peek("punc", cond[0])) {
+                this.error(`expecting '${cond[0]}' but got ${this.peek().value}`)
+                return { list }
+            }
 
             const startTok = this.next("punc", cond[0]);
 

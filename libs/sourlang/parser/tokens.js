@@ -5,6 +5,7 @@ const KEYWORDS = new Set([
     "if",
     "else",
     "for",
+    "while",
     "var",
     "class",
     "export",

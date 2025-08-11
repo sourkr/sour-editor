@@ -7,9 +7,10 @@ const TYPE_CODES = {
     file: "\uea8b"
 }
 
-class AutoCompletionManager {
+export class AutoCompletionManager {
     isVisible = false;
 
+    /** @param {import("./editor.js").default} editor */
     constructor(editor, completion) {
         this.editor = editor;
         this.completion = completion
@@ -18,12 +19,25 @@ class AutoCompletionManager {
     init(doc) {
         this.doc = doc;
 
+        this.editor.addEventListener("keydown", ev => {
+            if (!this.isVisible) return;
+
+            if (ev.key === "Tab") {
+                ev.preventDefault()
+                ev.stopPropagation()
+                ev.stopImmediatePropagation()
+
+                this.complete(this.itemList[this.selected])
+                // return;
+            }
+        }, { capture: true })
+
         window.addEventListener("keydown", (ev) => {
             if (!this.isVisible) return;
 
             if (ev.key === "Enter") {
-                ev.preventDefault();
-                ev.stopPropagation();
+                ev.preventDefault()
+                ev.stopPropagation()
 
                 this.complete(this.itemList[this.selected]);
                 return;
@@ -106,7 +120,7 @@ class AutoCompletionManager {
     complete(item) {
         if (item.type == "func") {
             this.editor.insertAtCursor(`${item.name.slice(item.prefix.length)}()`);
-            if (item.doc.params.length) this.editor.cursorIndex--;
+            if (item.doc.params.length) this.editor.cursor.index--;
         } else if (item.type == "kw") {
             this.editor.insertAtCursor(`${item.name.slice(item.prefix.length)} `);
         } else {

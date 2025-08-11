@@ -67,6 +67,8 @@ code-editor {
     --token-function-name: var(--function-call);
     --token-class-name: var(--class-name);
     --token-variable: var(--variable);
+    --token-type: var(--type);
+    --token-prop: var(--prop);
 
     --autocompletion-background: var(--autocomplete-background);
     --autocompletion-border: var(--autocomplete-border);
@@ -84,6 +86,10 @@ nav-drawer {
     color: var(--nav-foreground);
     border-color: var(--nav-border);
     fill: var(--icon-color);
+}
+
+.hidden {
+    display: none;
 }
 
 /* Zed-like theme */

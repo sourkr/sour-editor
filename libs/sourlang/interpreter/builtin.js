@@ -11,6 +11,10 @@ char.def_meth("_add__byte", (self, args, prog) => {
 	prog.resolve(to_char(self.value + args[0].value));
 });
 
+char.def_meth("_eq__char", (self, args, prog) => {
+	prog.resolve(to_bool(self.value === args[0].value));
+})
+
 BUILTINS.def_class("char", char);
 
 export function to_char(val) {

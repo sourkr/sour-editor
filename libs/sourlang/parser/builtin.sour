@@ -41,10 +41,17 @@ class bool {}
 
 class char {
     func _add(n: byte): char
-	func _eq(n: char): bool
+	func _eq(ch: char): bool
+
+	func str(): string
 }
 
 class Map<K,V> {
 	func constructor(): void
     func set(key: K, value: V): void
+}
+
+class RegExp {
+	func constructor(regex: string): void
+	func test(str: string): bool
 }

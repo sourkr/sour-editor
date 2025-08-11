@@ -21,7 +21,7 @@ const OP_NAMES = new Map([
 export default class Validator {
     globals = new Scope(BUILTINS)
     
-    #exports = new BuiltinScope()
+    #exports = new Scope()
     #modules = new Map()
     
     #file
@@ -35,9 +35,59 @@ export default class Validator {
     }
     
     validate() {
-        const { ast, errors } = this.parser.parse();
-        this.errors.push(...errors);
+        const { ast, errors } = this.parser.parse()
+        this.errors.push(...errors)
 
+        this.load_imports(ast)
+        this.define_classes(ast)
+
+        ast.map(node => node.type === "export" ? node.def : node)
+            .filter(node => node.type === "class-dec")
+            .forEach(node => {
+                const name = node.name.value
+                const cls_def = this.globals.get_class(name)
+
+                node.body.list.forEach(node => {
+                    if (node.type === "var-def") {
+                        const def = this.node_to_type(this.globals, node.var_type)
+
+                        def.is_prop = true
+                        def.prop_name = node.name.value
+                        def.class_name = cls_def.name
+
+                        node.doc = def
+
+                        cls_def.scope.def_prop(node.name.value, def)
+                    }
+
+                    // if (node.type === "var-dec") {
+                    //     const type = clone_type(this.expr(node.val, scope))
+
+                    //     type.is_prop = true
+                    //     type.prop_name = node.name.value
+                    //     type.class_name = cls.name
+
+                    //     node.doc = type
+
+                    //     cls.scope.def_prop(node.name.value, type)
+                    // }
+
+                    if (node.type === "func-dec") {
+                        const def = this.func_dec(node, this.globals)
+
+                        if (def.name === 'constructor') {
+                            def.is_used = true
+                        }
+
+                        def.node = node
+
+                        cls_def.scope.def_meth(def)
+
+                        // this.func_dec_body(node, def, clsBodyScope)
+                    }
+                });
+            })
+        
         for (const node of ast) {
             this.stmt(node, this.globals);
         }
@@ -45,61 +95,92 @@ export default class Validator {
         return { ast, errors: this.errors, exports: this.#exports };
     }
 
+    load_imports(ast) {
+        ast.filter(node => node.type === "import")
+            .forEach(node => {
+                const path = node.path.value
+
+                if (path == this.#file.base) {
+                    this.error(`Cannot import itself`, node.path)
+                    return
+                }
+
+                let exports
+
+                if (new File(`/libs/${path}.sour`).exists()) {
+                    const file = new File(`/libs/${path}.sour`)
+                    const validator = new Validator(file.read(), file)
+                    const prog = validator.validate()
+
+                    for (let err of prog.errors) {
+                        this.errors.push(err)
+                    }
+
+                    exports = prog.exports
+                } else if (this.#modules.has(path)) {
+                    exports = this.#modules.get(path)
+                } else {
+                    const file = this.#file.parent.child(path + '.sour')
+
+                    if (!file.exists()) {
+                        this.error(`File ${path} does not exist`, node.path)
+                        return // early
+                    }
+
+                    const validator = new Validator(file.read(), file)
+                    const prog = validator.validate()
+
+                    for (let err of prog.errors) {
+                        this.errors.push(err)
+                    }
+
+                    exports = prog.exports
+                }
+
+                exports?.get_all_funcs()
+                    .forEach(func => this.globals.def_func(func))
+
+                exports?.get_all_class()
+                    .forEach(def => this.globals.def_class(def.name, def))
+            })
+    }
+
+    define_classes(ast) {
+        ast.map(node => node.type === "export" ? node.def : node)
+            .filter(node => node.type === "class-dec")
+            .forEach(node => {
+                const name = node.name.value
+
+                if (this.globals.has_class(name)) {
+                    this.error(`class '${name}' already exits`, node.name)
+                    return
+                }
+
+                const def = {
+                    type: "class",
+                    name,
+                    scope: new ClassScope()
+                }
+
+                this.globals.def_class(name, def)
+            })
+    }
+
     stmt(stmt, scope) {
         // File
         if (stmt.type === 'export') {
             const def = this.stmt(stmt.def, scope)
             def.is_used = true
-            this.#exports.def_func(def)
+
+            if (def.type === "func") this.#exports.def_func(def)
+            else if (def.type === "class") this.#exports.def_class(def.name, def)
         }
         
-        if (stmt.type === 'import') {
-            const path = stmt.path.value
-            
-            if (path == this.#file.base) {
-                this.error(`Cannot import itself`, stmt.path)
-                return
-            }
-            
-            let exports
-            
-            if (new File(`/libs/${path}.sour`).exists()) {
-                const file = new File(`/libs/${path}.sour`)
-                const validator = new Validator(file.read(), file)
-                const prog = validator.validate()
-
-                for (let err of prog.errors) {
-                    this.errors.push(err)
-                }
-                
-                exports = prog.exports
-            } else if (this.#modules.has(path)) {
-                exports = this.#modules.get(path)
-            } else {
-                const file = this.#file.parent.child(path + '.sour')
-
-                if (!file.exists()) {
-                    this.error(`File ${path} does not exist`, stmt.path)
-                    return // early
-                }
-
-                const validator = new Validator(file.read(), file)
-                const prog = validator.validate()
-
-                for (let err of prog.errors) {
-                    this.errors.push(err)
-                }
-                
-                exports = prog.exports
-            }
-
-            exports?.get_all_funcs().forEach(func => this.globals.def_func(func))
-        }
-
         if (stmt.type === "class-dec") {
             const name = stmt.name.value
+            const cls = this.globals.get_class(name)
             const clsBodyScope = new Scope(scope);
-            const clsScope = new ClassScope()
+            // const clsScope = new ClassScope()
 
     		// if (cls.node.generic) {
     		// 	cls.node.generic.list.forEach((node) => {
@@ -116,27 +197,10 @@ export default class Validator {
 
     		// 	cls.generic = cls.node.generic.list.map((node) => node.value)
     		// }
-    		const cls = stmt.doc = {
-                type: "class",
-                name,
-                scope: clsScope
-            }
 
             clsBodyScope.def_var("this", { type: "ins", cls })
 		
-		    stmt.body.list.forEach((node) => {
-                if (node.type === "var-def") {
-                    const def = clone_type(this.node_to_type(scope, node.var_type))
-
-                    def.is_prop = true
-                    def.prop_name = node.name.value
-                    def.class_name = cls.name
-
-                    node.doc = def
-
-                    clsScope.def_prop(node.name.value, def)
-                }
-
+		    stmt.body.list.forEach(node => {
                 if (node.type === "var-dec") {
                     const type = clone_type(this.expr(node.val, scope))
 
@@ -146,38 +210,37 @@ export default class Validator {
 
                     node.doc = type
 
-                    clsScope.def_prop(node.name.value, type)
+                    cls.scope.def_prop(node.name.value, type)
                 }
 
     			if (node.type === "func-dec") {
-    			    const def = this.func_dec(node, clsBodyScope)
+    			    const def = cls.scope.get_all_meths()
+    			        .find(def => def.node === node)
 
-    			    if (def.name === 'constructor') {
-    			        def.is_used = true
-    			    }
-
-    				clsScope.def_meth(def)
+    			    if (!def) return
+    			    
+    				this.func_dec_body(node, def, clsBodyScope)
     			}
-    		});
+    		})
 
-
-            scope.def_class(name, cls)
             return cls
         }
         
         
         // Def
-        if (stmt.type === 'func-dec') {
+        if (stmt.type === "func-dec") {
             const func_def = this.func_dec(stmt, scope)
             scope.def_func(func_def)
+            this.func_dec_body(stmt, func_def, scope)
             return func_def
         }
         
         if (stmt.type === 'if') {
             const cond = this.expr(stmt.cond, scope)
             
-            if (cond?.name !== 'bool') {
+            if (cond?.cls?.name !== 'bool') {
                 this.error(`The contition must be a 'bool' but got '${type_to_str(cond)}'`, stmt.cond)
+                return { type: "simple", name: "error" }
             }
             
             this.validate_body(stmt.body.list, scope)
@@ -189,12 +252,12 @@ export default class Validator {
             return
         }
         
-        if (stmt.type === 'for') {
+        if (stmt.type === "for") {
             this.stmt(stmt.init, scope)
             
             const cond = this.expr(stmt.cond, scope)
             
-            if (cond?.name !== 'bool') {
+            if (cond?.cls.name !== 'bool') {
                 this.error(`The contition must be a 'bool' but got '${type_to_str(cond)}'`, stmt.cond)
             }
             
@@ -205,6 +268,18 @@ export default class Validator {
             return
         }
         
+        if (stmt.type === "while") {
+            const cond = this.expr(stmt.cond, scope)
+            
+            if (cond?.cls?.name !== 'bool') {
+                this.error(`The contition must be a 'bool' but got '${type_to_str(cond)}'`, stmt.cond)
+            }
+            
+            this.validate_body(stmt.body.list, scope)
+            
+            return
+        }
+
         if (stmt.type === 'var-dec') {
             const type = clone_type(this.expr(stmt.val, scope))
 
@@ -270,16 +345,17 @@ export default class Validator {
             doc: node.doc
         }
 
-        // this.globals.def_func(func)
         node.doc = func
-
         node.alias = node.doc.alias = gen_func_alias(func)
 
-        const funcScope = new Scope(scope)
-        params.forEach(param => funcScope.def_var(param.name.value, param.type))
-        this.validate_body(node.body.list, funcScope)
-
         return func        
+    }
+
+    func_dec_body(node, def, scope) {
+        const funcScope = new Scope(scope)
+        funcScope.ret_type = def.retType
+        def.params.forEach(param => funcScope.def_var(param.name, param.type))
+        this.validate_body(node.body.list, funcScope)
     }
     
     validate_body(body, scope) {
@@ -344,7 +420,7 @@ export default class Validator {
             return func.retType
         }
 
-        if (expr.type === 'new') {
+        if (expr.type === "new") {
             const name = expr.name.value
 
             if (!scope.has_class(name)) {
@@ -367,8 +443,6 @@ export default class Validator {
                 }
 
                 generic = expr.generic.list.map((type) => this.node_to_type(scope, type))
-
-                // return { type: 'ins', cls, generic }
             }
 
             const args = expr.args.list.map(arg => this.expr(arg, scope))
@@ -392,6 +466,14 @@ export default class Validator {
             return { type: 'ins', cls, generic }
         }
 
+        if (expr.type === "ret") {
+            const val = this.expr(expr.value, scope)
+
+            if (!equal_type(val, scope.ret_type)) {
+                this.error(`return type must be '${type_to_str(val)}'`, expr)
+            }
+        }
+
         if (expr.type === "assign") {
             const left = this.expr(expr.access, scope)
             const right = this.expr(expr.value, scope)
@@ -403,7 +485,7 @@ export default class Validator {
             return left
         }
         
-        if (expr.type === 'op') {
+        if (expr.type === "op") {
             const left = this.expr(expr.left, scope)
             const right = this.expr(expr.right, scope)
             const name = OP_NAMES.get(expr.op?.value)
@@ -412,7 +494,7 @@ export default class Validator {
                 return { type: 'simple', name: 'error' }
             }
             
-            const func = get_suitable_func(left.scope.get_meths(name), name, [right])
+            const func = get_suitable_func(left.cls.scope.get_meths(name), name, [right])
             
             if (func) {
                 expr.alias = func.alias
@@ -431,7 +513,7 @@ export default class Validator {
                 return { type: 'simple', name: 'error' }
             }
             
-            const func = get_suitable_func(left.scope.get_meths(name), name, [right])
+            const func = get_suitable_func(left.cls.scope.get_meths(name), name, [right])
             
             if (func) {
                 expr.alias = func.alias
@@ -471,7 +553,7 @@ export default class Validator {
 
             if (expr.op === '++') {
                 const type = this.expr(expr.expr, scope)
-                const func = get_suitable_func(type.scope.get_meths('_add'), '_add', [type])
+                const func = get_suitable_func(type.cls.scope.get_meths('_add'), '_add', [type])
 
                 expr.expr.doc = type
 
@@ -499,7 +581,7 @@ export default class Validator {
             }
 
             const func = get_suitable_func(access.cls.scope.get_meths('_get'), '_get', [index])
-            
+
             if (func) {
                 expr.alias = func.alias
                 return func.retType
@@ -509,7 +591,8 @@ export default class Validator {
         }
         
         if (expr.type === 'char') {
-            return scope.get_class('char')
+            const cls = scope.get_class('char')
+            return { type: 'ins', cls }
         }
 
         if (expr.type === 'str') {
@@ -518,7 +601,8 @@ export default class Validator {
         }
 
         if (expr.type === 'num') {
-            return scope.get_class('byte')
+            const cls = scope.get_class('byte')
+            return { type: "ins", cls }
         }
         
         if (expr.type === 'ident') {
@@ -603,16 +687,16 @@ function get_suitable_func(funcs, name, args, errors = []) {
 
 function get_suitable_method(meths, name, args, generics, errors = []) {
     for (let meth of meths) {
-        const params = meth.params.map(({ name, type }) => {
-            if (type.type == 'class') {
-                if (generics.has(type.name)) {
-                    return generics.get(type.name)
+        const params = meth.params.map(({ name: _, type }) => {
+            if (type.type == 'ins') {
+                if (generics.has(type.cls.name)) {
+                    return generics.get(type.cls.name)
                 }
             }
             
             return type
         })
-                
+
         let index = 0
         let found = true
 
@@ -638,6 +722,8 @@ function get_suitable_method(meths, name, args, generics, errors = []) {
 }
 
 function type_to_str(type) {
+    if (!type) return "(Error: undefined)"
+
     if (type.type === 'simple') {
         return type.name
     }

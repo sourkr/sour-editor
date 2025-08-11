@@ -22,6 +22,8 @@
     --token-function-name: inherit;
     --token-class-name: inherit;
     --token-variable: inherit;
+    --token-type: inherit;
+    --token-prop: inherit;
 
     --autocompletion-background: inherit;
     --autocompletion-border: inherit;
@@ -146,6 +148,15 @@ pre {
     color: var(--token-variable);
 }
 
+.tok-type {
+    color: var(--token-type);
+}
+
+.tok-prop {
+    color: var(--token-prop);
+}
+
+
 .tok-func-call {
     color: var(--token-function-name);
 }
@@ -221,10 +232,11 @@ pre {
     position: absolute;
     border: 1px solid red;
     padding: 5px;
-    margin: 10px;
     display: none;
     pointer-events: none;
     height: fit-content;
+    margin-left: 5px;
+    margin-top: 10px;
 
     background: var(--widget-tooltip-background);
     color: var(--widget-tooltip-foreground);

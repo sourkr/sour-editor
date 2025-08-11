@@ -1,5 +1,5 @@
 import DefinationParser from "./dparser.js";
-import { Scope, BuiltinScope, ClassScope } from "./scope.js";
+import { Scope, ClassScope } from "./scope.js";
 import { gen_func_alias, clone_type } from "./util.js";
 
 const BUILTINS = new Scope();
@@ -101,7 +101,8 @@ function get_type(scope, type) {
 		if (type.name.value === "void") {
 			return { type: "simple", name: "void" };
 		} else {
-			return scope.get_class(type.name.value);
+			const cls = scope.get_class(type.name.value);
+			return { type: "ins", cls }
 		}
 	}
 }

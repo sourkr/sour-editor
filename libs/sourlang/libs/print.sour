@@ -7,3 +7,30 @@ export func print(str: string): void {
 		_stdout(str[i])
 	}
 }
+
+export func print(n: byte): void {
+	if (n > 9) {
+		print(n / 10)
+		print(n % 10)
+	} else {
+		_stdout('0' + n)
+	}
+}
+
+export func print(b: bool): void {
+	if (b) {
+		print("true")
+	} else {
+		print("false")
+	}
+}
+
+export func println(n: byte): void {
+	print(n)
+	_stdout('\n')
+}
+
+export func println(b: bool): void {
+	print(b)
+	_stdout('\n')
+}

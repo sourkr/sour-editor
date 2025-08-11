@@ -2,6 +2,7 @@ import Validator from "../parser/validator.js";
 import { Scope, BuiltinScope, InstanceScope, ClassScope } from "./scope.js"
 import BUILTINS, { to_byte, to_char, to_str } from "./builtin.js"
 import File from "../../../file.js"
+import { node_to_str } from "../parser/util.js";
 
 export default class Interpreter {
     #modules = new Map()
@@ -32,7 +33,7 @@ export default class Interpreter {
 
         if (prog.errors.length) {
             prog.errors.forEach((err) => this.errorStream.write(err.toString()));
-            _prog.reject(prog.errors[0].toString())
+            _prog?.reject(prog.errors[0].toString())
             return;
         }
 
@@ -181,16 +182,17 @@ export default class Interpreter {
         if (expr.type === "class-dec") {
             const name = expr.name.value
             const cls = new ClassScope()
+            const clsBosyScope = new Scope(scope)
 
             expr.body.list.forEach(node => {
                 if (node.type === 'func-dec') {
                     const func = (self, args, prog) => {
-                        const funcScope = new FunctionScope(scope)
+                        const funcScope = new Scope(clsBosyScope)
 
                         node.params.list.forEach((param, i) =>
-                            funcScope.def_var(param.name.value, args[i]))
+                            funcScope.set_var(param.name.value, args[i]))
 
-                        funcScope.def_var("this", self)
+                        funcScope.set_var("this", self)
 
                         this.#interpreteBody(node.body.list, funcScope, {
                             ...prog,
@@ -202,6 +204,7 @@ export default class Interpreter {
                     }
 
                     cls.def_meth(node.alias, func)
+                    // clsBosyScope.def_func(node.alias, func)
                 }
             })
 
@@ -265,6 +268,11 @@ export default class Interpreter {
             return;
         }
 
+        if (expr.type == "while") {
+            this.whileLoop(expr, scope, prog)
+            return;
+        }
+
         if (expr.type === "var-dec") {
             this.#interprete(expr.val, scope, {
                 ...prog,
@@ -282,7 +290,7 @@ export default class Interpreter {
                 const func = scope.get_func(expr.alias);
 
                 if (typeof func !== "function") {
-                    console.log(expr.alias)
+                    console.warn(expr.alias)
                     prog.reject(this.error(`RefrenceError: '${expr.access.value}' is not a function`, expr.access, prog));
                     return;
                 }
@@ -315,13 +323,18 @@ export default class Interpreter {
                             ...prog,
                             resolve: (args) => {
                                 prog.stack.push({ name: expr.access.right.value, path: this.#file.path, token: expr.access.right })
-                                meth(left, args, {
-                                    ...prog,
-                                    resolve: (val) => {
-                                        prog.stack.pop()
-                                        prog.resolve(val);
-                                    }
-                                })
+                                try {
+                                    meth(left, args, {
+                                        ...prog,
+                                        resolve: (val) => {
+                                            prog.stack.pop()
+                                            prog.resolve(val);
+                                        }
+                                    })
+                                } catch (err) {
+                                    console.error(err)
+                                    prog.reject(this.error(`RangeError: ${err.message}`, expr, prog))
+                                }
                             }
                         })
                     }
@@ -347,6 +360,15 @@ export default class Interpreter {
                         }
                     })
                 }
+            })
+
+            return
+        }
+
+        if (expr.type === "ret") {
+            this.#interprete(expr.value, scope, {
+                ...prog,
+                resolve: prog.return
             })
 
             return
@@ -391,6 +413,28 @@ export default class Interpreter {
             return;
         }
 
+        if (expr.type === "op2") {
+            this.#interprete(expr.left, scope, {
+                ...prog,
+                resolve: (left) => {
+                    this.#interprete(expr.right, scope, {
+                        ...prog,
+                        resolve: (right) => {
+                            const meth = left.get_meth(expr.alias)
+
+                            if (!meth) {
+                                prog.reject(this.error(`TypeError: '${expr.alias}' is not a method of ${left.get_class_name()}`, expr, prog))
+                            } else {
+                                meth(left, [right], prog);
+                            }
+                        },
+                    });
+                },
+            });
+
+            return;
+        }
+
         if (expr.type === "dot") {
             this.#interprete(expr.left, scope, {
                 ...prog,
@@ -403,20 +447,60 @@ export default class Interpreter {
         }
         
         if (expr.type === "unary") {
+            if (expr.expr.type === "ident") {
+                const name = expr.expr.value
+                const val = scope.get_var(name)
+
+                val.get_meth(expr.alias)(val, [to_byte(1)], {
+                    ...prog,
+                    resolve: new_val => {
+                        scope.set_var(name, new_val)
+                        prog.resolve(val)
+                    }
+                })
+
+                return
+            }
+
+            if (expr.expr.type == "dot") {
+                this.#interprete(expr.expr.left, scope, {
+                    ...prog,
+                    resolve: access => {
+                        const name = expr.expr.right.value
+                        const val = access.get_prop(name)
+
+                        val.get_meth(expr.alias)(val, [to_byte(1)], {
+                            ...prog,
+                            resolve: new_val => {
+                                access.set_prop(name, new_val)
+                                prog.resolve(val)
+                            }
+                        })
+                    }
+                })
+
+                return
+            }
+
             this.#interprete(expr.expr, scope, {
                 ...prog,
-                resolve: (val) => {
+                resolve: val => {
                     val.get_meth(expr.alias)(val, [to_byte(1)], {
                         ...prog,
                         resolve: (new_val) => {
-                            scope.set_var(expr.expr.value, new_val);
+                            if (expr.expr.type === "ident") {
+                                scope.set_var(expr.expr.value, new_val);
+                            }
+
+                            if (expr.expr.type === "dot") {
+                            }
+
                             prog.resolve(val);
                         }
                     })
-                },
-            });
-
-            return
+                    
+                }
+            })
         }
 
         if (expr.type === "index") {
@@ -427,6 +511,13 @@ export default class Interpreter {
                         ...prog,
                         resolve: (index) => {
                             const meth = access.get_meth(expr.alias)
+
+                            if (typeof meth !== "function") {
+                                console.warn("alias", expr)
+                                prog.reject(this.error(`${node_to_str(expr.access)}._get is not a method.`, expr, prog))
+                                return
+                            }
+
                             meth(access, [index], prog)
                         }
                     })
@@ -437,12 +528,17 @@ export default class Interpreter {
         }
 
         if (expr.type === "str") {
-            prog.resolve(to_str(expr.value));
+            prog.resolve(to_str(expr.value
+                .replace("\\n", '\n')));
             return;
         }
 
         if (expr.type === "char") {
-            prog.resolve(to_char(expr.value.charCodeAt(0)));
+            let value = expr.value
+
+            if (value === "\\n") value = '\n'
+
+            prog.resolve(to_char(value.charCodeAt(0)));
             return;
         }
 
@@ -490,6 +586,24 @@ export default class Interpreter {
                 }
             },
         });
+    }
+
+    whileLoop(node, scope, prog) {
+        this.#interprete(node.cond, scope, {
+            ...prog,
+            resolve: cond => {
+                if (cond.value) {
+                    this.#interpreteBody(node.body.list, scope, {
+                        ...prog,
+                        resolve: () => {
+                            this.whileLoop(node, scope, prog)
+                        }
+                    })
+                } else {
+                    prog.resolve()
+                }
+            }
+        })
     }
 
     error(msg, token, prog) {
@@ -550,7 +664,6 @@ class Stream {
     close() {
         this.#closed = true;
         this.#onclose?.();
-        console.log('stream is closed')
     }
 
     // [Symbol.dispose]() {

@@ -43,9 +43,10 @@ export class BaseEditor extends HTMLElement {
                 <div class="editor">
                     <textarea></textarea>
                     <pre></pre>
+
+                    <div class="error-tooltip"></div>
                 </div>
                 
-                <div class="error-tooltip"></div>
                 <div class="completion"></div>
                 
                 <div class="doc-tooltip">
@@ -96,16 +97,16 @@ export class BaseEditor extends HTMLElement {
             //         index: this.cursor.index + 1
             //     })
             // }
-            
+        
             if (this.#mutable) {
                 this.#mutable.value = this.text
+                // this._onTextChange()
+            } else {
                 this._onTextChange()
             }
         })
 
         this.#textarea.addEventListener("keydown", ev => {
-            console.log("KeyDown from BaseEditor", ev)
-
             if (this._onKeyDown?.(ev)) {
                 return
             }
@@ -118,10 +119,8 @@ export class BaseEditor extends HTMLElement {
             }
 
             if (ev.ctrlKey) {
-                console.log("Ctrl", ev)
                 if (ev.key === "z") {
                     ev.preventDefault()
-                    console.log(JSON.stringify(this.#undos))
                     this.#undo()
                 }
 
@@ -152,11 +151,23 @@ export class BaseEditor extends HTMLElement {
         }
 
         document.addEventListener("selectionchange", () => {
+            if (!this.#enabledFeatures.has(BaseEditor.FEATURE.HTML)) {
+                return
+            }
+
             if (document.activeElement === this) {
                 this.cursor._update(this)
                 this.#pre.innerHTML = this.#getHtml()
 
                 this.onselectionchange?.()
+            }
+        })
+
+        this.addEventListener("click", () => {
+            if (document.activeElement !== this.#textarea) {
+                this._updateHeight()
+                this.#textarea.focus()
+                // this.cursor.index = 0
             }
         })
     }
@@ -308,7 +319,6 @@ export class BaseEditor extends HTMLElement {
 
     #undo() {
         const action = this.#undos.pop()    
-        console.log(action)
 
         if (!action) return
 
@@ -345,6 +355,7 @@ export class BaseEditor extends HTMLElement {
     }
     
     /**
+     * @private
      * @returns {string[]} htmls encoded
      */
     _getHighlightedLines() {
@@ -366,11 +377,12 @@ export class BaseEditor extends HTMLElement {
 
         this.#lineno.innerHTML = ""
 
+        // console.log(lines)
         for (let i = 0; i < lines.length; i++) {
             const line = lines[i] || ' '
             // const lineno = i + 1
 
-            if (this.cursor.lineno === i && this.#enabledFeatures.has(BaseEditor.FEATURE.HIGHLIGHT_CURRENT_LINE)) {
+            if (this.cursor.line === i && this.#enabledFeatures.has(BaseEditor.FEATURE.HIGHLIGHT_CURRENT_LINE)) {
                 newLines.push(`<div class="cur-line">${line}</div>`)
 
                 if (this.#enabledFeatures.has(BaseEditor.FEATURE.LINE_NUMBER)) {
@@ -389,19 +401,24 @@ export class BaseEditor extends HTMLElement {
         return newLines.join("")
     }
 
+    /** @private */
     _onTextChange() {
         this.#lines = null
         this.#linedLines = null
-        // this.cursor._update(this._getLines())
         this.#pre.innerHTML = this.#getHtml()
         this._updateHeight()
     }
     
+    /**
+     * @private
+     * @returns {string[]}
+     */
     _getLines() {
         if (this.#lines) return this.#lines
         return this.#lines = this.text.split('\n')
     }
 
+    /** @private */
     _updateHeight() {
         const rect = this.#pre.getBoundingClientRect()
         const rootRect = this.getBoundingClientRect()
@@ -409,11 +426,14 @@ export class BaseEditor extends HTMLElement {
         this.#textarea.style.height = Math.max(rect.height, rootRect.height) + "px"
     }
 
+    /** @private */
     _setText(text) {
         this.#textarea.value = text
 
         if (this.#enabledFeatures.has(BaseEditor.FEATURE.HTML)) {
             this._onTextChange()
+        } else {
+            this._updateHeight()
         }
     }
 }

@@ -5,7 +5,7 @@ import File  from "../../file.js";
 
 const KEWWORD_STMT = new Set([
     "import", "export",
-    "if", "for", "new"
+    "if", "for", "new", "ret", "while"
 ]);
 
 const DEF_STMT = new Set(["class-dec", "func-dec", "var-dec", "var-def"]);
@@ -79,7 +79,7 @@ export default class Server {
         }
 
         if (expr.type == "class-dec") {
-            this.lint_token(expr.name, "tok-type")
+            this.lint_token(expr.name, expr.doc?.is_used ? "tok-type" : "tok-type dim")
             this.lint_bracket(expr.body, depth)
             this.lint_list(expr.body, depth + 1)
         }
@@ -131,6 +131,13 @@ export default class Server {
             this.lint_list(expr.body, depth + 1);
         }
 
+        if (expr.type === "while") {
+            this.lint_bracket(expr, depth, depth);
+            this.lint_expr(expr.cond, depth + 1);
+            this.lint_bracket(expr.body, depth);
+            this.lint_list(expr.body, depth + 1);
+        }
+
         if (expr.type == "var-def") {
             this.lint_token(
                 expr.name,
@@ -173,6 +180,10 @@ export default class Server {
             this.lint_list(expr.args, depth + 1);
         }
 
+        if (expr.type == "ret") {
+            this.lint_expr(expr.value)
+        }
+
         if (expr.type == "assign") {
             this.lint_expr(expr.access)
             this.lint_expr(expr.value)
@@ -184,14 +195,22 @@ export default class Server {
             return;
         }
 
+        if (expr.type == "op2") {
+            this.lint_expr(expr.left);
+            this.lint_expr(expr.right);
+            return;
+        }
+
         if (expr.type == "unary") {
             this.lint_expr(expr.expr);
             return;
         }
 
         if (expr.type == "dot") {
-            this.lint_expr(expr.left);
-            this.lint_token(expr.right, "tok-var");
+            if (expr.left.type === "ident") this.lint_token(expr.left, "tok-type")
+            else this.lint_expr(expr.left)
+
+            this.lint_token(expr.right, "tok-prop");
             return;
         }
 
@@ -227,7 +246,11 @@ export default class Server {
 
     lint_type(type) {
         if (type.type == "simple") {
-            this.lint_token(type.name, "tok-type");
+            if (type.name.value === "void") {
+                this.lint_token(type.name, "tok-kw")
+            } else {
+                this.lint_token(type.name, "tok-type")
+            }
         }
     }
 
@@ -341,8 +364,11 @@ export default class Server {
         }
         
         if (stmt.type === "class-dec") {
+            const clsScope = new Scope(scope)
+
+            clsScope.def_var("this", stmt.doc)
             scope.def_class(stmt.name.value, stmt.doc)
-            return this.list_body(stmt.body.list, scope, ["func"])
+            return this.list_body(stmt.body.list, clsScope, ["var", "func"])
         }
 
         // Def
@@ -358,7 +384,7 @@ export default class Server {
             let list = this.list_type(stmt.retType, scope, true);
             if (list?.length) return list;
 
-            list = this.list_body(stmt.body.list, funcScope, ["for"]);
+            list = this.list_body(stmt.body.list, funcScope, ["for", "return"]);
             if (list?.length) return list;
         }
 
@@ -389,6 +415,12 @@ export default class Server {
             if (list?.length) return list;
         }
 
+        if (stmt.type === "var-def") {
+            scope.def_var(stmt.name.value, stmt.doc);
+            return this.list_type(stmt.var_type, scope)
+            // return this.list(stmt.val, scope, ["new"]);
+        }
+
         if (stmt.type === "var-dec") {
             scope.def_var(stmt.name.value, stmt.doc);
             return this.list(stmt.val, scope, ["new"]);
@@ -411,12 +443,21 @@ export default class Server {
             }
         }
 
+        if (stmt.type === "ret") {
+            return this.list(stmt.value, scope, ["new"])
+        }
+
         if (stmt.type == "op") {
             list = this.list(stmt.left, scope);
             if (list?.length) return list;
 
             list = this.list(stmt.right, scope);
             if (list?.length) return list;
+        }
+
+        if (stmt.type == "op2") {
+            return this.list(stmt.left, scope)
+                || this.list(stmt.right, scope)
         }
 
         if (stmt.type == "dot") {
@@ -426,8 +467,6 @@ export default class Server {
             if (this.#touching(stmt.right)) {
                 list = [];
                 const prefix = stmt.right.value;
-
-                // console.log(stmt.left.doc.cls.scope.get_all_props().toArray)
 
                 stmt.left.doc.cls.scope
                     .get_all_props()
@@ -486,7 +525,6 @@ export default class Server {
                         return { type: "kw", prefix, name: kw };
                     });
 
-                console.log(scope.get_all_vars().toArray());
                 const vars = scope
                     .get_all_vars()
                     .filter((e) => e.name.startsWith(prefix))
@@ -510,8 +548,6 @@ export default class Server {
                             doc: func,
                         };
                     });
-
-                // console.log(scope.get_all_class().toArray())
 
                 const classes = scope
                     .get_all_class()
@@ -632,6 +668,10 @@ export default class Server {
         }
 
         if (node.type == "op") {
+            return this.doc_node(node.left) || this.doc_node(node.right);
+        }
+
+        if (node.type == "op2") {
             return this.doc_node(node.left) || this.doc_node(node.right);
         }
 

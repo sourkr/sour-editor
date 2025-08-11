@@ -1,7 +1,7 @@
 import SpannableText from "./spannable-text.js";
 import { BaseEditor } from "./base.js";
 import DocToolTipManager from "./doc-tooltip.js";
-import { AutoCompletionManager } from "./AutoCompletionManager.js";
+import { AutoCompletionManager } from "./completion.js";
 
 const PAIRS = {
     "(": ")",
@@ -25,12 +25,9 @@ export default class Editor extends BaseEditor {
         this.enableFeature(Editor.FEATURE.HTML)
         this.enableFeature(Editor.FEATURE.HIGHLIGHT_CURRENT_LINE)
         this.enableFeature(Editor.FEATURE.LINE_NUMBER)
-        this.enableFeature(Editor.FEATURE.LINE_NUMBER)
         this.enableFeature(Editor.FEATURE.TAB)
 
-        // this.#lineno = this.shadowRoot.querySelector(".lineno");
         this.#textarea = this.shadowRoot.querySelector("textarea")
-        // this.#pre = this.shadowRoot.querySelector("pre");
         this.#errTooltip = this.shadowRoot.querySelector(".error-tooltip")
 
         this.#completer = new AutoCompletionManager(this,
@@ -55,6 +52,23 @@ export default class Editor extends BaseEditor {
                     }
                 }
             }
+
+            if (ev.inputType === "insertLineBreak") {
+                const line = this._getLines()[this.cursor.line]
+                const tab = line.match(/^\t*/)[0]
+
+                const left = this.text[this.cursor.index - 1]
+                const right = this.text[this.cursor.index]
+
+                ev.preventDefault()
+
+                if (left in PAIRS && right === PAIRS[left]) {
+                    this.insertAtCursor(`\n${tab}\t\n${tab}`)
+                    this.cursor.index -= tab.length + 1
+                } else {
+                    this.insertAtCursor(`\n${tab}`)
+                }
+            }
         })
 
         this.#textarea.addEventListener("input", ev => {
@@ -74,11 +88,12 @@ export default class Editor extends BaseEditor {
             // }
 
             if (ev.inputType === "insertText") {
-                if (/^[a-zA-Z0-9_.]$/.test(ev.data.at(-1))) {
+                if (this.#server && /^[a-zA-Z0-9_.]$/.test(ev.data.at(-1))) {
                     this.#hideError()
                     this.#completer.show(this.#server.completions());
                 }
             }
+
         })
 
         this.#textarea.addEventListener("keydown", ev => {
@@ -111,15 +126,24 @@ export default class Editor extends BaseEditor {
                         let end
 
                         for (let i = 0; i < lines.length; i++){
-                            if (this.cursor.lineno === i) {
+                            if (this.cursor.line === i) {
                                 end = start + lines[i].length + 1
                                 break
                             }
 
-                            start += lines[i].length
+                            start += lines[i].length + 1
                         }
 
                         this.deleteRange(start, end)
+                    }
+
+                    case "c": {
+                        if (this.cursor.isSelecting) break
+
+                        ev.preventDefault()
+
+                        const line = this._getLines()[this.cursor.line]
+                        navigator.clipboard.writeText(line)
                     }
                 }
             }
@@ -171,7 +195,6 @@ export default class Editor extends BaseEditor {
         if (!server) return;
 
         server.match = (start, end) => {
-            console.log("match", this.#lastInputEvent)
             if (this.text[this.cursor.index] === end) return
             if (this.text[this.cursor.index - 1] !== start) return
             if (this._lastInputEvent?.inputType !== "insertText") return
@@ -182,7 +205,7 @@ export default class Editor extends BaseEditor {
     }
 
     _getHighlightedLines() {
-        if (!this.#server) return
+        if (!this.#server) return super._getHighlightedLines()
 
         const span = new SpannableText(this.text)
         
@@ -194,38 +217,58 @@ export default class Editor extends BaseEditor {
     }
 
     #showError(msg) {
-        if (this.#completer.isVisible) return
-
         this.#errTooltip.innerText = msg;
         this.#errTooltip.style.display = "inline-block";
 
         const rect = this.#errTooltip.getBoundingClientRect();
 
-        if (rect.height >= this.cursor.y) {
-            this.#errTooltip.style.top = `calc(${this.cursor.y}px + 1.5em)`;
+        const cursorY = this.#getLineHeight() * this.cursor.line
+
+        if (rect.height > cursorY) {
+            if (this.#completer.isVisible) {
+                this.#hideError()
+                return
+            }
+
+            this.#errTooltip.style.top = `${(this.cursor.line + 1) * 1.5}em`;
             this._errorSide = "bottom"
         } else {
-            this.#errTooltip.style.top = `${this.cursor.y - rect.height - 10}px`;
+            this.#errTooltip.style.top = `calc(${this.cursor.line * 1.5}em - ${rect.height}px)`
             this._errorSide = "top"
         }
 
-        if (this.cursor.x < innerWidth / 3) {
-            this.#errTooltip.style.left = `0`;
-            this.#errTooltip.style.translateX = `0`;
-            this.#errTooltip.style.right = "auto";
-        } else if (this.cursor.x > innerWidth * 0.75) {
-            this.#errTooltip.style.left = `auto`;
-            this.#errTooltip.style.translateX = `0`;
-            this.#errTooltip.style.right = `0`;
+        const cursorX = this.#getColumnSize() * this.cursor.column
+
+        if (cursorX > innerWidth / 2) {
+            this.#errTooltip.style.left = `calc(${this.cursor.column}ch - ${rect.width}px)`
         } else {
-            this.rTooltip.style.left = `50%`;
-            this.#errTooltip.style.translateX = `-50%`;
-            this.#errTooltip.se.right = `auto`;
+            this.#errTooltip.style.left = `calc(${this.cursor.column}ch)`
         }
     }
 
     #hideError(msg) {
         this.#errTooltip.style.display = "none";
+    }
+
+    #getLineHeight() {
+        const style = getComputedStyle(this.#textarea)
+        return parseFloat(style.lineHeight)
+    }
+
+    #getColumnSize() {
+        const style = getComputedStyle(this.#textarea)
+        const span = document.createElement("span")
+
+        span.style.font = style.font
+        span.style.fontSize = style.fontSize
+        // span.style.whiteSpace = "pre"
+        span.textContent = '0'
+
+        document.body.appendChild(span)
+        const charWidth = span.getBoundingClientRect().width
+        document.body.removeChild(span)
+
+        return charWidth
     }
 }
 

@@ -19,6 +19,10 @@ export class BaseParser {
         const res = parse.call(this, ...args)
         const scope = this.#scopes.pop()
         
+        if (this.#scopes.length) {
+            this.#scopes.at(-1).hasError ||= scope.hasError
+        }
+        
         res.start = res.start || scope.firstTok.start
         res.end = res.end || scope.lastTok.end
         
@@ -40,7 +44,7 @@ export class BaseParser {
     }
     
     error(msg, token) {
-        this.#errors.push(new ErrorData(msg, token, this.#input, this.#filepath));
+        this.#errors.push(new ErrorData("ParseError: " + msg, token, this.#input, this.#filepath));
         
         if (this.#scopes.length) {
             this.#scopes.at(-1).hasError = true
@@ -49,7 +53,7 @@ export class BaseParser {
     
     file() {
         const token = this.next()
-        this.error(`ParseError: Unexpected token '${token.value}'`, token)
+        this.error(`ParseError: Unexpected ${tok_to_err_str(token)}`, token)
         return token
     }
     
@@ -171,4 +175,9 @@ export class ErrorData {
 
 function repeat(str, count) {
     return new Array(count).fill(str).join('')
+}
+
+function tok_to_err_str(tok) {
+    if (tok.type === "kw") return `keyword '${tok.value}'`
+    return `token '${tok.value}'`
 }
